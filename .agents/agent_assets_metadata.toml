@@ -12,3 +12,9 @@ id = "Y8S3IdTe_k1PZ_wFE1sx3"
 uri = "file://artifacts/dar-altamaiz-tours/assets/images/splash-bg.png"
 type = "image"
 title = "dar-altamaiz-tours-splash"
+
+[[generated]]
+id = "U9HXPqNfR-FK3hvDuKgaT"
+uri = "file://artifacts/dar-altamaiz-tours/assets/images/welcome-bg.png"
+type = "image"
+title = "welcome-screen-background"

@@ -3,7 +3,9 @@ import {
   Animated,
   BackHandler,
   Image,
+  ImageBackground,
   Platform,
+  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -12,115 +14,95 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const WEBSITE_URL = "https://dt-tours.com";
-const SPLASH_DURATION = 3000;
-
-const GOLD = "#C9A84C";
-const GOLD_LIGHT = "#E8C96A";
 const NAVY = "#0A1628";
-const NAVY_MID = "#132040";
 
-function LoadingDots() {
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const animate = (dot: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(dot, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: false,
-          }),
-          Animated.timing(dot, {
-            toValue: 0.3,
-            duration: 400,
-            useNativeDriver: false,
-          }),
-        ])
-      );
-
-    const a1 = animate(dot1, 0);
-    const a2 = animate(dot2, 200);
-    const a3 = animate(dot3, 400);
-    a1.start();
-    a2.start();
-    a3.start();
-    return () => {
-      a1.stop();
-      a2.stop();
-      a3.stop();
-    };
-  }, [dot1, dot2, dot3]);
-
-  return (
-    <View style={styles.dotsContainer}>
-      {[dot1, dot2, dot3].map((dot, i) => (
-        <Animated.View key={i} style={[styles.dot, { opacity: dot }]} />
-      ))}
-    </View>
-  );
-}
-
-function SplashScreenView({ onDone }: { onDone: () => void }) {
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
-  const splashOpacity = useRef(new Animated.Value(1)).current;
+function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
+  const insets = useSafeAreaInsets();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(40)).current;
+  const btnScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 6,
-      tension: 80,
-      useNativeDriver: false,
-    }).start();
-
-    const timer = setTimeout(() => {
-      Animated.timing(splashOpacity, {
-        toValue: 0,
-        duration: 600,
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 900,
         useNativeDriver: false,
-      }).start(() => onDone());
-    }, SPLASH_DURATION);
-
-    return () => clearTimeout(timer);
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: false,
+      }),
+    ]).start();
   }, []);
 
-  return (
-    <Animated.View style={[styles.splashContainer, { opacity: splashOpacity }]}>
-      {Platform.OS !== "web" && (
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor={NAVY}
-          translucent={false}
-        />
-      )}
+  const handlePressIn = () => {
+    Animated.spring(btnScale, {
+      toValue: 0.96,
+      useNativeDriver: false,
+    }).start();
+  };
 
-      <View style={styles.splashContent}>
+  const handlePressOut = () => {
+    Animated.spring(btnScale, {
+      toValue: 1,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  return (
+    <View style={styles.welcomeContainer}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      <ImageBackground
+        source={require("../../assets/images/welcome-bg.png")}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay} />
+
         <Animated.View
           style={[
-            styles.logoContainer,
-            { transform: [{ scale: scaleAnim }] },
+            styles.logoArea,
+            { paddingTop: insets.top + 48, opacity: fadeAnim },
           ]}
         >
           <Image
             source={require("../../assets/images/dt-tours-logo-transparent.png")}
-            style={styles.splashLogo}
+            style={styles.welcomeLogo}
             resizeMode="contain"
             tintColor="#FFFFFF"
           />
         </Animated.View>
 
-        <Text style={styles.companyName}>Dar AlTamaiz Tours</Text>
+        <Animated.View
+          style={[
+            styles.bottomArea,
+            {
+              paddingBottom: insets.bottom + 40,
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Text style={styles.tagline}>
+            An easy way to book your{"\n"}holiday packages
+          </Text>
 
-        <Text style={styles.tagline}>Your Journey, Our Excellence</Text>
-      </View>
-
-      <View style={styles.bottomSection}>
-        <LoadingDots />
-      </View>
-    </Animated.View>
+          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+            <Pressable
+              style={styles.exploreBtn}
+              onPress={onExplore}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+            >
+              <Text style={styles.exploreBtnText}>Explore</Text>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+      </ImageBackground>
+    </View>
   );
 }
 
@@ -128,6 +110,7 @@ function NativeWebViewScreen() {
   const WebView = require("react-native-webview").WebView;
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const onBackPress = () => {
@@ -145,12 +128,8 @@ function NativeWebViewScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={NAVY}
-        translucent={false}
-      />
+    <View style={styles.webContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       <WebView
         ref={webviewRef}
         source={{ uri: WEBSITE_URL }}
@@ -176,15 +155,10 @@ function NativeWebViewScreen() {
 
 function WebIframeScreen() {
   return (
-    <View style={styles.container}>
+    <View style={styles.webContainer}>
       <iframe
         src={WEBSITE_URL}
-        style={{
-          flex: 1,
-          width: "100%",
-          height: "100%",
-          border: "none",
-        }}
+        style={{ flex: 1, width: "100%", height: "100%", border: "none" }}
         title="Dar AlTamaiz Tours"
       />
     </View>
@@ -192,90 +166,95 @@ function WebIframeScreen() {
 }
 
 export default function HomeScreen() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [webviewVisible, setWebviewVisible] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWeb, setShowWeb] = useState(false);
+  const welcomeOpacity = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    if (!showSplash) {
-      setWebviewVisible(true);
-    }
-  }, [showSplash]);
+  const handleExplore = () => {
+    setShowWeb(true);
+    Animated.timing(welcomeOpacity, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: false,
+    }).start(() => setShowWelcome(false));
+  };
 
   return (
-    <View style={styles.container}>
-      {webviewVisible &&
-        (Platform.OS === "web" ? (
-          <WebIframeScreen />
-        ) : (
-          <NativeWebViewScreen />
-        ))}
+    <View style={styles.root}>
+      {showWeb && (
+        Platform.OS === "web"
+          ? <WebIframeScreen />
+          : <NativeWebViewScreen />
+      )}
 
-      {showSplash && (
-        <SplashScreenView onDone={() => setShowSplash(false)} />
+      {showWelcome && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: welcomeOpacity }]}
+        >
+          <WelcomeScreen onExplore={handleExplore} />
+        </Animated.View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: NAVY,
   },
-  splashContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: NAVY,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 100,
-  },
-  splashContent: {
+  welcomeContainer: {
     flex: 1,
+    backgroundColor: NAVY,
+  },
+  backgroundImage: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  logoArea: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
+    flex: 1,
   },
-  logoContainer: {
-    marginBottom: 28,
+  welcomeLogo: {
+    width: 260,
+    height: 90,
+  },
+  bottomArea: {
+    paddingHorizontal: 32,
     alignItems: "center",
-  },
-  splashLogo: {
-    width: 320,
-    height: 120,
-  },
-  companyName: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 26,
-    color: GOLD_LIGHT,
-    textAlign: "center",
-    letterSpacing: 1.5,
-    marginBottom: 10,
+    gap: 28,
   },
   tagline: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "#8A9BB5",
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontFamily: "Inter_600SemiBold",
     textAlign: "center",
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    lineHeight: 32,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  bottomSection: {
-    paddingBottom: 60,
+  exploreBtn: {
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 18,
+    paddingHorizontal: 120,
+    borderRadius: 50,
     alignItems: "center",
+    justifyContent: "center",
   },
-  dotsContainer: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
+  exploreBtnText: {
+    color: "#0D2C6E",
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
   },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: GOLD,
+  webContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
   },
 });
