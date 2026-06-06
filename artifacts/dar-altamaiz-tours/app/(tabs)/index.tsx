@@ -151,7 +151,7 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
             >
-              <Text style={styles.exploreBtnText}>Explore</Text>
+              <Text style={styles.exploreBtnText}>Start</Text>
             </Pressable>
           </Animated.View>
         </Animated.View>
@@ -279,8 +279,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   welcomeLogo: {
-    width: 360,
-    height: 130,
+    width: 380,
+    height: 160,
   },
   earthArea: {
     flex: 1,
