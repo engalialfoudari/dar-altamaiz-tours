@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { WebView, WebViewNavigation } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const WEBSITE_URL = "https://dt-tours.com";
@@ -32,12 +31,12 @@ function LoadingDots() {
           Animated.timing(dot, {
             toValue: 1,
             duration: 400,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(dot, {
             toValue: 0.3,
             duration: 400,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ])
       );
@@ -58,10 +57,7 @@ function LoadingDots() {
   return (
     <View style={styles.dotsContainer}>
       {[dot1, dot2, dot3].map((dot, i) => (
-        <Animated.View
-          key={i}
-          style={[styles.dot, { opacity: dot }]}
-        />
+        <Animated.View key={i} style={[styles.dot, { opacity: dot }]} />
       ))}
     </View>
   );
@@ -81,31 +77,30 @@ function SplashScreenView({ onDone }: { onDone: () => void }) {
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 700,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
-        Animated.spring(scaleAnim, {
+        Animated.timing(scaleAnim, {
           toValue: 1,
-          friction: 6,
-          tension: 80,
-          useNativeDriver: true,
+          duration: 700,
+          useNativeDriver: false,
         }),
       ]),
       Animated.timing(dividerAnim, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.parallel([
         Animated.timing(titleAnim, {
           toValue: 1,
           duration: 500,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(subtitleAnim, {
           toValue: 1,
           duration: 600,
           delay: 100,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]),
     ]).start();
@@ -114,22 +109,22 @@ function SplashScreenView({ onDone }: { onDone: () => void }) {
       Animated.timing(splashOpacity, {
         toValue: 0,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start(() => onDone());
     }, SPLASH_DURATION);
 
     return () => clearTimeout(timer);
-  }, [fadeAnim, scaleAnim, titleAnim, subtitleAnim, dividerAnim, splashOpacity, onDone]);
+  }, []);
 
   return (
     <Animated.View style={[styles.splashContainer, { opacity: splashOpacity }]}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={NAVY}
-        translucent={false}
-      />
-
-      <View style={styles.bgOverlay} />
+      {Platform.OS !== "web" && (
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={NAVY}
+          translucent={false}
+        />
+      )}
 
       <View style={styles.splashContent}>
         <Animated.View
@@ -160,11 +155,7 @@ function SplashScreenView({ onDone }: { onDone: () => void }) {
             styles.divider,
             {
               opacity: dividerAnim,
-              transform: [
-                {
-                  scaleX: dividerAnim,
-                },
-              ],
+              transform: [{ scaleX: dividerAnim }],
             },
           ]}
         />
@@ -215,21 +206,12 @@ function SplashScreenView({ onDone }: { onDone: () => void }) {
   );
 }
 
-export default function HomeScreen() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [webviewVisible, setWebviewVisible] = useState(false);
-  const webviewRef = useRef<WebView>(null);
+function NativeWebViewScreen() {
+  const WebView = require("react-native-webview").WebView;
+  const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!showSplash) {
-      setWebviewVisible(true);
-    }
-  }, [showSplash]);
-
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
     const onBackPress = () => {
       if (canGoBack.current && webviewRef.current) {
         webviewRef.current.goBack();
@@ -237,13 +219,12 @@ export default function HomeScreen() {
       }
       return false;
     };
-    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress
+    );
     return () => subscription.remove();
   }, []);
-
-  const handleNavStateChange = (navState: WebViewNavigation) => {
-    canGoBack.current = navState.canGoBack;
-  };
 
   return (
     <View style={styles.container}>
@@ -252,26 +233,64 @@ export default function HomeScreen() {
         backgroundColor={NAVY}
         translucent={false}
       />
+      <WebView
+        ref={webviewRef}
+        source={{ uri: WEBSITE_URL }}
+        style={StyleSheet.absoluteFill}
+        javaScriptEnabled
+        domStorageEnabled
+        startInLoadingState={false}
+        scalesPageToFit
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+        onNavigationStateChange={(navState: any) => {
+          canGoBack.current = navState.canGoBack;
+        }}
+        contentInsetAdjustmentBehavior="never"
+        bounces={false}
+        overScrollMode="never"
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  );
+}
 
-      {webviewVisible && (
-        <WebView
-          ref={webviewRef}
-          source={{ uri: WEBSITE_URL }}
-          style={StyleSheet.absoluteFill}
-          javaScriptEnabled
-          domStorageEnabled
-          startInLoadingState={false}
-          scalesPageToFit
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          onNavigationStateChange={handleNavStateChange}
-          contentInsetAdjustmentBehavior="never"
-          bounces={false}
-          overScrollMode="never"
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+function WebIframeScreen() {
+  return (
+    <View style={styles.container}>
+      <iframe
+        src={WEBSITE_URL}
+        style={{
+          flex: 1,
+          width: "100%",
+          height: "100%",
+          border: "none",
+        }}
+        title="Dar AlTamaiz Tours"
+      />
+    </View>
+  );
+}
+
+export default function HomeScreen() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [webviewVisible, setWebviewVisible] = useState(false);
+
+  useEffect(() => {
+    if (!showSplash) {
+      setWebviewVisible(true);
+    }
+  }, [showSplash]);
+
+  return (
+    <View style={styles.container}>
+      {webviewVisible &&
+        (Platform.OS === "web" ? (
+          <WebIframeScreen />
+        ) : (
+          <NativeWebViewScreen />
+        ))}
 
       {showSplash && (
         <SplashScreenView onDone={() => setShowSplash(false)} />
@@ -286,15 +305,15 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY,
   },
   splashContainer: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 100,
-  },
-  bgOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: NAVY,
   },
   splashContent: {
     flex: 1,
@@ -314,11 +333,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: NAVY_MID,
-    shadowColor: GOLD,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
   },
   iconInner: {
     alignItems: "center",
@@ -367,9 +381,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: 1.5,
     marginBottom: 10,
-    textShadowColor: GOLD,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
   },
   tagline: {
     fontFamily: "Inter_400Regular",
