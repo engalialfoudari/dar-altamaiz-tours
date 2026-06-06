@@ -141,7 +141,7 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
             Book more &amp; get cashback on{"\n"}every successful booking!
           </Text>
           <Text style={styles.subTagline}>
-            Your trusted travel partner since 2015
+            Your trusted travel partner since 2008
           </Text>
 
           <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%" }}>
