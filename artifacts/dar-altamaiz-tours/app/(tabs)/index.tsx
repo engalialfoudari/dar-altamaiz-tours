@@ -15,6 +15,60 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const WEBSITE_URL = "https://dt-tours.com";
 const NAVY = "#0A1628";
+const NAVY_DEEP = "#061020";
+
+function SpinningEarth() {
+  const spin = useRef(new Animated.Value(0)).current;
+  const bounce = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: false,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounce, {
+          toValue: -6,
+          duration: 900,
+          useNativeDriver: false,
+        }),
+        Animated.timing(bounce, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const rotate = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.earthWrapper,
+        { transform: [{ rotate }, { translateY: bounce }] },
+      ]}
+    >
+      <View style={styles.earth}>
+        <View style={[styles.continent, { top: 14, left: 12, width: 22, height: 14 }]} />
+        <View style={[styles.continent, { top: 26, left: 28, width: 16, height: 18 }]} />
+        <View style={[styles.continent, { top: 10, right: 10, width: 18, height: 22 }]} />
+        <View style={[styles.continent, { bottom: 14, left: 16, width: 20, height: 12 }]} />
+        <View style={[styles.continent, { bottom: 10, right: 14, width: 12, height: 10 }]} />
+      </View>
+      <View style={styles.earthShine} />
+    </Animated.View>
+  );
+}
 
 function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
   const insets = useSafeAreaInsets();
@@ -38,17 +92,11 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
   }, []);
 
   const handlePressIn = () => {
-    Animated.spring(btnScale, {
-      toValue: 0.96,
-      useNativeDriver: false,
-    }).start();
+    Animated.spring(btnScale, { toValue: 0.96, useNativeDriver: false }).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(btnScale, {
-      toValue: 1,
-      useNativeDriver: false,
-    }).start();
+    Animated.spring(btnScale, { toValue: 1, useNativeDriver: false }).start();
   };
 
   return (
@@ -60,12 +108,13 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
         style={styles.backgroundImage}
         resizeMode="cover"
       >
-        <View style={styles.overlay} />
+        <View style={styles.topGradient} />
+        <View style={styles.bottomGradient} />
 
         <Animated.View
           style={[
             styles.logoArea,
-            { paddingTop: insets.top + 48, opacity: fadeAnim },
+            { paddingTop: insets.top + 36, opacity: fadeAnim },
           ]}
         >
           <Image
@@ -76,21 +125,28 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
           />
         </Animated.View>
 
+        <View style={styles.earthArea}>
+          <SpinningEarth />
+        </View>
+
         <Animated.View
           style={[
             styles.bottomArea,
             {
-              paddingBottom: insets.bottom + 40,
+              paddingBottom: insets.bottom + 44,
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }],
             },
           ]}
         >
           <Text style={styles.tagline}>
-            An easy way to book your{"\n"}holiday packages
+            Book more &amp; get cashback on{"\n"}every successful booking!
+          </Text>
+          <Text style={styles.subTagline}>
+            Your trusted travel partner since 2015
           </Text>
 
-          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+          <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%" }}>
             <Pressable
               style={styles.exploreBtn}
               onPress={onExplore}
@@ -110,7 +166,6 @@ function NativeWebViewScreen() {
   const WebView = require("react-native-webview").WebView;
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const onBackPress = () => {
@@ -120,10 +175,7 @@ function NativeWebViewScreen() {
       }
       return false;
     };
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      onBackPress
-    );
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => subscription.remove();
   }, []);
 
@@ -181,16 +233,11 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      {showWeb && (
-        Platform.OS === "web"
-          ? <WebIframeScreen />
-          : <NativeWebViewScreen />
-      )}
+      {showWeb &&
+        (Platform.OS === "web" ? <WebIframeScreen /> : <NativeWebViewScreen />)}
 
       {showWelcome && (
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: welcomeOpacity }]}
-        >
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: welcomeOpacity }]}>
           <WelcomeScreen onExplore={handleExplore} />
         </Animated.View>
       )}
@@ -212,40 +259,96 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.25)",
+  topGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 220,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  bottomGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 320,
+    backgroundColor: "rgba(0,10,30,0.72)",
   },
   logoArea: {
     alignItems: "center",
-    flex: 1,
+    paddingHorizontal: 24,
+    zIndex: 10,
   },
   welcomeLogo: {
-    width: 260,
-    height: 90,
+    width: 320,
+    height: 115,
+  },
+  earthArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 5,
+  },
+  earthWrapper: {
+    width: 80,
+    height: 80,
+    position: "relative",
+  },
+  earth: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#1A6FBF",
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  earthShine: {
+    position: "absolute",
+    top: 6,
+    left: 10,
+    width: 22,
+    height: 18,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    transform: [{ rotate: "-30deg" }],
+  },
+  continent: {
+    position: "absolute",
+    backgroundColor: "#4CAF50",
+    borderRadius: 6,
+    opacity: 0.85,
   },
   bottomArea: {
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     alignItems: "center",
-    gap: 28,
+    gap: 10,
+    zIndex: 10,
   },
   tagline: {
     color: "#FFFFFF",
     fontSize: 22,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     textAlign: "center",
     lineHeight: 32,
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    marginBottom: 4,
+  },
+  subTagline: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginBottom: 18,
+    letterSpacing: 0.5,
   },
   exploreBtn: {
     backgroundColor: "#FFFFFF",
     paddingVertical: 18,
-    paddingHorizontal: 120,
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
+    width: "100%",
   },
   exploreBtnText: {
     color: "#0D2C6E",
