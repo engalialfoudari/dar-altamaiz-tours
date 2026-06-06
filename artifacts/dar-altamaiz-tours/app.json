@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Dar AlTamaiz Tours",
-    "slug": "dar-altamaiz-tours",
+    "name": "D.T. Tours",
+    "slug": "dttours",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
-    "scheme": "dar-altamaiz-tours",
+    "scheme": "dttours",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -19,14 +19,16 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
-      }
+      },
+      "bundleIdentifier": "com.dttours.app"
     },
     "android": {
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
-      ]
+      ],
+      "package": "com.dttours.app"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
