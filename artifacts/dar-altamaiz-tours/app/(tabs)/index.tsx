@@ -125,9 +125,7 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
           />
         </Animated.View>
 
-        <View style={styles.earthArea}>
-          <SpinningEarth />
-        </View>
+        <View style={{ flex: 1 }} />
 
         <Animated.View
           style={[
@@ -281,8 +279,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   welcomeLogo: {
-    width: 320,
-    height: 115,
+    width: 360,
+    height: 130,
   },
   earthArea: {
     flex: 1,
