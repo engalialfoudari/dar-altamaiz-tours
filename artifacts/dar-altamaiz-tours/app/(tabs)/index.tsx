@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   BackHandler,
+  Image,
   Platform,
   StatusBar,
   StyleSheet,
@@ -103,21 +104,13 @@ function SplashScreenView({ onDone }: { onDone: () => void }) {
             { transform: [{ scale: scaleAnim }] },
           ]}
         >
-          <View style={styles.iconRing}>
-            <View style={styles.iconInner}>
-              <View style={styles.crescentOuter}>
-                <View style={styles.crescentInner} />
-              </View>
-              <View style={styles.starRow}>
-                {[0, 1, 2].map((i) => (
-                  <View key={i} style={styles.starDot} />
-                ))}
-              </View>
-            </View>
-          </View>
+          <Image
+            source={require("../../assets/images/dt-tours-logo-transparent.png")}
+            style={styles.splashLogo}
+            resizeMode="contain"
+            tintColor="#FFFFFF"
+          />
         </Animated.View>
-
-        <View style={styles.divider} />
 
         <Text style={styles.companyName}>Dar AlTamaiz Tours</Text>
 
@@ -247,57 +240,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   logoContainer: {
-    marginBottom: 32,
+    marginBottom: 28,
+    alignItems: "center",
   },
-  iconRing: {
-    width: 120,
+  splashLogo: {
+    width: 320,
     height: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    borderColor: GOLD,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: NAVY_MID,
-  },
-  iconInner: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  crescentOuter: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 5,
-    borderColor: GOLD,
-    overflow: "hidden",
-    position: "relative",
-  },
-  crescentInner: {
-    position: "absolute",
-    top: -4,
-    right: -10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: NAVY_MID,
-  },
-  starRow: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  starDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: GOLD_LIGHT,
-  },
-  divider: {
-    width: 80,
-    height: 1.5,
-    backgroundColor: GOLD,
-    marginBottom: 24,
-    opacity: 0.7,
   },
   companyName: {
     fontFamily: "Inter_700Bold",
