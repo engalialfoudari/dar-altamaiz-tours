@@ -64,46 +64,16 @@ function LoadingDots() {
 }
 
 function SplashScreenView({ onDone }: { onDone: () => void }) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.85)).current;
-  const titleAnim = useRef(new Animated.Value(0)).current;
-  const subtitleAnim = useRef(new Animated.Value(0)).current;
-  const dividerAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const splashOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 700,
-          useNativeDriver: false,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 700,
-          useNativeDriver: false,
-        }),
-      ]),
-      Animated.timing(dividerAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: false,
-      }),
-      Animated.parallel([
-        Animated.timing(titleAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: false,
-        }),
-        Animated.timing(subtitleAnim, {
-          toValue: 1,
-          duration: 600,
-          delay: 100,
-          useNativeDriver: false,
-        }),
-      ]),
-    ]).start();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 6,
+      tension: 80,
+      useNativeDriver: false,
+    }).start();
 
     const timer = setTimeout(() => {
       Animated.timing(splashOpacity, {
@@ -130,10 +100,7 @@ function SplashScreenView({ onDone }: { onDone: () => void }) {
         <Animated.View
           style={[
             styles.logoContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
+            { transform: [{ scale: scaleAnim }] },
           ]}
         >
           <View style={styles.iconRing}>
@@ -150,53 +117,11 @@ function SplashScreenView({ onDone }: { onDone: () => void }) {
           </View>
         </Animated.View>
 
-        <Animated.View
-          style={[
-            styles.divider,
-            {
-              opacity: dividerAnim,
-              transform: [{ scaleX: dividerAnim }],
-            },
-          ]}
-        />
+        <View style={styles.divider} />
 
-        <Animated.Text
-          style={[
-            styles.companyName,
-            {
-              opacity: titleAnim,
-              transform: [
-                {
-                  translateY: titleAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [16, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          Dar AlTamaiz Tours
-        </Animated.Text>
+        <Text style={styles.companyName}>Dar AlTamaiz Tours</Text>
 
-        <Animated.Text
-          style={[
-            styles.tagline,
-            {
-              opacity: subtitleAnim,
-              transform: [
-                {
-                  translateY: subtitleAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [10, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          Your Journey, Our Excellence
-        </Animated.Text>
+        <Text style={styles.tagline}>Your Journey, Our Excellence</Text>
       </View>
 
       <View style={styles.bottomSection}>
