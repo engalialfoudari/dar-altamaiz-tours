@@ -62,7 +62,6 @@ export default function RootLayout() {
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
-    ...Ionicons.font,
   });
   const [appReady, setAppReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
