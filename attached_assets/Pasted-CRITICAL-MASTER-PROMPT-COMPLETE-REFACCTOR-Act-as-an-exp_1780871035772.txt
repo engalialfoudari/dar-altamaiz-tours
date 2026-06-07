@@ -1,0 +1,42 @@
+CRITICAL MASTER PROMPT & COMPLETE REFACCTOR: Act as an expert React Native developer building a premium, luxury-branded (navy blue and gold, derived from the core identity in image_8.png) hybrid application for "Dar AlTamaiz Tours". Execute ALL instructions meticulously. This prompt synthesizes and supersedes all previous refinements. Do NOT skip any section.
+
+1. CRITICAL PRIORITY: Application Icon Confirmation:
+   - You MUST configure the final application icon to be derived EXACTLY and COMPLETELY from the design provided in `image_8.png` (the gold "D" encompassing the globe on a navy blue background). Do NOT use any placeholders, guess the design, or use an inferior image. This specific image is your ONLY source of truth for the app icon. Ensure it is not cut off or improperly cropped during bundling for Android and iOS.
+
+2. Onboarding Screen Refactor (English-Only, High Typography):
+   - Refactor the entire Onboarding/Welcome screen (image_6.png) to feature English-only content while maintaining the visual structure and high-end background image concept.
+   - Text Hierarchy & Sizing:
+     * Brand Title: "Dar AlTamaiz Tours" (Large, Majestic Gold Shimmer font - like image_3.png's style).
+     * Tagline: "Book more & get cashback on every successful booking!" (Medium, Elegant font, single distinct line).
+     * Partnership Text: "Your Trusted Travel Partner Since 2008" (Smaller, Sophisticated, light font, single distinct line).
+   - Buttons Styling:
+     * Both the Log-In and Continue as Guest buttons must be prominent and distinct.
+     * Set the background color of these buttons to a premium Polo Navy Blue (e.g., #0A1931 or #1B263B), not gold.
+     * Set the text color inside these buttons to solid crisp white, in a SMALL, cohesive, elegant font.
+   - Button Labels & Functionality:
+     * "سجل دخول" -> "Log In" (English). Map to the official website's real login page URL inside the full-screen WebView.
+     * "اكمل كضيف" -> "Continue as Guest" (English). Map to the official website's homepage URL inside the full-screen WebView.
+
+3. Main Application Shell Simplified View:
+   - Completely remove the side drawer component and all its associated logic and native buttons (My Account, My Bookings, etc.). 
+   - Rely entirely on the website's (https://dt-tours.com) built-in hamburger menu (three lines) inside the full-screen WebView. Keep the top header clean or remove it to maximize WebView space.
+
+4. Back Navigation Shell (Header Chevron):
+   - Create a clean native top header shell above the full-screen WebView.
+   - POSITION: On the far left, add a native back arrow/chevron icon (using `Ionicons` or `Chevron`).
+   - Function: Map this button's onPress event directly to the WebView ref (`webViewRef.current.goBack()`). When a user presses this native arrow, it smoothly navigates to the *previous* webpage within the WebView history ref. Go Back must be fully functional.
+
+5. Functional Bug Fix Section:
+   - Fix Broken Icons (Rectangle [] Glitch): COMPLETELY remove the broken icon logic that causes squares/[] on Android (e.g., inside buttons or drawer). Import and use official, standard Expo Vector Icons (`Ionicons`, `MaterialCommunityIcons` from `@expo/vector-icons`). Bundled icons must render perfectly as actual graphics on all devices.
+   - Fix Arabic Language Redirect Loop (Crash/Freeze): Audit the WebView's `onNavigationStateChange` logic. Add a specific condition to prevent an infinite redirect loop and crash when the WebView parses language query parameters (e.g., switching to 'ar') from https://dt-tours.com. It must execute the language switch once and stop.
+   - No Dummy Elements: Every UI element must be 100% functional. Query the user for links if unsure, or delete the element. DO NOT guess.
+
+6. OTA Update & Loading Screens:
+   - Strictly English-Only Loading Screen: During initial launch and any page transitions, ensure NO Arabic text is displayed. The loading message must be strictly in premium English (e.g., "Loading...", or "Loading your holiday experiences...").
+   - Bilingual OTA Update Modal: Implement `expo-updates` for automatic check on launch. On update detection, pause app loading and display a beautifully styled modal (Navy Blue/Gold branding) with both specific bilingual messages:
+     * Arabic Text: "تحديث جديد متوفر! يرجى تحديث التطبيق الآن للاستمتاع بآخر الميزات والعطلات والوجهات الجديدة."
+     * English Text: "New Update Available! Please update the app now to enjoy the latest features, holidays, and new destinations."
+     * Button Text (Prominent): "تحديث الآن | Update Now". Clicking must trigger update fetch and reboot.
+
+7. Final Implementation & Verification Protocol:
+   - Following all changes, you must initiate a robust verification protocol. Test and validate that EVERY SINGLE BUTTON, LINK, and TAB (Log In, Guest, Back Arrow) in the simplified application navigates to the correct URL path or executes the correct history ref on the live website. Ensure NO broken, placeholder, or dummy elements remain, and that visual hierarchy on onboarding is mastered and verified.

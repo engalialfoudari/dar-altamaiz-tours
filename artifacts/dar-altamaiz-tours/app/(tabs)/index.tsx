@@ -234,6 +234,7 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   const [hasError, setHasError] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [canGoBackState, setCanGoBackState] = useState(false);
   const wasOffline = useRef(false);
   const toastSlide = useRef(new Animated.Value(-90)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -307,7 +308,10 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 
   return (
     <View style={styles.shellRoot}>
-      <AppHeader />
+      <AppHeader
+        onBack={() => webviewRef.current?.goBack?.()}
+        canGoBack={canGoBackState}
+      />
 
       <View style={styles.webArea}>
         <WebView
@@ -324,6 +328,7 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
           injectedJavaScriptBeforeContentLoaded={INJECTED_JS}
           onNavigationStateChange={(navState: any) => {
             canGoBack.current = navState.canGoBack;
+            setCanGoBackState(navState.canGoBack);
           }}
           onLoadStart={() => {
             setLoading(true);

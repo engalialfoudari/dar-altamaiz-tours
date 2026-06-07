@@ -1,6 +1,8 @@
+import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   Platform,
+  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -11,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
 
-const { navy, navyMid } = colors.light;
+const { gold, navy, navyMid } = colors.light;
 
 function DigitalClock() {
   const [now, setNow] = useState(new Date());
@@ -61,7 +63,12 @@ const clockStyles = StyleSheet.create({
   },
 });
 
-export function AppHeader() {
+interface AppHeaderProps {
+  onBack?: () => void;
+  canGoBack?: boolean;
+}
+
+export function AppHeader({ onBack, canGoBack = false }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -70,6 +77,7 @@ export function AppHeader() {
     Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : insets.top;
 
   const headerHeight = isTablet ? 60 : 52;
+  const iconSize = isTablet ? 24 : 22;
 
   return (
     <View style={[styles.header, { paddingTop: statusBarHeight }]}>
@@ -79,7 +87,33 @@ export function AppHeader() {
         translucent={Platform.OS === "android"}
       />
       <View style={[styles.inner, { height: headerHeight }]}>
-        <DigitalClock />
+        {onBack != null ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.backBtn,
+              pressed && styles.backBtnPressed,
+            ]}
+            onPress={onBack}
+            disabled={!canGoBack}
+            hitSlop={12}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name="chevron-back"
+              size={iconSize}
+              color={canGoBack ? "#FFFFFF" : "rgba(255,255,255,0.25)"}
+            />
+          </Pressable>
+        ) : (
+          <View style={styles.sideSlot} />
+        )}
+
+        <View style={styles.clockWrap}>
+          <DigitalClock />
+        </View>
+
+        <View style={styles.sideSlot} />
       </View>
     </View>
   );
@@ -92,7 +126,27 @@ const styles = StyleSheet.create({
     borderBottomColor: navyMid,
   },
   inner: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  backBtnPressed: {
+    backgroundColor: "rgba(201,168,76,0.18)",
+  },
+  clockWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sideSlot: {
+    width: 40,
   },
 });
