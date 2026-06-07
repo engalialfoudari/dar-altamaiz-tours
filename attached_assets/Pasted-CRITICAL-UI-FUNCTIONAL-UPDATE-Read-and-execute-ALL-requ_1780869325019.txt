@@ -1,0 +1,27 @@
+CRITICAL UI & FUNCTIONAL UPDATE: Read and execute ALL requirements below meticulously. Do NOT skip any instruction. Implement a strict validation protocol.
+
+1. Icon Confirmation:
+   - CONFIRM that the final application icon is the exact "Gold D with Globe" design provided in `image_3.png`. Do NOT use any other logo for the app icon.
+
+2. Onboarding Screen (`image_6.png`):
+   - Refactor ALL text content on the onboarding screen to English.
+   - Text 1 (Brand Name): "Dar AlTamaiz Tours" (English). This text must be styled with a premium, high-lustre shimmer gold effect (like a highly polished gold surface reflecting light) and include a subtle, elegant shimmer animation (like a brief spark or lightning reflection) to convey extreme luxury. Maintain font style and harmonious sizing.
+   - Text 2 (Tagline): Translate the Arabic sentence about Cashback and successful booking to English (e.g., "Book more & get cashback on every successful booking!"). Match styling.
+   - Text 3 (Partnership): Translate the Arabic founded line to English (e.g., "Your Trusted Travel Partner Since 2008"). Match styling.
+   - Buttons: Change the lower buttons to English:
+     * "سجل دخول" -> "Log In"
+     * "اكمل كضيف" -> "Continue as Guest"
+
+3. Main Home Top Header (`image_5.png`):
+   - Completely remove the small "DT TOURS" gold logo text from the top header.
+   - REPLACE it with a premium, sleek DIGITAL CLOCK positioned in the dead center.
+   - Clock Formatting: Display the current time in a format like "10:30 AM" or "10:30 صباحا" (Bilingual/Arabic context if needed for local users, or just English time format for international appeal - default to English) and the date below it, e.g., "07/06/2026". The text must be in a crisp white color and a SMALL, cohesive, elegant font that is not bulky. Ensure it looks sophisticated.
+
+4. Side Drawer Menu (`image_4.png`):
+   - "Sign In" Button: Change the gold color from flat yellow to a rich, lustrous shimmer gold (the same high-end palette as the logo, `image_3.png`). Ensure it looks truly metallic.
+   - Real-Link Binding Protocol (Side Menu): Audit the Side Drawer. The "Sign In" button must ACTUALY load the website's real login page URL (e.g., `https://dt-tours.com/login`) inside the full-screen WebView.
+   - Language Binding: Map the "English" and "العربية" language buttons directly to the real language URL paths on the website (e.g., `https://dt-tours.com/en` and `https://dt-tours.com/ar`).
+   - UI Check: Replace the question mark icon for "Contact Us" with a more appropriate icon (e.g., a phone headset or mail envelope).
+
+5. Verification Protocol (CRITICAL):
+   - Following implementation, initiate a robust verification protocol. Test and validate that EVERY SINGLE BUTTON, LINK, and TAB in the entire application (Onboarding, Home Screen, Side Drawer) is functional and navigates to the correct URL path on the live website. Ensure NO placeholder/dummy actions remain. Verify all design and animation modifications have been implemented and validated for quality.
