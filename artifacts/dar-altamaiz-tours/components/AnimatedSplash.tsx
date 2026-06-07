@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Image, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, View } from "react-native";
 
 import colors from "@/constants/colors";
 
 const { navy } = colors.light;
+const nativeDriver = Platform.OS !== "web";
 
 interface AnimatedSplashProps {
   onAnimationEnd: () => void;
@@ -20,19 +21,19 @@ export function AnimatedSplash({ onAnimationEnd }: AnimatedSplashProps) {
         Animated.timing(logoScale, {
           toValue: 1,
           duration: 480,
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
           duration: 380,
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
       ]),
       Animated.delay(180),
       Animated.timing(overlayOpacity, {
         toValue: 0,
         duration: 420,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
     ]).start(() => onAnimationEnd());
   }, []);
