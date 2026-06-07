@@ -32,6 +32,23 @@ const INJECTED_JS = `
 })();
 `;
 
+const LOGIN_TRIGGER_JS = `
+${INJECTED_JS}
+(function() {
+  function tryOpenLogin(attempts) {
+    var btn = document.querySelector('[data-target="#myModal_new_emp"]') ||
+              document.querySelector('.open_sign_in');
+    if (btn) {
+      btn.click();
+    } else if (attempts > 0) {
+      setTimeout(function() { tryOpenLogin(attempts - 1); }, 600);
+    }
+  }
+  setTimeout(function() { tryOpenLogin(5); }, 800);
+  true;
+})();
+`;
+
 function LoadingOverlay() {
   const nd = Platform.OS !== "web";
   const textOpacity = useRef(new Animated.Value(0.4)).current;
@@ -233,7 +250,7 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
   );
 }
 
-function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
+function WebShell({ initialUrl = TABS[0].url, overrideInjectedJS }: { initialUrl?: string; overrideInjectedJS?: string }) {
   const WebView = require("react-native-webview").WebView;
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
@@ -334,7 +351,7 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           setSupportMultipleWindows={false}
-          injectedJavaScript={INJECTED_JS}
+          injectedJavaScript={overrideInjectedJS ?? INJECTED_JS}
           injectedJavaScriptBeforeContentLoaded={INJECTED_JS}
           onNavigationStateChange={(navState: any) => {
             canGoBack.current = navState.canGoBack;
@@ -476,12 +493,14 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 export default function HomeScreen() {
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
+  const [shellOverrideJS, setShellOverrideJS] = useState<string | undefined>(undefined);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const shellOpacity = useRef(new Animated.Value(0)).current;
   const nd = Platform.OS !== "web";
 
-  const transitionToShell = (url: string) => {
+  const transitionToShell = (url: string, overrideJS?: string) => {
     setInitialShellUrl(url);
+    setShellOverrideJS(overrideJS);
     setPhase("transitioning");
     Animated.parallel([
       Animated.timing(welcomeOpacity, { toValue: 0, duration: 500, useNativeDriver: nd }),
@@ -490,7 +509,7 @@ export default function HomeScreen() {
   };
 
   const handleExplore = () => transitionToShell(TABS[0].url);
-  const handleLogin = () => transitionToShell("https://dt-tours.com/index.php/auth/login");
+  const handleLogin = () => transitionToShell("https://dt-tours.com/", LOGIN_TRIGGER_JS);
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
@@ -498,7 +517,7 @@ export default function HomeScreen() {
     <View style={styles.root}>
       {(phase === "transitioning" || phase === "shell") && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: shellOpacity }]}>
-          <ShellComponent initialUrl={initialShellUrl} />
+          <ShellComponent initialUrl={initialShellUrl} overrideInjectedJS={shellOverrideJS} />
         </Animated.View>
       )}
 
