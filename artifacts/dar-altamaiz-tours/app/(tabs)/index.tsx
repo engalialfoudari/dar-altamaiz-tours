@@ -313,8 +313,7 @@ function WebShell() {
       />
 
       <View style={styles.webArea}>
-        {!hasError && (
-          <WebView
+        <WebView
             ref={webviewRef}
             source={{ uri: webUrl }}
             style={StyleSheet.absoluteFill}
@@ -368,7 +367,6 @@ function WebShell() {
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}
           />
-        )}
 
         {loading && !hasError && (
           <View style={styles.loadingOverlay} pointerEvents="none">
@@ -705,11 +703,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   errorScreen: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 36,
     backgroundColor: navy,
+    zIndex: 10,
   },
   errorIcon: {
     fontSize: 52,
