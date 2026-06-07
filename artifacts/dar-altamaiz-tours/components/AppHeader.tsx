@@ -1,8 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   Platform,
-  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -13,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
 
-const { gold, navy, navyMid } = colors.light;
+const { navy, navyMid } = colors.light;
 
 function DigitalClock() {
   const [now, setNow] = useState(new Date());
@@ -63,11 +61,7 @@ const clockStyles = StyleSheet.create({
   },
 });
 
-interface AppHeaderProps {
-  onAvatarPress: () => void;
-}
-
-export function AppHeader({ onAvatarPress }: AppHeaderProps) {
+export function AppHeader() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -85,17 +79,7 @@ export function AppHeader({ onAvatarPress }: AppHeaderProps) {
         translucent={Platform.OS === "android"}
       />
       <View style={[styles.inner, { height: headerHeight }]}>
-        <View style={styles.clockWrap}>
-          <DigitalClock />
-        </View>
-
-        <Pressable
-          style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}
-          onPress={onAvatarPress}
-          hitSlop={8}
-        >
-          <Ionicons name="person-outline" size={isTablet ? 22 : 19} color={gold} />
-        </Pressable>
+        <DigitalClock />
       </View>
     </View>
   );
@@ -108,28 +92,7 @@ const styles = StyleSheet.create({
     borderBottomColor: navyMid,
   },
   inner: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 12,
-  },
-  clockWrap: {
-    flex: 1,
-    alignItems: "center",
-  },
-  avatar: {
-    position: "absolute",
-    right: 12,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(201,168,76,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(201,168,76,0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarPressed: {
-    backgroundColor: "rgba(201,168,76,0.25)",
   },
 });

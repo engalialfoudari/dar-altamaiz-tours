@@ -17,7 +17,6 @@ export type TabKey = "home" | "trips" | "bookings" | "settings";
 
 export interface Tab {
   key: TabKey;
-  labelAr: string;
   labelEn: string;
   icon: keyof typeof Ionicons.glyphMap;
   activeIcon: keyof typeof Ionicons.glyphMap;
@@ -27,7 +26,6 @@ export interface Tab {
 export const TABS: Tab[] = [
   {
     key: "home",
-    labelAr: "الرئيسية",
     labelEn: "Home",
     icon: "home-outline",
     activeIcon: "home",
@@ -35,7 +33,6 @@ export const TABS: Tab[] = [
   },
   {
     key: "trips",
-    labelAr: "العطلات",
     labelEn: "Holidays",
     icon: "sunny-outline",
     activeIcon: "sunny",
@@ -43,7 +40,6 @@ export const TABS: Tab[] = [
   },
   {
     key: "bookings",
-    labelAr: "حجوزاتي",
     labelEn: "Bookings",
     icon: "ticket-outline",
     activeIcon: "ticket",
@@ -51,7 +47,6 @@ export const TABS: Tab[] = [
   },
   {
     key: "settings",
-    labelAr: "الإعدادات",
     labelEn: "Contact",
     icon: "call-outline",
     activeIcon: "call",
@@ -62,10 +57,9 @@ export const TABS: Tab[] = [
 interface BottomTabBarProps {
   activeTab: TabKey;
   onTabPress: (tab: Tab) => void;
-  currentLang: "EN" | "AR";
 }
 
-export function BottomTabBar({ activeTab, onTabPress, currentLang }: BottomTabBarProps) {
+export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -86,18 +80,16 @@ export function BottomTabBar({ activeTab, onTabPress, currentLang }: BottomTabBa
     >
       {TABS.map((tab) => {
         const isActive = activeTab === tab.key;
-        const label = currentLang === "AR" ? tab.labelAr : tab.labelEn;
         return (
           <Pressable
             key={tab.key}
-            style={({ pressed }) => [
-              styles.tab,
-              pressed && styles.tabPressed,
-            ]}
+            style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
             onPress={() => onTabPress(tab)}
             hitSlop={4}
           >
-            {isActive && <View style={[styles.activeIndicator, isTablet && { width: 36, height: 3 }]} />}
+            {isActive && (
+              <View style={[styles.activeIndicator, isTablet && { width: 36, height: 3 }]} />
+            )}
             <Ionicons
               name={isActive ? tab.activeIcon : tab.icon}
               size={iconSize}
@@ -111,7 +103,7 @@ export function BottomTabBar({ activeTab, onTabPress, currentLang }: BottomTabBa
               ]}
               numberOfLines={1}
             >
-              {label}
+              {tab.labelEn}
             </Text>
           </Pressable>
         );

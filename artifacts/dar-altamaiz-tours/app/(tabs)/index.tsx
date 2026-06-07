@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -17,71 +16,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
-import { ProfileDrawer } from "@/components/ProfileDrawer";
 import colors from "@/constants/colors";
 
 const { gold, navy } = colors.light;
 
-const LANG_STORAGE_KEY = "@dt_lang";
-
-function useLang(): ["EN" | "AR", (lang: "EN" | "AR") => void, boolean] {
-  const [currentLang, setCurrentLang] = useState<"EN" | "AR">("EN");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    AsyncStorage.getItem(LANG_STORAGE_KEY)
-      .then((saved) => {
-        if (saved === "EN" || saved === "AR") {
-          setCurrentLang(saved);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  const setLang = (lang: "EN" | "AR") => {
-    setCurrentLang(lang);
-    AsyncStorage.setItem(LANG_STORAGE_KEY, lang).catch(() => {});
-  };
-
-  return [currentLang, setLang, loading];
-}
-
-const buildInjectedJS = (lang?: "EN" | "AR") => `
+const INJECTED_JS = `
 (function() {
   var style = document.createElement('style');
   style.id = '__dt_native_style';
   var existing = document.getElementById('__dt_native_style');
   if (existing) existing.remove();
-  style.textContent = [
-    'header { display: none !important; }',
-    'footer { display: none !important; }',
-    '.site-header { display: none !important; }',
-    '.site-footer { display: none !important; }',
-    '#masthead { display: none !important; }',
-    '#colophon { display: none !important; }',
-    '.main-navigation { display: none !important; }',
-    '.navbar { display: none !important; }',
-    '.header-area { display: none !important; }',
-    '.footer-area { display: none !important; }',
-    'body { overflow-x: hidden !important; }',
-    'html { overflow-x: hidden !important; }',
-  ].join('\\n');
+  style.textContent = 'body{overflow-x:hidden!important}html{overflow-x:hidden!important}';
   document.head.appendChild(style);
   true;
 })();
-`;
-
-const makeChangeLangJS = (lang: "EN" | "AR") => `
-(function() {
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', 'https://dt-tours.com/index.php/utilities/changeLanguage', true);
-  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-  xhr.withCredentials = true;
-  xhr.onload = function() { location.reload(); };
-  xhr.onerror = function() { location.reload(); };
-  xhr.send('lang=${lang}&page=home');
-})();
-true;
 `;
 
 function LoadingOverlay() {
@@ -116,7 +64,10 @@ function LoadingOverlay() {
     );
     pulse.start();
     dots.start();
-    return () => { pulse.stop(); dots.stop(); };
+    return () => {
+      pulse.stop();
+      dots.stop();
+    };
   }, []);
 
   return (
@@ -128,7 +79,7 @@ function LoadingOverlay() {
         tintColor={gold}
       />
       <Animated.Text style={[styles.loadingText, { opacity: textOpacity }]}>
-        نجهّز لك أفضل العطلات والوجهات...
+        Loading your holiday experiences...
       </Animated.Text>
       <View style={styles.loadingDots}>
         <Animated.View style={[styles.loadingDot, { opacity: dot1 }]} />
@@ -254,9 +205,7 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
             >
-              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>
-                Log In
-              </Text>
+              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>Log In</Text>
             </Pressable>
           </Animated.View>
 
@@ -280,11 +229,9 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   const canGoBack = useRef(false);
 
   const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [webUrl, setWebUrl] = useState(initialUrl);
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [currentLang, setLang, langLoading] = useLang();
   const [isOffline, setIsOffline] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const wasOffline = useRef(false);
@@ -335,10 +282,6 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 
   useEffect(() => {
     const onBackPress = () => {
-      if (drawerOpen) {
-        setDrawerOpen(false);
-        return true;
-      }
       if (canGoBack.current && webviewRef.current) {
         webviewRef.current.goBack();
         return true;
@@ -347,7 +290,7 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
     };
     const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => sub.remove();
-  }, [drawerOpen]);
+  }, []);
 
   const handleTabPress = (tab: Tab) => {
     setActiveTab(tab.key);
@@ -356,98 +299,63 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
     setWebUrl(tab.url);
   };
 
-  const handleNavigate = (url: string) => {
-    setHasError(false);
-    setLoading(true);
-    setWebUrl(url);
-    setActiveTab("home");
-  };
-
-  const handleLanguageChange = (lang: "EN" | "AR") => {
-    if (lang === currentLang) return;
-    setLang(lang);
-    webviewRef.current?.injectJavaScript?.(makeChangeLangJS(lang));
-  };
-
   const handleRetry = () => {
     setHasError(false);
     setLoading(true);
     webviewRef.current?.reload?.();
   };
 
-  if (langLoading) {
-    return (
-      <View style={styles.shellRoot}>
-        <AppHeader onAvatarPress={() => setDrawerOpen(true)} />
-        <View style={[styles.webArea]}>
-          <LoadingOverlay />
-        </View>
-        <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} currentLang={currentLang} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.shellRoot}>
-      <AppHeader
-        onAvatarPress={() => setDrawerOpen(true)}
-      />
+      <AppHeader />
 
       <View style={styles.webArea}>
         <WebView
-            ref={webviewRef}
-            source={{ uri: webUrl }}
-            style={StyleSheet.absoluteFill}
-            javaScriptEnabled
-            domStorageEnabled
-            startInLoadingState
-            allowsInlineMediaPlayback
-            mediaPlaybackRequiresUserAction={false}
-            setSupportMultipleWindows={false}
-            injectedJavaScript={buildInjectedJS()}
-            injectedJavaScriptBeforeContentLoaded={buildInjectedJS()}
-            onNavigationStateChange={(navState: any) => {
-              canGoBack.current = navState.canGoBack;
-            }}
-            onLoadStart={() => {
-              setLoading(true);
-              setHasError(false);
-            }}
-            onLoad={() => setLoading(false)}
-            onLoadEnd={() => {
-              setLoading(false);
-              if (currentLang === "AR") {
-                webviewRef.current?.injectJavaScript?.(makeChangeLangJS("AR"));
-              }
-            }}
-            onError={() => {
+          ref={webviewRef}
+          source={{ uri: webUrl }}
+          style={StyleSheet.absoluteFill}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          setSupportMultipleWindows={false}
+          injectedJavaScript={INJECTED_JS}
+          injectedJavaScriptBeforeContentLoaded={INJECTED_JS}
+          onNavigationStateChange={(navState: any) => {
+            canGoBack.current = navState.canGoBack;
+          }}
+          onLoadStart={() => {
+            setLoading(true);
+            setHasError(false);
+          }}
+          onLoad={() => setLoading(false)}
+          onLoadEnd={() => setLoading(false)}
+          onError={() => {
+            setLoading(false);
+            setHasError(true);
+          }}
+          onHttpError={(e: any) => {
+            if (e.nativeEvent.statusCode >= 500) {
               setLoading(false);
               setHasError(true);
-            }}
-            onHttpError={(e: any) => {
-              if (e.nativeEvent.statusCode >= 500) {
-                setLoading(false);
-                setHasError(true);
-              }
-            }}
-            onShouldStartLoadWithRequest={(request: any) => {
-              const url: string = request.url;
-              if (
-                url.startsWith("https://dt-tours.com") ||
-                url.startsWith("http://dt-tours.com") ||
-                url.startsWith("about:") ||
-                url.startsWith("javascript:")
-              ) {
-                return true;
-              }
-              return false;
-            }}
-            contentInsetAdjustmentBehavior="never"
-            bounces={false}
-            overScrollMode="never"
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-          />
+            }
+          }}
+          onShouldStartLoadWithRequest={(request: any) => {
+            const url: string = request.url;
+            return (
+              url.startsWith("https://dt-tours.com") ||
+              url.startsWith("http://dt-tours.com") ||
+              url.startsWith("about:") ||
+              url.startsWith("javascript:")
+            );
+          }}
+          contentInsetAdjustmentBehavior="never"
+          bounces={false}
+          overScrollMode="never"
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+        />
 
         {loading && !hasError && <LoadingOverlay />}
 
@@ -455,20 +363,16 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
           <View style={styles.errorScreen}>
             <Text style={[styles.errorIcon, isTablet && { fontSize: 64 }]}>✈️</Text>
             <Text style={[styles.errorTitle, isTablet && { fontSize: 24 }]}>
-              {currentLang === "AR" ? "تعذّر الاتصال" : "Connection Failed"}
+              Connection Failed
             </Text>
             <Text style={[styles.errorSub, isTablet && { fontSize: 16 }]}>
-              {currentLang === "AR"
-                ? "تحقق من اتصالك بالإنترنت وأعد المحاولة"
-                : "Check your internet connection and try again"}
+              Check your internet connection and try again
             </Text>
             <Pressable
               style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.8 }]}
               onPress={handleRetry}
             >
-              <Text style={[styles.retryBtnText, isTablet && { fontSize: 16 }]}>
-                {currentLang === "AR" ? "إعادة المحاولة" : "Retry"}
-              </Text>
+              <Text style={[styles.retryBtnText, isTablet && { fontSize: 16 }]}>Retry</Text>
             </Pressable>
           </View>
         )}
@@ -477,38 +381,22 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
           <View style={styles.offlineBanner}>
             <Text style={[styles.offlineIcon, isTablet && { fontSize: 64 }]}>📡</Text>
             <Text style={[styles.offlineTitle, isTablet && { fontSize: 26 }]}>
-              لا يوجد اتصال بالإنترنت
+              No Internet Connection
             </Text>
             <Text style={[styles.offlineSub, isTablet && { fontSize: 16 }]}>
-              {currentLang === "AR"
-                ? "تحقق من اتصالك وسنحاول تلقائياً عند عودة الشبكة"
-                : "Check your connection — we'll reload automatically when back online"}
+              Check your connection — we'll reload automatically when back online
             </Text>
             <Pressable
               style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.8 }]}
               onPress={handleRetry}
             >
-              <Text style={[styles.retryBtnText, isTablet && { fontSize: 16 }]}>
-                {currentLang === "AR" ? "إعادة المحاولة" : "Retry"}
-              </Text>
+              <Text style={[styles.retryBtnText, isTablet && { fontSize: 16 }]}>Retry</Text>
             </Pressable>
           </View>
         )}
       </View>
 
-      <BottomTabBar
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-        currentLang={currentLang}
-      />
-
-      <ProfileDrawer
-        visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onNavigate={handleNavigate}
-        onLanguageChange={handleLanguageChange}
-        currentLang={currentLang}
-      />
+      <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
 
       {showToast && (
         <Animated.View
@@ -524,13 +412,9 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
           <View style={styles.offlineToastInner}>
             <Text style={styles.offlineToastIcon}>⚠️</Text>
             <View style={styles.offlineToastTextBlock}>
-              <Text style={styles.offlineToastTitle}>
-                انقطع الاتصال — قد تفقد تقدمك الحالي
-              </Text>
+              <Text style={styles.offlineToastTitle}>Connection Lost</Text>
               <Text style={styles.offlineToastSub}>
-                {currentLang === "AR"
-                  ? "تحقق من اتصالك بالإنترنت"
-                  : "Connection lost — you may lose unsaved progress"}
+                You may lose unsaved progress
               </Text>
             </View>
             <Pressable
@@ -552,51 +436,16 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 
 function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [webUrl, setWebUrl] = useState(initialUrl);
-  const [currentLang, setLang, langLoading] = useLang();
-
-  useEffect(() => {
-    if (!langLoading && currentLang === "AR") {
-      setWebUrl((u) => `${u}${u.includes("?") ? "&" : "?"}lang=ar`);
-    }
-  }, [langLoading]);
 
   const handleTabPress = (tab: Tab) => {
     setActiveTab(tab.key);
     setWebUrl(tab.url);
   };
 
-  const handleNavigate = (url: string) => {
-    setWebUrl(url);
-    setActiveTab("home");
-  };
-
-  const handleLanguageChange = (lang: "EN" | "AR") => {
-    setLang(lang);
-    const target = lang === "AR"
-      ? `${webUrl}${webUrl.includes("?") ? "&" : "?"}lang=ar`
-      : `${webUrl}${webUrl.includes("?") ? "&" : "?"}lang=en`;
-    setWebUrl(target);
-  };
-
-  if (langLoading) {
-    return (
-      <View style={styles.shellRoot}>
-        <AppHeader onAvatarPress={() => setDrawerOpen(true)} />
-        <View style={[styles.webArea]}>
-          <LoadingOverlay />
-        </View>
-        <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} currentLang={currentLang} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.shellRoot}>
-      <AppHeader
-        onAvatarPress={() => setDrawerOpen(true)}
-      />
+      <AppHeader />
       <View style={styles.webArea}>
         <iframe
           src={webUrl}
@@ -604,18 +453,7 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
           title="Dar AlTamaiz Tours"
         />
       </View>
-      <BottomTabBar
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-        currentLang={currentLang}
-      />
-      <ProfileDrawer
-        visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onNavigate={handleNavigate}
-        onLanguageChange={handleLanguageChange}
-        currentLang={currentLang}
-      />
+      <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
     </View>
   );
 }
@@ -888,8 +726,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 13,
     fontFamily: "Inter_700Bold",
-    writingDirection: "rtl",
-    textAlign: "right",
   },
   offlineToastSub: {
     color: "rgba(255,255,255,0.6)",
@@ -924,7 +760,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     marginBottom: 10,
-    writingDirection: "rtl",
   },
   offlineSub: {
     color: "rgba(255,255,255,0.6)",
