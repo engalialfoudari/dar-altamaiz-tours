@@ -180,22 +180,51 @@ function WebShell() {
   const [hasError, setHasError] = useState(false);
   const [currentLang, setCurrentLang] = useState<"EN" | "AR">("EN");
   const [isOffline, setIsOffline] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const wasOffline = useRef(false);
+  const toastSlide = useRef(new Animated.Value(-90)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+
+  const dismissToast = () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    Animated.parallel([
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+      Animated.timing(toastSlide, { toValue: -90, duration: 300, useNativeDriver: true }),
+    ]).start(() => setShowToast(false));
+  };
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
       const offline = !(state.isConnected && state.isInternetReachable !== false);
       setIsOffline(offline);
+
+      if (offline && !wasOffline.current) {
+        setShowToast(true);
+        toastSlide.setValue(-90);
+        toastOpacity.setValue(0);
+        Animated.parallel([
+          Animated.timing(toastSlide, { toValue: 0, duration: 350, useNativeDriver: true }),
+          Animated.timing(toastOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        ]).start(() => {
+          toastTimer.current = setTimeout(dismissToast, 4000);
+        });
+      }
+
       if (wasOffline.current && !offline) {
+        dismissToast();
         setHasError(false);
         setLoading(true);
         webviewRef.current?.reload?.();
       }
       wasOffline.current = offline;
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -363,6 +392,43 @@ function WebShell() {
         onLanguageChange={handleLanguageChange}
         currentLang={currentLang}
       />
+
+      {showToast && (
+        <Animated.View
+          style={[
+            styles.offlineToast,
+            {
+              opacity: toastOpacity,
+              transform: [{ translateY: toastSlide }],
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.offlineToastInner}>
+            <Text style={styles.offlineToastIcon}>⚠️</Text>
+            <View style={styles.offlineToastTextBlock}>
+              <Text style={styles.offlineToastTitle}>
+                انقطع الاتصال — قد تفقد تقدمك الحالي
+              </Text>
+              <Text style={styles.offlineToastSub}>
+                {currentLang === "AR"
+                  ? "تحقق من اتصالك بالإنترنت"
+                  : "Connection lost — you may lose unsaved progress"}
+              </Text>
+            </View>
+            <Pressable
+              onPress={dismissToast}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.offlineToastClose,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <Text style={styles.offlineToastCloseText}>✕</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -614,6 +680,55 @@ const styles = StyleSheet.create({
     color: navy,
     fontSize: 15,
     fontFamily: "Inter_700Bold",
+  },
+
+  offlineToast: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
+  offlineToastInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0F1E36",
+    borderWidth: 1,
+    borderColor: gold,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  offlineToastIcon: {
+    fontSize: 20,
+  },
+  offlineToastTextBlock: {
+    flex: 1,
+    gap: 2,
+  },
+  offlineToastTitle: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    writingDirection: "rtl",
+    textAlign: "right",
+  },
+  offlineToastSub: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  offlineToastClose: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  offlineToastCloseText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
   },
 
   offlineBanner: {
