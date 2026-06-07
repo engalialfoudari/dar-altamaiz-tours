@@ -1,0 +1,29 @@
+Act as an expert React Native developer. I want to build a premium, high-end hybrid application for my travel agency, "Dar AlTamaiz Tours", matching our luxury navy blue and gold brand identity. 
+
+Please completely refactor the current codebase to build a premium Native App Shell around my custom website (https://dt-tours.com) with the following structure and screens:
+
+1. Premium Onboarding Screen:
+   - Set a breathtaking, high-resolution luxury travel background image (such as an elegant resort over crystal clear ocean waters or a beautiful scenic mountain landscape).
+   - Style an elegant overlay box featuring our logo or brand name "Dar AlTamaiz Tours".
+   - Add a prominent, highly engaging action button with the exact Arabic text: "ابدأ رحلتك الآن!"
+   - Apply smooth fade-in animations for the text and button upon loading.
+
+2. Post-Onboarding Main Navigation (The Native Shell):
+   - When the user taps "ابدأ رحلتك الآن!", navigate seamlessly to the Main Screen.
+   - Top Header: Create a fixed native top header with the text "Dar AlTamaiz Tours" in elegant gold font, and a Profile/Account avatar icon on the far right. Tapping the account icon should open a sleek profile drawer or menu.
+   - Main Content View: Integrate a high-performance Full-Screen WebView that loads my official website: https://dt-tours.com. 
+   - Crucial WebView Styling: Inject custom CSS/JavaScript into the WebView to automatically hide the website's default web header, footers, and browser-specific navigation bars so the web content looks completely native inside our shell.
+
+3. Native Bottom Tab Navigation Bar:
+   - Build a modern, fixed bottom tab navigation bar styled in luxury deep navy blue with gold active indicators and matching icons.
+   - The tabs must feature the following exact Arabic labels and icons, configured to handle native navigation:
+     * "الرئيسية" (Home) - Home icon. Reloads/navigates the WebView to https://dt-tours.com
+     * "الرحلات" (Trips) - Compass or Globe icon. 
+     * "حجوزاتي" (My Bookings) - Ticket or Briefcase icon. 
+     * "المفضلة" (Favorites) - Heart icon. 
+     * "الإعدادات" (Settings) - Gear icon.
+
+4. Technical Requirements:
+   - Ensure all transitions between the onboarding screen and the main view are perfectly smooth.
+   - Ensure the web view handles redirects smoothly without breaking out of the application container.
+   - Code must be robust, 100% complete, and ready for deployment outside of Replit.
