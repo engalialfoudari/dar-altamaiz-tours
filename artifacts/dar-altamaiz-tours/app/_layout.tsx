@@ -7,6 +7,7 @@ import {
 import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Updates from "expo-updates";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
@@ -15,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { UpdateModal } from "@/components/UpdateModal";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,6 +24,29 @@ const queryClient = new QueryClient();
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+
+function useOTAUpdate() {
+  const [updateReady, setUpdateReady] = useState(false);
+
+  useEffect(() => {
+    async function check() {
+      if (!Updates.isEnabled) return;
+      try {
+        const result = await Updates.checkForUpdateAsync();
+        if (result.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          setUpdateReady(true);
+        }
+      } catch {
+        // Silently ignore — expected in dev, on network errors, or when
+        // no EAS updates URL is configured yet.
+      }
+    }
+    check();
+  }, []);
+
+  return updateReady;
+}
 
 function RootLayoutNav() {
   return (
@@ -40,6 +65,7 @@ export default function RootLayout() {
   });
   const [appReady, setAppReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const updateReady = useOTAUpdate();
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -66,6 +92,7 @@ export default function RootLayout() {
                 {showSplash && (
                   <AnimatedSplash onAnimationEnd={() => setShowSplash(false)} />
                 )}
+                <UpdateModal visible={updateReady && !showSplash} />
               </GestureHandlerRootView>
             </QueryClientProvider>
           </ErrorBoundary>
