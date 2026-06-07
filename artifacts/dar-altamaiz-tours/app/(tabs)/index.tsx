@@ -193,8 +193,12 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
           >
             Dar AlTamaiz Tours
           </Animated.Text>
-          <Text style={[styles.brandCashback, isTablet && { fontSize: 17 }]}>
-            Book more &amp; get cashback on every successful booking!
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={[styles.brandCashback, isTablet && { fontSize: 17 }]}
+          >
+            Book more &amp; get cashback on every booking!
           </Text>
           <Text
             numberOfLines={1}
@@ -592,7 +596,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   ctaBtn: {
-    backgroundColor: "#1B263B",
+    backgroundColor: "#0A1931",
     paddingVertical: 16,
     borderRadius: 50,
     alignItems: "center",
@@ -604,6 +608,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(201,168,76,0.4)",
   },
   ctaBtnText: {
     color: "#FFFFFF",
@@ -617,11 +623,12 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.55)",
+    backgroundColor: "#0A1931",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
   },
   guestBtnText: {
-    color: "rgba(255,255,255,0.85)",
+    color: "#FFFFFF",
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.4,

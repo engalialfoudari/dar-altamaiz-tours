@@ -1,0 +1,42 @@
+ROLE REVERSAL & STRICT SOFTWARE AUDIT PROTOCOL: 
+
+Act as a Senior QA (Quality Assurance) Engineer and Software Auditor. Your sole mission now is to pause normal code generation, perform a rigorous code-review audit of the entire codebase, and verify that EVERY SINGLE customized requirement for the "Dar AlTamaiz Tours" premium hybrid app has been flawlessly executed with production-grade quality.
+
+Execute the following verification checklist line-by-line. If any feature or design rule fails the audit, you are ordered to immediately REFACTOR and fix the code before finalizing your response. Do NOT overlook any detail.
+
+### 📋 EXECUTIVE QA CHECKLIST:
+
+1. Application Icon Customization (Critical Asset Audit):
+   - Verify that the app icon is derived from the core identity asset (Gold "D" + Globe).
+   - Verify that it has been strictly cropped to remove ALL external white or beige margins/frames.
+   - Verify that it sits on a clean, solid, dark Navy Blue background and scales perfectly without being cut off on Android devices.
+
+2. Native UI Navigation & Icon Rendering ([] Glitch Check):
+   - Audit the Top Header Back Chevron Arrow and ALL Bottom Navigation Tabs (Home, Holidays, Bookings, Contact).
+   - Ensure absolutely NO font-glyph strings or unbundled text-unicode paths remain that could cause empty rectangle boxes `[]` on Android.
+   - Confirm that official `@expo/vector-icons` components (like `Ionicons`) are correctly imported and rendered natively.
+
+3. Onboarding Screen Layout & Typography:
+   - Ensure the welcome/onboarding interface is strictly 100% English-only.
+   - Verify the typographical hierarchy: "Dar AlTamaiz Tours" must have a prominent premium Gold Shimmer effect with a clean animated reflection.
+   - Ensure that the Tagline and Partnership text each occupy a single distinct line with professional `lineHeight` and vertical spacing to look balanced and luxurious.
+   - Verify that the Log In and Continue as Guest buttons have a solid premium Polo Navy Blue background (#0A1931) with crisp white text.
+
+4. UI Simplification & Web Redundancy:
+   - Verify that the native Side Drawer component and top-right profile icon have been COMPLETELY deleted and removed from the tree.
+   - Confirm the app relies strictly on the website's (https://dt-tours.com) built-in hamburger menu, maximizing the viewable area.
+
+5. Top Native Shell Header:
+   - Confirm the existence of a clean native top header.
+   - Far-Left: A fully operational native back chevron mapped perfectly to the WebView ref history (`webViewRef.current.goBack()`).
+   - Dead-Center: A sleek digital clock showing the current time and current date in a small, clean, white font.
+
+6. App Transitions & Update Modals:
+   - Verify that all loading states and screen transitions are strictly English-only ("Loading your holiday experiences..."), with absolutely zero Arabic text during load.
+   - Confirm that `expo-updates` is configured on app launch, triggering a fully styled custom bilingual (Arabic/English) modal notice with a high-contrast button labeled: "تحديث الآن | Update Now".
+
+7. WebView Stability & Logic Loops:
+   - Audit the WebView `onNavigationStateChange` logic. Ensure the infinite refresh loop and freeze glitch when toggling the Arabic language query parameters is 100% resolved and handled safely.
+
+### 🚨 MANDATORY ACTION:
+Review your files now. If any item above is partially completed, missing, or buggy, RE-WRITE that specific section of the code immediately. Once fully verified and fixed for premium production quality, spin up the development server and show me the perfect interactive preview.
