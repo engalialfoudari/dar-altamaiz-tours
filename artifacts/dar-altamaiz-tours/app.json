@@ -28,7 +28,11 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ],
-      "package": "com.dttours.app"
+      "package": "com.dttours.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "backgroundColor": "#0A1628"
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"
