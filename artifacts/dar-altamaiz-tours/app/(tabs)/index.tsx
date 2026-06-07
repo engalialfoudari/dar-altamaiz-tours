@@ -142,7 +142,10 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
           <Text style={[styles.brandTitle, isTablet && { fontSize: 30 }]}>
             Dar AlTamaiz Tours
           </Text>
-          <Text style={[styles.brandTagline, isTablet && { fontSize: 16 }]}>
+          <Text style={[styles.brandCashback, isTablet && { fontSize: 17 }]}>
+            Book more &amp; get cashback on every successful booking!
+          </Text>
+          <Text style={[styles.brandTagline, isTablet && { fontSize: 14 }]}>
             Your Trusted Travel Partner Since 2008
           </Text>
 
@@ -154,7 +157,7 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
               onPressOut={handlePressOut}
             >
               <Text style={[styles.ctaBtnText, isTablet && { fontSize: 20 }]}>
-                Start Your Journey Now!
+                Start
               </Text>
             </Pressable>
           </Animated.View>
@@ -483,13 +486,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 0.5,
   },
-  brandTagline: {
-    color: "rgba(255,255,255,0.72)",
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
+  brandCashback: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: 6,
+    letterSpacing: 0.2,
+  },
+  brandTagline: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 20,
     letterSpacing: 0.3,
   },
   ctaBtn: {
