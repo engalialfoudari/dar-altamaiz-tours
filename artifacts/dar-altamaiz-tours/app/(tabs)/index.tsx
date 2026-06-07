@@ -149,6 +149,7 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
   const cardFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(48)).current;
   const btnScale = useRef(new Animated.Value(1)).current;
+  const titleShimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -156,6 +157,16 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
       Animated.timing(cardFade, { toValue: 1, duration: 800, delay: 300, useNativeDriver: nd }),
       Animated.timing(cardSlide, { toValue: 0, duration: 750, delay: 300, useNativeDriver: nd }),
     ]).start();
+
+    const shimmerLoop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(3200),
+        Animated.timing(titleShimmer, { toValue: 1, duration: 380, useNativeDriver: false }),
+        Animated.timing(titleShimmer, { toValue: 0, duration: 380, useNativeDriver: false }),
+      ])
+    );
+    shimmerLoop.start();
+    return () => shimmerLoop.stop();
   }, []);
 
   const handlePressIn = () =>
@@ -205,9 +216,30 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
             },
           ]}
         >
-          <Text style={[styles.brandTitle, isTablet && { fontSize: 30 }]}>
+          <Animated.Text
+            style={[
+              styles.brandTitle,
+              isTablet && { fontSize: 30 },
+              {
+                color: titleShimmer.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: ["#C9A84C", "#FFF3A0", "#C9A84C"],
+                }),
+                textShadowColor: titleShimmer.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [
+                    "rgba(201,168,76,0)",
+                    "rgba(255,240,110,0.85)",
+                    "rgba(201,168,76,0)",
+                  ],
+                }),
+                textShadowRadius: 14,
+                textShadowOffset: { width: 0, height: 0 },
+              },
+            ]}
+          >
             Dar AlTamaiz Tours
-          </Text>
+          </Animated.Text>
           <Text style={[styles.brandCashback, isTablet && { fontSize: 17 }]}>
             Book more &amp; get cashback on every successful booking!
           </Text>
@@ -223,7 +255,7 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
               onPressOut={handlePressOut}
             >
               <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>
-                سجل دخول
+                Log In
               </Text>
             </Pressable>
           </Animated.View>
@@ -233,7 +265,7 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
             onPress={onExplore}
           >
             <Text style={[styles.guestBtnText, isTablet && { fontSize: 15 }]}>
-              اكمل كضيف
+              Continue as Guest
             </Text>
           </Pressable>
         </Animated.View>

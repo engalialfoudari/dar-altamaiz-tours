@@ -1,7 +1,7 @@
 import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
+
 
 const { gold, navy, navyMid, navyLight, mutedForeground } = colors.light;
 
@@ -45,7 +46,7 @@ const MENU_ITEMS: MenuItem[] = [
     url: "https://dt-tours.com/index.php/tours/search/",
   },
   {
-    icon: "help-circle-outline",
+    icon: "mail-outline",
     labelAr: "تواصل معنا",
     labelEn: "Contact Us",
     url: "https://dt-tours.com/general/contact_us/",
@@ -74,7 +75,6 @@ export function ProfileDrawer({
 
   const { isSignedIn, signOut } = useAuth();
   const { user } = useUser();
-  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const translateX = useRef(new Animated.Value(drawerWidth)).current;
@@ -123,8 +123,7 @@ export function ProfileDrawer({
   };
 
   const handleLogin = () => {
-    onClose();
-    router.push("/(auth)/sign-in");
+    handleNavigate("https://dt-tours.com/index.php/auth/login");
   };
 
   const handleLogout = async () => {
@@ -202,10 +201,17 @@ export function ProfileDrawer({
                 style={({ pressed }) => [styles.loginBtn, pressed && styles.loginBtnPressed]}
                 onPress={handleLogin}
               >
-                <Ionicons name="log-in-outline" size={16} color={navy} />
-                <Text style={[styles.loginBtnText, isTablet && { fontSize: 15 }]}>
-                  {isAr ? "تسجيل الدخول" : "Sign In"}
-                </Text>
+                <LinearGradient
+                  colors={["#BF953F", "#FCF6BA", "#B38728", "#FBF5B7", "#AA771C"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.loginBtnGradient}
+                >
+                  <Ionicons name="log-in-outline" size={16} color="#0A1628" />
+                  <Text style={[styles.loginBtnText, isTablet && { fontSize: 15 }]}>
+                    {isAr ? "تسجيل الدخول" : "Sign In"}
+                  </Text>
+                </LinearGradient>
               </Pressable>
             )}
           </View>
@@ -351,19 +357,22 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   loginBtn: {
-    backgroundColor: gold,
+    borderRadius: 50,
+    overflow: "hidden",
+  },
+  loginBtnGradient: {
     paddingHorizontal: 24,
     paddingVertical: 11,
-    borderRadius: 50,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    borderRadius: 50,
   },
   loginBtnPressed: {
     opacity: 0.8,
   },
   loginBtnText: {
-    color: navy,
+    color: "#0A1628",
     fontSize: 14,
     fontFamily: "Inter_700Bold",
   },
