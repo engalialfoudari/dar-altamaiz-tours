@@ -1,0 +1,18 @@
+🚨 FINAL COMPLIANCE NOTICE: LISTEN CAREFULLY AND FIX ALL ERRORS SHOWN IN THE ATTACHED SCREENSHOTS IMMEDIATELY. NO MORE EXCUSES, NO MORE DUMMY TEXT, AND NO MORE IGNORED INSTRUCTIONS.
+
+Look at the attached screenshots carefully:
+1. ICON CANNOT HAVE WHITE BORDERS: In the bundling screenshot, you are failing to crop the icon properly. It shows the asset with its outer white/gray border and padding. STOP using it as a raw image. You must programmatically or structurally CROP the central dark-navy square containing the gold "D" and globe, removing 100% of the external background/frame. The app icon must be a clean, borderless square matching the pure dark navy brand.
+
+2. ANDROID NATIVE ICONS ARE BROKEN ([] GLITCH): In the main app screenshot, every single navigation icon (Top Header Back Arrow, and all Bottom Tabs: Home, Holidays, Bookings, Contact) is completely broken and rendering as an empty rectangle box `[]`. This is an amateur font-rendering error on Android. 
+   - FIX THIS IMMEDIATELY by completely removing any string/text-based unicode icons.
+   - You MUST import and use real native React Native components from the official Expo library:
+     `import { Ionicons } from '@expo/vector-icons';`
+   - Render the icons strictly as components (e.g., `<Ionicons name="home" size={24} color={focused ? "#A1824A" : "#FFF"} />`). Ensure the package is fully initialized so Android can read the vectors natively.
+
+3. RE-VERIFY ALL REMAINING RULES PERFECTLY:
+   - Header: Clean top header shell with a functional Back Chevron Arrow on the far left linked to `webViewRef.current.goBack()`, and the sleek digital clock centered (Time + Date "07/06/2026").
+   - Side Drawer: Ensure it is 100% DELETED and REMOVED as requested. The app must rely ONLY on the website's built-in hamburger menu.
+   - Onboarding Screen: Pure English typography, beautifully balanced lines, Polo Navy Blue buttons for "Log In" and "Continue as Guest" linked to real URL paths.
+   - Transitions: Pure English-only loading screen ("Loading your holiday experiences...").
+
+Review your code line-by-line, fix the asset configuration for the icon, fix the Expo vector icons bundling for Android, and run a clean development server build. Show me the updated interactive preview immediately.
