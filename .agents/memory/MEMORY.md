@@ -1,0 +1,1 @@
+- [Android icon rendering](android-svg-icons.md) — @expo/vector-icons font glyphs fail on Android (case sensitivity + Expo Go conflicts); use react-native-svg inline SVG paths instead.
