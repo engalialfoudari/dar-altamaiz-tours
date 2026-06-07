@@ -1,3 +1,4 @@
+import NetInfo from "@react-native-community/netinfo";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -178,8 +179,24 @@ function WebShell() {
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [currentLang, setCurrentLang] = useState<"EN" | "AR">("EN");
+  const [isOffline, setIsOffline] = useState(false);
+  const wasOffline = useRef(false);
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const offline = !(state.isConnected && state.isInternetReachable !== false);
+      setIsOffline(offline);
+      if (wasOffline.current && !offline) {
+        setHasError(false);
+        setLoading(true);
+        webviewRef.current?.reload?.();
+      }
+      wasOffline.current = offline;
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -288,7 +305,7 @@ function WebShell() {
           </View>
         )}
 
-        {hasError && (
+        {hasError && !isOffline && (
           <View style={styles.errorScreen}>
             <Text style={[styles.errorIcon, isTablet && { fontSize: 64 }]}>✈️</Text>
             <Text style={[styles.errorTitle, isTablet && { fontSize: 24 }]}>
@@ -298,6 +315,28 @@ function WebShell() {
               {currentLang === "AR"
                 ? "تحقق من اتصالك بالإنترنت وأعد المحاولة"
                 : "Check your internet connection and try again"}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.8 }]}
+              onPress={handleRetry}
+            >
+              <Text style={[styles.retryBtnText, isTablet && { fontSize: 16 }]}>
+                {currentLang === "AR" ? "إعادة المحاولة" : "Retry"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {isOffline && (
+          <View style={styles.offlineBanner}>
+            <Text style={[styles.offlineIcon, isTablet && { fontSize: 64 }]}>📡</Text>
+            <Text style={[styles.offlineTitle, isTablet && { fontSize: 26 }]}>
+              لا يوجد اتصال بالإنترنت
+            </Text>
+            <Text style={[styles.offlineSub, isTablet && { fontSize: 16 }]}>
+              {currentLang === "AR"
+                ? "تحقق من اتصالك وسنحاول تلقائياً عند عودة الشبكة"
+                : "Check your connection — we'll reload automatically when back online"}
             </Text>
             <Pressable
               style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.8 }]}
@@ -575,5 +614,34 @@ const styles = StyleSheet.create({
     color: navy,
     fontSize: 15,
     fontFamily: "Inter_700Bold",
+  },
+
+  offlineBanner: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: navy,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 36,
+    zIndex: 20,
+  },
+  offlineIcon: {
+    fontSize: 52,
+    marginBottom: 18,
+  },
+  offlineTitle: {
+    color: gold,
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    marginBottom: 10,
+    writingDirection: "rtl",
+  },
+  offlineSub: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 28,
   },
 });
