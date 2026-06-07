@@ -16,6 +16,10 @@ export function AnimatedSplash({ onAnimationEnd }: AnimatedSplashProps) {
   const logoOpacity = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
+    if (Platform.OS === "web") {
+      onAnimationEnd();
+      return;
+    }
     Animated.sequence([
       Animated.parallel([
         Animated.timing(logoScale, {
