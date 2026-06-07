@@ -196,7 +196,11 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
           <Text style={[styles.brandCashback, isTablet && { fontSize: 17 }]}>
             Book more &amp; get cashback on every successful booking!
           </Text>
-          <Text style={[styles.brandTagline, isTablet && { fontSize: 14 }]}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={[styles.brandTagline, isTablet && { fontSize: 13 }]}
+          >
             Your Trusted Travel Partner Since 2008
           </Text>
 
@@ -580,12 +584,12 @@ const styles = StyleSheet.create({
   },
   brandTagline: {
     color: "rgba(255,255,255,0.55)",
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 16,
     marginBottom: 20,
-    letterSpacing: 0.3,
+    letterSpacing: 0.1,
   },
   ctaBtn: {
     backgroundColor: "#1B263B",
