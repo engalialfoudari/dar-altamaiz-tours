@@ -34,15 +34,15 @@ export const TABS: Tab[] = [
   {
     key: "trips",
     labelEn: "Holidays",
-    icon: "sunny-outline",
-    activeIcon: "sunny",
+    icon: "globe-outline",
+    activeIcon: "globe",
     url: "https://dt-tours.com/index.php/tours/search/",
   },
   {
     key: "bookings",
     labelEn: "Bookings",
-    icon: "ticket-outline",
-    activeIcon: "ticket",
+    icon: "briefcase-outline",
+    activeIcon: "briefcase",
     url: "https://dt-tours.com/index.php/general/my_booking",
   },
   {
