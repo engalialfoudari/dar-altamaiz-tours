@@ -13,7 +13,7 @@ import colors from "@/constants/colors";
 
 const { gold, navy, navyMid, mutedForeground } = colors.light;
 
-export type TabKey = "home" | "trips" | "bookings" | "favorites" | "settings";
+export type TabKey = "home" | "trips" | "bookings" | "settings";
 
 export interface Tab {
   key: TabKey;
@@ -39,7 +39,7 @@ export const TABS: Tab[] = [
     labelEn: "Trips",
     icon: "compass-outline",
     activeIcon: "compass",
-    url: "https://dt-tours.com/index.php/tours",
+    url: "https://dt-tours.com/index.php/tours/search/",
   },
   {
     key: "bookings",
@@ -47,23 +47,15 @@ export const TABS: Tab[] = [
     labelEn: "Bookings",
     icon: "ticket-outline",
     activeIcon: "ticket",
-    url: "https://dt-tours.com/index.php/myaccount",
-  },
-  {
-    key: "favorites",
-    labelAr: "المفضلة",
-    labelEn: "Favorites",
-    icon: "heart-outline",
-    activeIcon: "heart",
-    url: "https://dt-tours.com/index.php/wishlist",
+    url: "https://dt-tours.com/index.php/general/my_booking",
   },
   {
     key: "settings",
     labelAr: "الإعدادات",
-    labelEn: "More",
-    icon: "ellipsis-horizontal-outline",
-    activeIcon: "ellipsis-horizontal",
-    url: "https://dt-tours.com/index.php/contact",
+    labelEn: "Contact",
+    icon: "call-outline",
+    activeIcon: "call",
+    url: "https://dt-tours.com/general/contact_us/",
   },
 ];
 
