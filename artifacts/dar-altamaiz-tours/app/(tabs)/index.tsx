@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -21,6 +22,30 @@ import { ProfileDrawer } from "@/components/ProfileDrawer";
 import colors from "@/constants/colors";
 
 const { gold, navy } = colors.light;
+
+const LANG_STORAGE_KEY = "@dt_lang";
+
+function useLang(): ["EN" | "AR", (lang: "EN" | "AR") => void, boolean] {
+  const [currentLang, setCurrentLang] = useState<"EN" | "AR">("EN");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    AsyncStorage.getItem(LANG_STORAGE_KEY)
+      .then((saved) => {
+        if (saved === "EN" || saved === "AR") {
+          setCurrentLang(saved);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const setLang = (lang: "EN" | "AR") => {
+    setCurrentLang(lang);
+    AsyncStorage.setItem(LANG_STORAGE_KEY, lang).catch(() => {});
+  };
+
+  return [currentLang, setLang, loading];
+}
 
 const buildInjectedJS = (lang?: "EN" | "AR") => `
 (function() {
@@ -178,7 +203,7 @@ function WebShell() {
   const [webUrl, setWebUrl] = useState(TABS[0].url);
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [currentLang, setCurrentLang] = useState<"EN" | "AR">("EN");
+  const [currentLang, setLang, langLoading] = useLang();
   const [isOffline, setIsOffline] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const wasOffline = useRef(false);
@@ -259,7 +284,7 @@ function WebShell() {
 
   const handleLanguageChange = (lang: "EN" | "AR") => {
     if (lang === currentLang) return;
-    setCurrentLang(lang);
+    setLang(lang);
     webviewRef.current?.injectJavaScript?.(makeChangeLangJS(lang));
   };
 
@@ -268,6 +293,18 @@ function WebShell() {
     setLoading(true);
     webviewRef.current?.reload?.();
   };
+
+  if (langLoading) {
+    return (
+      <View style={styles.shellRoot}>
+        <AppHeader onAvatarPress={() => setDrawerOpen(true)} />
+        <View style={[styles.webArea, { alignItems: "center", justifyContent: "center" }]}>
+          <ActivityIndicator size="large" color={gold} />
+        </View>
+        <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} currentLang={currentLang} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.shellRoot}>
@@ -297,7 +334,12 @@ function WebShell() {
               setHasError(false);
             }}
             onLoad={() => setLoading(false)}
-            onLoadEnd={() => setLoading(false)}
+            onLoadEnd={() => {
+              setLoading(false);
+              if (currentLang === "AR") {
+                webviewRef.current?.injectJavaScript?.(makeChangeLangJS("AR"));
+              }
+            }}
             onError={() => {
               setLoading(false);
               setHasError(true);
@@ -437,7 +479,13 @@ function WebIframeShell() {
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [webUrl, setWebUrl] = useState(TABS[0].url);
-  const [currentLang, setCurrentLang] = useState<"EN" | "AR">("EN");
+  const [currentLang, setLang, langLoading] = useLang();
+
+  useEffect(() => {
+    if (!langLoading && currentLang === "AR") {
+      setWebUrl((u) => `${u}${u.includes("?") ? "&" : "?"}lang=ar`);
+    }
+  }, [langLoading]);
 
   const handleTabPress = (tab: Tab) => {
     setActiveTab(tab.key);
@@ -450,12 +498,24 @@ function WebIframeShell() {
   };
 
   const handleLanguageChange = (lang: "EN" | "AR") => {
-    setCurrentLang(lang);
+    setLang(lang);
     const target = lang === "AR"
       ? `${webUrl}${webUrl.includes("?") ? "&" : "?"}lang=ar`
       : `${webUrl}${webUrl.includes("?") ? "&" : "?"}lang=en`;
     setWebUrl(target);
   };
+
+  if (langLoading) {
+    return (
+      <View style={styles.shellRoot}>
+        <AppHeader onAvatarPress={() => setDrawerOpen(true)} />
+        <View style={[styles.webArea, { alignItems: "center", justifyContent: "center" }]}>
+          <ActivityIndicator size="large" color={gold} />
+        </View>
+        <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} currentLang={currentLang} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.shellRoot}>
