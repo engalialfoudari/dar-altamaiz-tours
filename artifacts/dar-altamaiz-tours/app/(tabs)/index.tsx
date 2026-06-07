@@ -2,7 +2,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Animated,
   BackHandler,
   Image,
@@ -85,10 +84,66 @@ const makeChangeLangJS = (lang: "EN" | "AR") => `
 true;
 `;
 
-function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
+function LoadingOverlay() {
+  const nd = Platform.OS !== "web";
+  const textOpacity = useRef(new Animated.Value(0.4)).current;
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(textOpacity, { toValue: 1, duration: 900, useNativeDriver: nd }),
+        Animated.timing(textOpacity, { toValue: 0.4, duration: 900, useNativeDriver: nd }),
+      ])
+    );
+    const dots = Animated.loop(
+      Animated.stagger(220, [
+        Animated.sequence([
+          Animated.timing(dot1, { toValue: 1, duration: 380, useNativeDriver: nd }),
+          Animated.timing(dot1, { toValue: 0.3, duration: 380, useNativeDriver: nd }),
+        ]),
+        Animated.sequence([
+          Animated.timing(dot2, { toValue: 1, duration: 380, useNativeDriver: nd }),
+          Animated.timing(dot2, { toValue: 0.3, duration: 380, useNativeDriver: nd }),
+        ]),
+        Animated.sequence([
+          Animated.timing(dot3, { toValue: 1, duration: 380, useNativeDriver: nd }),
+          Animated.timing(dot3, { toValue: 0.3, duration: 380, useNativeDriver: nd }),
+        ]),
+      ])
+    );
+    pulse.start();
+    dots.start();
+    return () => { pulse.stop(); dots.stop(); };
+  }, []);
+
+  return (
+    <View style={styles.loadingOverlay} pointerEvents="none">
+      <Image
+        source={require("../../assets/images/dt-tours-logo-transparent.png")}
+        style={styles.loadingLogo}
+        resizeMode="contain"
+        tintColor={gold}
+      />
+      <Animated.Text style={[styles.loadingText, { opacity: textOpacity }]}>
+        نجهّز لك أفضل العطلات والوجهات...
+      </Animated.Text>
+      <View style={styles.loadingDots}>
+        <Animated.View style={[styles.loadingDot, { opacity: dot1 }]} />
+        <Animated.View style={[styles.loadingDot, { opacity: dot2 }]} />
+        <Animated.View style={[styles.loadingDot, { opacity: dot3 }]} />
+      </View>
+    </View>
+  );
+}
+
+function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin: () => void }) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+  const nd = Platform.OS !== "web";
 
   const logoFade = useRef(new Animated.Value(0)).current;
   const cardFade = useRef(new Animated.Value(0)).current;
@@ -97,31 +152,16 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(logoFade, {
-        toValue: 1,
-        duration: 800,
-        delay: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardFade, {
-        toValue: 1,
-        duration: 800,
-        delay: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardSlide, {
-        toValue: 0,
-        duration: 750,
-        delay: 300,
-        useNativeDriver: true,
-      }),
+      Animated.timing(logoFade, { toValue: 1, duration: 800, delay: 100, useNativeDriver: nd }),
+      Animated.timing(cardFade, { toValue: 1, duration: 800, delay: 300, useNativeDriver: nd }),
+      Animated.timing(cardSlide, { toValue: 0, duration: 750, delay: 300, useNativeDriver: nd }),
     ]).start();
   }, []);
 
   const handlePressIn = () =>
-    Animated.spring(btnScale, { toValue: 0.95, useNativeDriver: true }).start();
+    Animated.spring(btnScale, { toValue: 0.95, useNativeDriver: nd }).start();
   const handlePressOut = () =>
-    Animated.spring(btnScale, { toValue: 1, useNativeDriver: true }).start();
+    Animated.spring(btnScale, { toValue: 1, useNativeDriver: nd }).start();
 
   return (
     <View style={styles.welcomeRoot}>
@@ -178,29 +218,38 @@ function WelcomeScreen({ onExplore }: { onExplore: () => void }) {
           <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%" }}>
             <Pressable
               style={styles.ctaBtn}
-              onPress={onExplore}
+              onPress={onLogin}
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
             >
-              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 20 }]}>
-                Start
+              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>
+                سجل دخول
               </Text>
             </Pressable>
           </Animated.View>
+
+          <Pressable
+            style={({ pressed }) => [styles.guestBtn, pressed && { opacity: 0.7 }]}
+            onPress={onExplore}
+          >
+            <Text style={[styles.guestBtnText, isTablet && { fontSize: 15 }]}>
+              اكمل كضيف
+            </Text>
+          </Pressable>
         </Animated.View>
       </ImageBackground>
     </View>
   );
 }
 
-function WebShell() {
+function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   const WebView = require("react-native-webview").WebView;
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
 
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [webUrl, setWebUrl] = useState(TABS[0].url);
+  const [webUrl, setWebUrl] = useState(initialUrl);
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [currentLang, setLang, langLoading] = useLang();
@@ -298,8 +347,8 @@ function WebShell() {
     return (
       <View style={styles.shellRoot}>
         <AppHeader onAvatarPress={() => setDrawerOpen(true)} />
-        <View style={[styles.webArea, { alignItems: "center", justifyContent: "center" }]}>
-          <ActivityIndicator size="large" color={gold} />
+        <View style={[styles.webArea]}>
+          <LoadingOverlay />
         </View>
         <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} currentLang={currentLang} />
       </View>
@@ -368,11 +417,7 @@ function WebShell() {
             showsVerticalScrollIndicator={false}
           />
 
-        {loading && !hasError && (
-          <View style={styles.loadingOverlay} pointerEvents="none">
-            <ActivityIndicator size="large" color={gold} />
-          </View>
-        )}
+        {loading && !hasError && <LoadingOverlay />}
 
         {hasError && !isOffline && (
           <View style={styles.errorScreen}>
@@ -473,10 +518,10 @@ function WebShell() {
   );
 }
 
-function WebIframeShell() {
+function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [webUrl, setWebUrl] = useState(TABS[0].url);
+  const [webUrl, setWebUrl] = useState(initialUrl);
   const [currentLang, setLang, langLoading] = useLang();
 
   useEffect(() => {
@@ -507,8 +552,8 @@ function WebIframeShell() {
     return (
       <View style={styles.shellRoot}>
         <AppHeader onAvatarPress={() => setDrawerOpen(true)} />
-        <View style={[styles.webArea, { alignItems: "center", justifyContent: "center" }]}>
-          <ActivityIndicator size="large" color={gold} />
+        <View style={[styles.webArea]}>
+          <LoadingOverlay />
         </View>
         <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} currentLang={currentLang} />
       </View>
@@ -545,24 +590,22 @@ function WebIframeShell() {
 
 export default function HomeScreen() {
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
+  const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const shellOpacity = useRef(new Animated.Value(0)).current;
+  const nd = Platform.OS !== "web";
 
-  const handleExplore = () => {
+  const transitionToShell = (url: string) => {
+    setInitialShellUrl(url);
     setPhase("transitioning");
     Animated.parallel([
-      Animated.timing(welcomeOpacity, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(shellOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
+      Animated.timing(welcomeOpacity, { toValue: 0, duration: 500, useNativeDriver: nd }),
+      Animated.timing(shellOpacity, { toValue: 1, duration: 500, useNativeDriver: nd }),
     ]).start(() => setPhase("shell"));
   };
+
+  const handleExplore = () => transitionToShell(TABS[0].url);
+  const handleLogin = () => transitionToShell("https://dt-tours.com/index.php/auth/login");
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
@@ -570,13 +613,13 @@ export default function HomeScreen() {
     <View style={styles.root}>
       {(phase === "transitioning" || phase === "shell") && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: shellOpacity }]}>
-          <ShellComponent />
+          <ShellComponent initialUrl={initialShellUrl} />
         </Animated.View>
       )}
 
       {phase !== "shell" && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: welcomeOpacity }]}>
-          <WelcomeScreen onExplore={handleExplore} />
+          <WelcomeScreen onExplore={handleExplore} onLogin={handleLogin} />
         </Animated.View>
       )}
     </View>
@@ -668,23 +711,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   ctaBtn: {
-    backgroundColor: "#C9A84C",
+    backgroundColor: "#1B263B",
     paddingVertical: 16,
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    shadowColor: "#C9A84C",
-    shadowOpacity: 0.4,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
+    marginBottom: 12,
   },
   ctaBtnText: {
-    color: "#0A1628",
+    color: "#FFFFFF",
     fontSize: 18,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.5,
+  },
+  guestBtn: {
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.55)",
+  },
+  guestBtnText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.4,
   },
 
   shellRoot: {
@@ -698,9 +757,34 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: "rgba(10,22,40,0.93)",
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 5,
+  },
+  loadingLogo: {
+    width: 120,
+    height: 44,
+    marginBottom: 22,
+    opacity: 0.75,
+  },
+  loadingText: {
+    color: gold,
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    marginBottom: 18,
+    letterSpacing: 0.3,
+  },
+  loadingDots: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  loadingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: gold,
   },
   errorScreen: {
     ...StyleSheet.absoluteFillObject,

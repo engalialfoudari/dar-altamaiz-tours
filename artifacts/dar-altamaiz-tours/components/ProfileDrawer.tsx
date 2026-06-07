@@ -27,28 +27,28 @@ interface MenuItem {
 
 const MENU_ITEMS: MenuItem[] = [
   {
-    icon: "airplane-outline",
-    labelAr: "رحلاتي",
-    labelEn: "My Trips",
-    url: "https://dt-tours.com/index.php/myaccount",
+    icon: "person-outline",
+    labelAr: "حسابي",
+    labelEn: "My Account",
+    url: "https://dt-tours.com/index.php/general/my_booking",
   },
   {
     icon: "ticket-outline",
     labelAr: "حجوزاتي",
     labelEn: "My Bookings",
-    url: "https://dt-tours.com/index.php/myaccount",
+    url: "https://dt-tours.com/index.php/general/my_booking",
   },
   {
-    icon: "heart-outline",
-    labelAr: "المفضلة",
-    labelEn: "Favorites",
-    url: "https://dt-tours.com/index.php/wishlist",
+    icon: "sunny-outline",
+    labelAr: "العطلات",
+    labelEn: "Holidays",
+    url: "https://dt-tours.com/index.php/tours/search/",
   },
   {
     icon: "help-circle-outline",
-    labelAr: "المساعدة",
-    labelEn: "Help",
-    url: "https://dt-tours.com/index.php/contact",
+    labelAr: "تواصل معنا",
+    labelEn: "Contact Us",
+    url: "https://dt-tours.com/general/contact_us/",
   },
 ];
 
