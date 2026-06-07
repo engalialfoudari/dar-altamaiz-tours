@@ -1,4 +1,7 @@
+import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -69,6 +72,10 @@ export function ProfileDrawer({
   const isTablet = width >= 768;
   const drawerWidth = Math.min(width * (isTablet ? 0.45 : 0.78), 380);
 
+  const { isSignedIn, signOut } = useAuth();
+  const { user } = useUser();
+  const router = useRouter();
+
   const [mounted, setMounted] = useState(false);
   const translateX = useRef(new Animated.Value(drawerWidth)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -116,13 +123,24 @@ export function ProfileDrawer({
   };
 
   const handleLogin = () => {
-    onNavigate("https://dt-tours.com/index.php/auth/login");
     onClose();
+    router.push("/(auth)/sign-in");
+  };
+
+  const handleLogout = async () => {
+    onClose();
+    await signOut();
   };
 
   if (!mounted && !visible) return null;
 
   const isAr = currentLang === "AR";
+
+  const displayName = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.emailAddresses[0]?.emailAddress || (isAr ? "مستخدم" : "User")
+    : isAr ? "ضيف" : "Guest";
+
+  const avatarUrl = user?.imageUrl;
 
   return (
     <View style={[StyleSheet.absoluteFill, { pointerEvents: visible ? "auto" : "none" }]}>
@@ -146,24 +164,50 @@ export function ProfileDrawer({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.profileSection}>
-            <View style={styles.avatarCircle}>
-              <Ionicons name="person" size={32} color={gold} />
-            </View>
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.avatarImage}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <Ionicons name="person" size={32} color={gold} />
+              </View>
+            )}
             <Text style={[styles.profileName, isTablet && { fontSize: 20 }]}>
-              {isAr ? "ضيف" : "Guest"}
+              {displayName}
             </Text>
-            <Text style={[styles.profileSub, isTablet && { fontSize: 14 }]}>
-              {isAr ? "سجّل الدخول للمزيد من المميزات" : "Sign in for more features"}
-            </Text>
-            <Pressable
-              style={({ pressed }) => [styles.loginBtn, pressed && styles.loginBtnPressed]}
-              onPress={handleLogin}
-            >
-              <Ionicons name="log-in-outline" size={16} color={navy} />
-              <Text style={[styles.loginBtnText, isTablet && { fontSize: 15 }]}>
-                {isAr ? "تسجيل الدخول" : "Sign In"}
+            {isSignedIn ? (
+              <Text style={[styles.profileSub, isTablet && { fontSize: 14 }]}>
+                {user?.emailAddresses[0]?.emailAddress}
               </Text>
-            </Pressable>
+            ) : (
+              <Text style={[styles.profileSub, isTablet && { fontSize: 14 }]}>
+                {isAr ? "سجّل الدخول للمزيد من المميزات" : "Sign in for more features"}
+              </Text>
+            )}
+            {isSignedIn ? (
+              <Pressable
+                style={({ pressed }) => [styles.logoutBtn, pressed && styles.loginBtnPressed]}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={16} color={gold} />
+                <Text style={[styles.logoutBtnText, isTablet && { fontSize: 15 }]}>
+                  {isAr ? "تسجيل الخروج" : "Sign Out"}
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [styles.loginBtn, pressed && styles.loginBtnPressed]}
+                onPress={handleLogin}
+              >
+                <Ionicons name="log-in-outline" size={16} color={navy} />
+                <Text style={[styles.loginBtnText, isTablet && { fontSize: 15 }]}>
+                  {isAr ? "تسجيل الدخول" : "Sign In"}
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           <View style={styles.divider} />
@@ -272,6 +316,14 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingTop: 8,
   },
+  avatarImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2,
+    borderColor: gold,
+    marginBottom: 12,
+  },
   avatarCircle: {
     width: 76,
     height: 76,
@@ -312,6 +364,21 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     color: navy,
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  logoutBtn: {
+    borderWidth: 1,
+    borderColor: gold,
+    paddingHorizontal: 24,
+    paddingVertical: 11,
+    borderRadius: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  logoutBtnText: {
+    color: gold,
     fontSize: 14,
     fontFamily: "Inter_700Bold",
   },
