@@ -32,7 +32,27 @@ const INJECTED_JS = `
 })();
 `;
 
-const LOGIN_URL = "https://dt-tours.com/index.php/general/my_booking";
+const LOGIN_HOME_URL = "https://dt-tours.com/";
+
+const LOGIN_MODAL_JS = `
+(function() {
+  var selectors = [
+    '[data-target="#myModal_new_emp"]',
+    '.open_sign_in',
+    '.logindown.open_sign_in',
+    'a.logindown',
+    '[data-toggle="modal"][data-target*="login"]'
+  ];
+  function tryClick(attempts) {
+    for (var i = 0; i < selectors.length; i++) {
+      var el = document.querySelector(selectors[i]);
+      if (el) { el.click(); return; }
+    }
+    if (attempts > 0) setTimeout(function() { tryClick(attempts - 1); }, 500);
+  }
+  tryClick(8);
+})(); true;
+`;
 
 function LoadingOverlay() {
   const nd = Platform.OS !== "web";
@@ -235,10 +255,11 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
   );
 }
 
-function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
+function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initialUrl?: string; openLoginOnLoad?: boolean }) {
   const WebView = require("react-native-webview").WebView;
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
+  const pendingLoginTrigger = useRef(openLoginOnLoad);
 
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [webUrl, setWebUrl] = useState(initialUrl);
@@ -347,7 +368,13 @@ function WebShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
             setHasError(false);
           }}
           onLoad={() => setLoading(false)}
-          onLoadEnd={() => setLoading(false)}
+          onLoadEnd={() => {
+            setLoading(false);
+            if (pendingLoginTrigger.current) {
+              pendingLoginTrigger.current = false;
+              webviewRef.current?.injectJavaScript?.(LOGIN_MODAL_JS);
+            }
+          }}
           onError={() => {
             setLoading(false);
             setHasError(true);
@@ -478,12 +505,14 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 export default function HomeScreen() {
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
+  const [triggerLogin, setTriggerLogin] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const shellOpacity = useRef(new Animated.Value(0)).current;
   const nd = Platform.OS !== "web";
 
-  const transitionToShell = (url: string) => {
+  const transitionToShell = (url: string, loginTrigger = false) => {
     setInitialShellUrl(url);
+    setTriggerLogin(loginTrigger);
     setPhase("transitioning");
     Animated.parallel([
       Animated.timing(welcomeOpacity, { toValue: 0, duration: 500, useNativeDriver: nd }),
@@ -491,8 +520,8 @@ export default function HomeScreen() {
     ]).start(() => setPhase("shell"));
   };
 
-  const handleExplore = () => transitionToShell(TABS[0].url);
-  const handleLogin = () => transitionToShell(LOGIN_URL);
+  const handleExplore = () => transitionToShell(TABS[0].url, false);
+  const handleLogin = () => transitionToShell(LOGIN_HOME_URL, true);
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
@@ -500,7 +529,7 @@ export default function HomeScreen() {
     <View style={styles.root}>
       {(phase === "transitioning" || phase === "shell") && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: shellOpacity }]}>
-          <ShellComponent initialUrl={initialShellUrl} />
+          <ShellComponent initialUrl={initialShellUrl} openLoginOnLoad={triggerLogin} />
         </Animated.View>
       )}
 
