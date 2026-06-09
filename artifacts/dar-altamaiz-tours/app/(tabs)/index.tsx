@@ -101,7 +101,7 @@ function LoadingOverlay() {
         tintColor={gold}
       />
       <Animated.Text style={[styles.loadingText, { opacity: textOpacity }]}>
-        Loading your holiday experiences...
+        Loading your travel packages...
       </Animated.Text>
       <View style={styles.loadingDots}>
         <Animated.View style={[styles.loadingDot, { opacity: dot1 }]} />

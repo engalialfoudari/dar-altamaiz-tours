@@ -29,7 +29,7 @@ export const TABS: Tab[] = [
   },
   {
     key: "trips",
-    labelEn: "Holidays",
+    labelEn: "Packages",
     url: "https://dt-tours.com/index.php/tours/search/",
   },
   {

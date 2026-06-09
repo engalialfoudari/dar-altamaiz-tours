@@ -67,7 +67,7 @@ export function UpdateModal({ visible }: UpdateModalProps) {
           <View style={styles.englishBlock}>
             <Text style={styles.englishTitle}>New Update Available!</Text>
             <Text style={styles.englishBody}>
-              Please update the app now to enjoy the latest features, holidays,
+              Please update the app now to enjoy the latest features, packages,
               and new destinations.
             </Text>
           </View>
