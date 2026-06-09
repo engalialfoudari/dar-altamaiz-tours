@@ -1,0 +1,63 @@
+CRITICAL UI UPDATE: ADD TOP-RIGHT LIGHT BULB (TIP) BUTTON AND BILINGUAL SEARCH GUIDELINES MODAL
+
+1. Native Header Shell Modification:
+   - Locate the top native shell header (where the Back Chevron is on the far left and the Digital Clock is centered).
+   - On the FAR RIGHT of this header, add a native clickable icon.
+   - Icon Design: This icon MUST be a beautifully styled, minimalist vector graphic/SVG or image of a **Light Bulb (Lamp)** in pure white. It must be highly professional and scale perfectly on both Android and iOS devices.
+
+2. Modal Pop-up Component:
+   - When the user presses this Light Bulb Icon, trigger a premium, beautifully styled full-screen or centered overlay Modal.
+   - The Modal must feature a solid luxury background (Polo Navy Blue), with a clean "Close" text button or "X" icon at the top corner to exit.
+   - Inside the Modal, implement a scrollable text view containing the following exact text structure. The text must be strictly rendered with high contrast (pure white for paragraphs, elegant gold for headings), perfectly aligned (Right-to-Left for Arabic, Left-to-Right for English), utilizing a professional hierarchy with absolutely ZERO emojis.
+
+3. Exact Text Content to Insert:
+
+دليل إرشادات البحث والمساعدة
+
+رحلات الطيران
+للحصول على نتائج أدق وأسرع لرحلات الطيران، يُفضل كتابة رمز المطار الدولي المكون من ثلاثة أحرف (مثال: للكويت اكتب KWI، لدبي اكتب DXB، للندن اكتب LHR).
+
+حجوزات الفنادق
+يمكنك كتابة اسم الفندق مباشرة إذا كنت تحفظه، أو اكتفِ بكتابة اسم المدينة ثم استخدم خانة التصفية (الفلتر) بالداخل لتضييق النتائج والوصول إلى فندقك المفضل بسهولة.
+
+لغة البحث
+لضمان مطابقة الأسعار الحية والحصول على نتائج دقيقة بنسبة مئة بالمئة، نوصي دائماً بكتابة أسماء المدن والمطارات والفنادق باللغة الإنجليزية.
+
+صلاحية جواز السفر
+يرجى التأكد من أن صلاحية جواز سفرك لا تقل عن 6 أشهر من تاريخ السفر المخطط له، وذلك لتفادي أي عوائق أو قيود أثناء إنهاء إجراءات المطار.
+
+مرونة التواريخ
+إذا كانت تواريخ سفرك مرنة وغير ثابتة، يفضل تجربة البحث قبل أو بعد التاريخ المحدد بيومين، حيث تتوفر غالباً أسعار طيران وفنادق أفضل في منتصف الأسبوع.
+
+الدعم الفني والاستفسارات
+إذا واجهتك أي صعوبة أثناء استخدام التطبيق أو كان لديك أي استفسار إضافي، يمكنك التواصل مباشرة مع فريق دعم دار التميز للسفريات عبر الواتساب بالضغط على الزر أدناه.
+
+--------------------------------------------------
+
+Search Guidelines and Support
+
+Flights
+For more accurate and faster flight results, it is highly recommended to enter the official three-letter airport IATA code (e.g., KWI for Kuwait, DXB for Dubai, LHR for London).
+
+Hotels
+You can type the exact hotel name directly if known, or simply enter the city name and utilize the internal search filters to narrow down and find your preferred accommodation easily.
+
+Search Language
+To ensure real-time live price matching and 100% precise results, we always recommend typing cities, airports, and hotel names in English.
+
+Passport Validity
+Please ensure that your passport validity is not less than 6 months from your planned travel date to avoid any issues or restrictions during airport check-in.
+
+Flexible Dates
+If your travel dates are flexible, try searching 2 days before or after your selected date. Better flight and hotel rates are often available during mid-week departures.
+
+Technical Support and Inquiries
+If you encounter any difficulties while using the application or have any further inquiries, you can directly connect with the Dar AlTamaiz Tours support team via WhatsApp by clicking the button below.
+
+4. Actionable WhatsApp Integration:
+   - At the bottom of the modal text, place a prominent, styled call-to-action button spanning the width.
+   - Button Design: High-contrast brand coloring with a clean vector WhatsApp logo asset next to the text.
+   - Button Text: "تواصل معنا عبر الواتساب | Contact Us on WhatsApp"
+   - Functionality: Link the onPress event using React Native Linking to open the exact deep link protocol: `https://wa.me/96590087797`. Ensure it opens the native WhatsApp application seamlessly on Android and iOS devices.
+
+Compile the application, verify that the Light Bulb button fits perfectly in the header shell without overlapping the clock, and display the interactive preview immediately.

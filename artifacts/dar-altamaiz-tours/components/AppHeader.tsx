@@ -8,7 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
@@ -77,12 +77,28 @@ function ChevronLeft({ size, color }: { size: number; color: string }) {
   );
 }
 
+function InfoIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke="#FFFFFF" strokeWidth={2} />
+      <Path
+        d="M12 11v5"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Circle cx="12" cy="8" r="0.5" fill="#FFFFFF" stroke="#FFFFFF" strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
 interface AppHeaderProps {
   onBack?: () => void;
   canGoBack?: boolean;
+  onInfo?: () => void;
 }
 
-export function AppHeader({ onBack, canGoBack = false }: AppHeaderProps) {
+export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -102,11 +118,12 @@ export function AppHeader({ onBack, canGoBack = false }: AppHeaderProps) {
         translucent={Platform.OS === "android"}
       />
       <View style={[styles.inner, { height: headerHeight }]}>
+        {/* Left: back chevron */}
         {onBack != null ? (
           <Pressable
             style={({ pressed }) => [
-              styles.backBtn,
-              pressed && styles.backBtnPressed,
+              styles.iconBtn,
+              pressed && styles.iconBtnPressed,
             ]}
             onPress={onBack}
             disabled={!canGoBack}
@@ -120,11 +137,28 @@ export function AppHeader({ onBack, canGoBack = false }: AppHeaderProps) {
           <View style={styles.sideSlot} />
         )}
 
+        {/* Centre: clock */}
         <View style={styles.clockWrap}>
           <DigitalClock />
         </View>
 
-        <View style={styles.sideSlot} />
+        {/* Right: info button */}
+        {onInfo != null ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && styles.iconBtnPressed,
+            ]}
+            onPress={onInfo}
+            hitSlop={12}
+            accessibilityLabel="Search guidelines"
+            accessibilityRole="button"
+          >
+            <InfoIcon size={iconSize} />
+          </Pressable>
+        ) : (
+          <View style={styles.sideSlot} />
+        )}
       </View>
     </View>
   );
@@ -141,7 +175,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 8,
   },
-  backBtn: {
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -149,7 +183,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.07)",
   },
-  backBtnPressed: {
+  iconBtnPressed: {
     backgroundColor: "rgba(201,168,76,0.18)",
   },
   clockWrap: {
