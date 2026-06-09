@@ -52,14 +52,6 @@
           "origin": "https://replit.com/"
         }
       ],
-      [
-        "expo-font",
-        {
-          "fonts": [
-            "./node_modules/@expo/vector-icons/vendor/react-native-vector-icons/Fonts/Ionicons.ttf"
-          ]
-        }
-      ],
       "expo-web-browser",
       "expo-updates"
     ],
