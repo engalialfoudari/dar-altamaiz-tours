@@ -94,12 +94,6 @@ function LoadingOverlay() {
 
   return (
     <View style={styles.loadingOverlay} pointerEvents="none">
-      <Image
-        source={require("../../assets/images/dt-tours-logo-transparent.png")}
-        style={styles.loadingLogo}
-        resizeMode="contain"
-        tintColor={gold}
-      />
       <Animated.Text style={[styles.loadingText, { opacity: textOpacity }]}>
         Loading your travel packages...
       </Animated.Text>
@@ -680,12 +674,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     zIndex: 5,
-  },
-  loadingLogo: {
-    width: 120,
-    height: 44,
-    marginBottom: 22,
-    opacity: 0.75,
   },
   loadingText: {
     color: gold,
