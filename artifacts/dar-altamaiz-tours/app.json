@@ -4,7 +4,7 @@
     "slug": "dttours",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app-icon.png",
+    "icon": "./assets/images/app-icon-new.png",
     "scheme": "dttours",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -37,12 +37,12 @@
       ],
       "package": "com.dttours.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "foregroundImage": "./assets/images/app-icon-new.png",
         "backgroundColor": "#0A1628"
       }
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/app-icon-new.png"
     },
     "plugins": [
       [
