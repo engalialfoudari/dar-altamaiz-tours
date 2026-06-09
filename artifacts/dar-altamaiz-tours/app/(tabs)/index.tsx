@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
+import { InfoModal } from "@/components/InfoModal";
 import colors from "@/constants/colors";
 
 const { gold, navy } = colors.light;
@@ -231,6 +232,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
   const [isOffline, setIsOffline] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [canGoBackState, setCanGoBackState] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const wasOffline = useRef(false);
   const toastSlide = useRef(new Animated.Value(-90)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -307,7 +309,9 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
       <AppHeader
         onBack={() => webviewRef.current?.goBack?.()}
         canGoBack={canGoBackState}
+        onInfo={() => setShowInfo(true)}
       />
+      <InfoModal visible={showInfo} onClose={() => setShowInfo(false)} />
 
       <View style={styles.webArea}>
         <WebView

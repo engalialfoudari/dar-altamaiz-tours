@@ -8,7 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
@@ -77,17 +77,31 @@ function ChevronLeft({ size, color }: { size: number; color: string }) {
   );
 }
 
-function InfoIcon({ size }: { size: number }) {
+function LightBulbIcon({ size }: { size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="9" stroke="#FFFFFF" strokeWidth={2} />
+      {/* bulb body */}
       <Path
-        d="M12 11v5"
+        d="M9 21h6"
         stroke="#FFFFFF"
         strokeWidth={2}
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      <Circle cx="12" cy="8" r="0.5" fill="#FFFFFF" stroke="#FFFFFF" strokeWidth={1.5} />
+      <Path
+        d="M9 18h6"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15 15.5A6 6 0 1 0 9 15.5V18h6v-2.5z"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -154,7 +168,7 @@ export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps)
             accessibilityLabel="Search guidelines"
             accessibilityRole="button"
           >
-            <InfoIcon size={iconSize} />
+            <LightBulbIcon size={iconSize} />
           </Pressable>
         ) : (
           <View style={styles.sideSlot} />
