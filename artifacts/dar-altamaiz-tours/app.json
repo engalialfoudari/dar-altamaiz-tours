@@ -3,6 +3,7 @@
     "name": "D.T. Tours",
     "slug": "dttours",
     "version": "1.0.0",
+    "owner": "engalialfoudari",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-new.png",
     "scheme": "dttours",
@@ -65,6 +66,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "193bf2d0-8d16-482e-a165-8869c46042f7"
+      }
     }
   }
 }
