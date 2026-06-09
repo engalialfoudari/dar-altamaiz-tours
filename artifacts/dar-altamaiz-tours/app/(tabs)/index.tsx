@@ -54,54 +54,23 @@ const LOGIN_MODAL_JS = `
 })(); true;
 `;
 
+const DOT_STAGES = ["", ".", "..", "..."] as const;
+
 function LoadingOverlay() {
-  const nd = Platform.OS !== "web";
-  const textOpacity = useRef(new Animated.Value(0.4)).current;
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
+  const [dotIndex, setDotIndex] = useState(0);
 
   useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(textOpacity, { toValue: 1, duration: 900, useNativeDriver: nd }),
-        Animated.timing(textOpacity, { toValue: 0.4, duration: 900, useNativeDriver: nd }),
-      ])
-    );
-    const dots = Animated.loop(
-      Animated.stagger(220, [
-        Animated.sequence([
-          Animated.timing(dot1, { toValue: 1, duration: 380, useNativeDriver: nd }),
-          Animated.timing(dot1, { toValue: 0.3, duration: 380, useNativeDriver: nd }),
-        ]),
-        Animated.sequence([
-          Animated.timing(dot2, { toValue: 1, duration: 380, useNativeDriver: nd }),
-          Animated.timing(dot2, { toValue: 0.3, duration: 380, useNativeDriver: nd }),
-        ]),
-        Animated.sequence([
-          Animated.timing(dot3, { toValue: 1, duration: 380, useNativeDriver: nd }),
-          Animated.timing(dot3, { toValue: 0.3, duration: 380, useNativeDriver: nd }),
-        ]),
-      ])
-    );
-    pulse.start();
-    dots.start();
-    return () => {
-      pulse.stop();
-      dots.stop();
-    };
+    const id = setInterval(() => {
+      setDotIndex((prev) => (prev + 1) % DOT_STAGES.length);
+    }, 480);
+    return () => clearInterval(id);
   }, []);
 
   return (
     <View style={styles.loadingOverlay} pointerEvents="none">
-      <Animated.Text style={[styles.loadingText, { opacity: textOpacity }]}>
-        Loading your travel packages...
-      </Animated.Text>
-      <View style={styles.loadingDots}>
-        <Animated.View style={[styles.loadingDot, { opacity: dot1 }]} />
-        <Animated.View style={[styles.loadingDot, { opacity: dot2 }]} />
-        <Animated.View style={[styles.loadingDot, { opacity: dot3 }]} />
-      </View>
+      <Text style={styles.loadingText}>
+        {"Loading your exciting experience" + DOT_STAGES[dotIndex]}
+      </Text>
     </View>
   );
 }
@@ -676,22 +645,11 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   loadingText: {
-    color: gold,
+    color: "#FFFFFF",
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_400Regular",
     textAlign: "center",
-    marginBottom: 18,
-    letterSpacing: 0.3,
-  },
-  loadingDots: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  loadingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: gold,
+    letterSpacing: 0.5,
   },
   errorScreen: {
     ...StyleSheet.absoluteFillObject,
