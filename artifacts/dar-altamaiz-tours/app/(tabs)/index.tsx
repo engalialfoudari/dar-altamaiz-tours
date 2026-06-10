@@ -317,7 +317,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
         <WebView
           ref={webviewRef}
           source={{ uri: webUrl }}
-          style={StyleSheet.absoluteFill}
+          style={{ flex: 1 }}
           javaScriptEnabled
           domStorageEnabled
           startInLoadingState

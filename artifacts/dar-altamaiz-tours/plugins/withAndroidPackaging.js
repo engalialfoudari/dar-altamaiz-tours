@@ -1,4 +1,4 @@
-const { withAppBuildGradle } = require('@expo/config-plugins');
+const { withAppBuildGradle } = require('expo/config-plugins');
 
 const EXCLUSION = 'META-INF/versions/9/OSGI-INF/MANIFEST.MF';
 
