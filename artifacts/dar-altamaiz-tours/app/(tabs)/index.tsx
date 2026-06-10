@@ -219,8 +219,9 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
   );
 }
 
+const WebView = require("react-native-webview").WebView;
+
 function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initialUrl?: string; openLoginOnLoad?: boolean }) {
-  const WebView = require("react-native-webview").WebView;
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
   const pendingLoginTrigger = useRef(openLoginOnLoad);
@@ -488,17 +489,17 @@ export default function HomeScreen() {
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const [triggerLogin, setTriggerLogin] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
-  const shellOpacity = useRef(new Animated.Value(0)).current;
   const nd = Platform.OS !== "web";
 
   const transitionToShell = (url: string, loginTrigger = false) => {
     setInitialShellUrl(url);
     setTriggerLogin(loginTrigger);
     setPhase("transitioning");
-    Animated.parallel([
-      Animated.timing(welcomeOpacity, { toValue: 0, duration: 500, useNativeDriver: nd }),
-      Animated.timing(shellOpacity, { toValue: 1, duration: 500, useNativeDriver: nd }),
-    ]).start(() => setPhase("shell"));
+    Animated.timing(welcomeOpacity, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: nd,
+    }).start(() => setPhase("shell"));
   };
 
   const handleExplore = () => transitionToShell(TABS[0].url, false);
@@ -508,14 +509,20 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      {(phase === "transitioning" || phase === "shell") && (
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: shellOpacity }]}>
+      {/* Shell renders at FULL opacity immediately — WebView must never be
+          inside an opacity-animated container on Android or it won't render */}
+      {phase !== "welcome" && (
+        <View style={StyleSheet.absoluteFill}>
           <ShellComponent initialUrl={initialShellUrl} openLoginOnLoad={triggerLogin} />
-        </Animated.View>
+        </View>
       )}
 
+      {/* Welcome screen sits on top and fades out — shell is already visible behind */}
       {phase !== "shell" && (
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: welcomeOpacity }]}>
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: welcomeOpacity }]}
+          pointerEvents={phase === "transitioning" ? "none" : "auto"}
+        >
           <WelcomeScreen onExplore={handleExplore} onLogin={handleLogin} />
         </Animated.View>
       )}
@@ -652,8 +659,7 @@ const styles = StyleSheet.create({
   },
   webArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    overflow: "hidden",
+    backgroundColor: navy,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
