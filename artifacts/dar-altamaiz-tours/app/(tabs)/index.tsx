@@ -320,7 +320,8 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
           source={{ uri: webUrl }}
           style={{ flex: 1 }}
           javaScriptEnabled
-          domStorageEnabled
+          domStorageEnabled={true}
+          mixedContentMode="always"
           startInLoadingState
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
@@ -344,17 +345,22 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
             }
           }}
           userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-          onError={(e: any) => {
-            console.warn("[WebView] onError:", JSON.stringify(e.nativeEvent));
+          onError={(syntheticEvent: any) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn("WebView error: ", nativeEvent);
             setLoading(false);
             setHasError(true);
           }}
-          onHttpError={(e: any) => {
-            console.warn("[WebView] onHttpError:", e.nativeEvent.statusCode, e.nativeEvent.url);
-            if (e.nativeEvent.statusCode >= 500) {
+          onHttpError={(syntheticEvent: any) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn("WebView HTTP error: ", nativeEvent);
+            if (nativeEvent.statusCode >= 500) {
               setLoading(false);
               setHasError(true);
             }
+          }}
+          onRenderProcessGone={(syntheticEvent: any) => {
+            console.warn("WebView render process gone", syntheticEvent.nativeEvent);
           }}
           onShouldStartLoadWithRequest={(request: any) => {
             const url: string = request.url;
