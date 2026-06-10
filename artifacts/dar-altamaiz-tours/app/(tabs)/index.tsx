@@ -230,6 +230,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
   const [webUrl, setWebUrl] = useState(initialUrl);
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [webError, setWebError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [canGoBackState, setCanGoBackState] = useState(false);
@@ -295,12 +296,14 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
   const handleTabPress = (tab: Tab) => {
     setActiveTab(tab.key);
     setHasError(false);
+    setWebError(null);
     setLoading(true);
     setWebUrl(tab.url);
   };
 
   const handleRetry = () => {
     setHasError(false);
+    setWebError(null);
     setLoading(true);
     webviewRef.current?.reload?.();
   };
@@ -335,6 +338,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
           onLoadStart={() => {
             setLoading(true);
             setHasError(false);
+            setWebError(null);
           }}
           onLoad={() => setLoading(false)}
           onLoadEnd={() => {
@@ -347,20 +351,18 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
           userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
           onError={(syntheticEvent: any) => {
             const { nativeEvent } = syntheticEvent;
-            console.warn("WebView error: ", nativeEvent);
+            setWebError(`WebView Error: ${nativeEvent.description} (Code: ${nativeEvent.code})`);
             setLoading(false);
             setHasError(true);
           }}
           onHttpError={(syntheticEvent: any) => {
             const { nativeEvent } = syntheticEvent;
-            console.warn("WebView HTTP error: ", nativeEvent);
-            if (nativeEvent.statusCode >= 500) {
-              setLoading(false);
-              setHasError(true);
-            }
+            setWebError(`HTTP Error: ${nativeEvent.statusCode} for ${nativeEvent.url}`);
+            setLoading(false);
+            setHasError(true);
           }}
           onRenderProcessGone={(syntheticEvent: any) => {
-            console.warn("WebView render process gone", syntheticEvent.nativeEvent);
+            setWebError(`Render Process Gone: didCrash=${syntheticEvent.nativeEvent?.didCrash}`);
           }}
           onShouldStartLoadWithRequest={(request: any) => {
             const url: string = request.url;
@@ -382,6 +384,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
             // inside the WebView rather than silently dropping it.
             return true;
           }}
+          allowsBackForwardNavigationGestures={true}
           contentInsetAdjustmentBehavior="never"
           bounces={false}
           overScrollMode="never"
@@ -391,7 +394,19 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
 
         {loading && !hasError && <LoadingOverlay />}
 
-        {hasError && !isOffline && (
+        {webError !== null && (
+          <View style={[StyleSheet.absoluteFillObject, styles.webErrorScreen]}>
+            <Text style={styles.webErrorText}>{webError}</Text>
+            <Pressable
+              style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.8 }]}
+              onPress={handleRetry}
+            >
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {hasError && !isOffline && webError === null && (
           <View style={styles.errorScreen}>
             <Text style={[styles.errorIcon, isTablet && { fontSize: 64 }]}>✈️</Text>
             <Text style={[styles.errorTitle, isTablet && { fontSize: 24 }]}>
@@ -666,6 +681,22 @@ const styles = StyleSheet.create({
   webArea: {
     flex: 1,
     backgroundColor: navy,
+  },
+  webErrorScreen: {
+    backgroundColor: navy,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    zIndex: 20,
+  },
+  webErrorText: {
+    color: "red",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    padding: 20,
+    marginBottom: 20,
+    lineHeight: 22,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
