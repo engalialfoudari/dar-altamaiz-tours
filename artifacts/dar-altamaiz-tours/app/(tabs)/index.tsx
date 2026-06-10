@@ -239,7 +239,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
   const toastSlide = useRef(new Animated.Value(-90)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isTablet = width >= 768;
 
   const dismissToast = () => {
@@ -309,7 +309,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
   };
 
   return (
-    <View style={styles.shellRoot}>
+    <View style={[styles.shellRoot, { width, height }]}>
       <AppHeader
         onBack={() => webviewRef.current?.goBack?.()}
         canGoBack={canGoBackState}
@@ -482,6 +482,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
 }
 
 function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
+  const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [webUrl, setWebUrl] = useState(initialUrl);
 
@@ -491,7 +492,7 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   };
 
   return (
-    <View style={styles.shellRoot}>
+    <View style={[styles.shellRoot, { width, height }]}>
       <AppHeader />
       <View style={styles.webArea}>
         <iframe
@@ -506,6 +507,7 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 }
 
 export default function HomeScreen() {
+  const { width, height } = useWindowDimensions();
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const [triggerLogin, setTriggerLogin] = useState(false);
@@ -528,20 +530,30 @@ export default function HomeScreen() {
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
+  // Explicit pixel dimensions so every child in the tree receives a
+  // guaranteed bounding box — prevents flex chains from collapsing to 0.
+  const layerStyle = {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    width,
+    height,
+  };
+
   return (
-    <View style={styles.root}>
-      {/* Shell renders at FULL opacity immediately — WebView must never be
-          inside an opacity-animated container on Android or it won't render */}
+    <View style={[styles.root, { width, height }]}>
+      {/* Shell at FULL opacity — WebView must never be inside an
+          opacity-animated container on Android or it won't render */}
       {phase !== "welcome" && (
-        <View style={StyleSheet.absoluteFill}>
+        <View style={layerStyle}>
           <ShellComponent initialUrl={initialShellUrl} openLoginOnLoad={triggerLogin} />
         </View>
       )}
 
-      {/* Welcome screen sits on top and fades out — shell is already visible behind */}
+      {/* Welcome screen fades out on top; shell already fully visible behind */}
       {phase !== "shell" && (
         <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: welcomeOpacity }]}
+          style={[layerStyle, { opacity: welcomeOpacity }]}
           pointerEvents={phase === "transitioning" ? "none" : "auto"}
         >
           <WelcomeScreen onExplore={handleExplore} onLogin={handleLogin} />
@@ -677,9 +689,11 @@ const styles = StyleSheet.create({
   shellRoot: {
     flex: 1,
     backgroundColor: navy,
+    overflow: "hidden",
   },
   webArea: {
     flex: 1,
+    minHeight: 0,
     backgroundColor: navy,
   },
   webErrorScreen: {
