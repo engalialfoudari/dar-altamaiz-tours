@@ -342,11 +342,14 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
               webviewRef.current?.injectJavaScript?.(LOGIN_MODAL_JS);
             }
           }}
-          onError={() => {
+          userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+          onError={(e: any) => {
+            console.warn("[WebView] onError:", JSON.stringify(e.nativeEvent));
             setLoading(false);
             setHasError(true);
           }}
           onHttpError={(e: any) => {
+            console.warn("[WebView] onHttpError:", e.nativeEvent.statusCode, e.nativeEvent.url);
             if (e.nativeEvent.statusCode >= 500) {
               setLoading(false);
               setHasError(true);
@@ -354,12 +357,23 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
           }}
           onShouldStartLoadWithRequest={(request: any) => {
             const url: string = request.url;
-            return (
-              url.startsWith("https://dt-tours.com") ||
-              url.startsWith("http://dt-tours.com") ||
+            // Allow dt-tours.com (all subdomains), about:, javascript:, and any
+            // intermediate redirects that the site may route through.
+            // Block only clearly external navigations (non-dt-tours HTTP/HTTPS).
+            if (
               url.startsWith("about:") ||
-              url.startsWith("javascript:")
-            );
+              url.startsWith("javascript:") ||
+              url.includes("dt-tours.com")
+            ) {
+              return true;
+            }
+            // Allow all non-http schemes (tel:, mailto:, etc. handled by OS)
+            if (!url.startsWith("http")) {
+              return false;
+            }
+            // For any other HTTP/HTTPS URL (external site), allow it to load
+            // inside the WebView rather than silently dropping it.
+            return true;
           }}
           contentInsetAdjustmentBehavior="never"
           bounces={false}

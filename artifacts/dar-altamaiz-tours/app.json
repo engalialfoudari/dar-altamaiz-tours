@@ -38,7 +38,7 @@
       ],
       "package": "com.dttours.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app-icon-new.png",
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
         "backgroundColor": "#0A1628"
       }
     },
