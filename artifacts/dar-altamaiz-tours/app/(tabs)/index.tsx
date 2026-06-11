@@ -257,7 +257,15 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
 
 const WebView = require("react-native-webview").WebView;
 
-function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initialUrl?: string; openLoginOnLoad?: boolean }) {
+function WebShell({
+  initialUrl = TABS[0].url,
+  openLoginOnLoad = false,
+  externalNavigation = null,
+}: {
+  initialUrl?: string;
+  openLoginOnLoad?: boolean;
+  externalNavigation?: { url: string; login: boolean; seq: number } | null;
+}) {
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
   const pendingLoginTrigger = useRef(openLoginOnLoad);
@@ -329,6 +337,19 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
     const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => sub.remove();
   }, []);
+
+  // Handle post-mount navigation from HomeScreen (Login flow while shell is pre-mounted)
+  useEffect(() => {
+    if (!externalNavigation) return;
+    setWebUrl(externalNavigation.url);
+    setLoading(true);
+    setHasError(false);
+    setWebError(null);
+    if (externalNavigation.login) {
+      pendingLoginTrigger.current = true;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalNavigation?.seq]);
 
   const handleTabPress = (tab: Tab) => {
     setActiveTab(tab.key);
@@ -564,6 +585,8 @@ export default function HomeScreen() {
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const [triggerLogin, setTriggerLogin] = useState(false);
+  const [externalNav, setExternalNav] = useState<{ url: string; login: boolean; seq: number } | null>(null);
+  const navSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web";
@@ -576,8 +599,18 @@ export default function HomeScreen() {
   }, []);
 
   const transitionToShell = (url: string, loginTrigger = false) => {
-    setInitialShellUrl(url);
-    setTriggerLogin(loginTrigger);
+    if (Platform.OS !== "web") {
+      // Native: shell is already pre-mounted at TABS[0].url.
+      // Only push an external navigation when the target differs or login is needed.
+      if (url !== TABS[0].url || loginTrigger) {
+        navSeq.current += 1;
+        setExternalNav({ url, login: loginTrigger, seq: navSeq.current });
+      }
+    } else {
+      // Web iframe shell: still uses the initial-prop approach.
+      setInitialShellUrl(url);
+      setTriggerLogin(loginTrigger);
+    }
     setPhase("transitioning");
     Animated.timing(welcomeOpacity, {
       toValue: 0,
@@ -603,11 +636,20 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.root, { width, height }]}>
-      {/* Shell at FULL opacity — WebView must never be inside an
-          opacity-animated container on Android or it won't render */}
-      {phase !== "welcome" && (
+      {/* Native shell: always pre-mounted so the WebView starts fetching
+          dt-tours.com in the background while the welcome screen is visible.
+          Web iframe shell: only mount on transition to avoid a blank iframe. */}
+      {(Platform.OS !== "web" || phase !== "welcome") && (
         <View style={layerStyle}>
-          <ShellComponent initialUrl={initialShellUrl} openLoginOnLoad={triggerLogin} />
+          {Platform.OS === "web" ? (
+            <WebIframeShell initialUrl={initialShellUrl} />
+          ) : (
+            <WebShell
+              initialUrl={TABS[0].url}
+              openLoginOnLoad={false}
+              externalNavigation={externalNav}
+            />
+          )}
         </View>
       )}
 
