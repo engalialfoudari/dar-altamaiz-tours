@@ -1,0 +1,21 @@
+STOP PLAYING AROUND. COMPLY IMMEDIATELY: DESTROY CURRENT HEADER COMPONENT, REMOVE ALL EMOJIS, ENFORCE STRICT 2-LINE VERTICAL SEPARATION, AND ACTIVATE FULL IMMERSIVE MODE
+
+Your current implementation is totally unacceptable. The Arabic and English texts are overlapping randomly, emojis are still visible, and the system hardware layout bars are not hidden. Treat this as an absolute hotfix order. Rewrite the header block in App.js from scratch.
+
+1. COMPLETE HEADER LAYOUT DESTRUCTION & REBUILD:
+   - Completely DELETE your existing Marquee text components inside the header wrapper.
+   - Build a brand new fixed-height container with a background color set to strict SOLID Deep Royal Blue (كحلي غامج ملكي).
+   - Create TWO strictly separate, vertically stacked layout rows using explicit individual text containers:
+     * TOP ROW (Arabic Text Only): Implement an isolated, clean Text line looping from LEFT TO RIGHT.
+     * BOTTOM ROW (English Text Only): Implement an isolated, clean Text line looping from RIGHT TO LEFT.
+   - Absolutely NO text or phrasing from the top row is allowed to drift, stack, or bleed into the bottom row. Keep them entirely isolated.
+   - Set the font weight to BOLD (عريض) and unified for both rows, with a pure white color for messages. Wrap the API numbers ({LIVE_USD_KWD} and London weather) in clear nested styles with a bright, crisp GREEN color.
+
+2. TOTAL SANITIZATION CRITICAL COMPLIANCE:
+   - Eradicate ALL emojis and graphical icons (including the lightbulb '💡' icon on the top right and all text symbols) from the entire header render pipeline. Only raw text and clean typography are allowed.
+
+3. FORCED SYSTEM OVERLAY IMMERSIVE HIDE (ANDROID & IOS):
+   - Explicitly import `StatusBar` from 'react-native'. Run `StatusBar.setHidden(true, 'none')` at the root component level immediately.
+   - The device system status clock (22:47), battery indicators, Wi-Fi symbols at the top, and the bottom hardware navigation bars MUST vanish entirely from the active view screen.
+
+Perform a strict code audit on App.js now. Ensure zero syntax gaps, and output the clean, finalized production code immediately. No commentary, just fix it.

@@ -1,0 +1,24 @@
+================================================================================
+CRITICAL PERFORMANCE AUDIT: GENERATE COMPLIANCE MATRIX TABLE (COMPLETED VS IGNORED) AND FORCE FIX ALL OUTSTANDING BUGS
+================================================================================
+
+You are performing a strict code compliance check. Do not write generic code blocks or make partial updates. You must review the current state of App.js and notifications.ts, generate a detailed markdown verification table, and then execute the fixes for any ignored tasks.
+
+FIRST: GENERATE A COMPLIANCE TABLE IN YOUR RESPONSE
+Create a clean Markdown Table mapping our exact requirements. For each item, mark it with a (✅ Completed) only if the code fully operates this way, or (❌ Ignored/Broken) if it is failing or missing based on the recent client screenshots.
+
+| # | Specific User Requirement | Current Code Status (✅/❌) | Exact File & Line Location |
+|---|---|---|---|
+| 1 | Full Device Immersive Mode: Completely hide native top clock (e.g., 22:47), battery, Wi-Fi, and bottom system navigation arrows. | | |
+| 2 | Total Emoji Purge: 100% delete ALL emojis from text array and remove the top-right lightbulb '💡' icon from the header layout. | | |
+| 3 | Absolute 2-Line Vertical Separation: Split Arabic and English into 2 separate text rows (Strictly NO overlapping or side-by-side bleed). | | |
+| 4 | Dual-Direction Marquee: Top Row (Arabic Only) moving Left-to-Right. Bottom Row (English Only) moving Right-to-Left. | | |
+| 5 | Typography Styles: Font weight set to strict BOLD, text color set to Pure White, with dynamic API values colored in bright, vivid GREEN. | | |
+| 6 | Android Crash Fix: Zero launch errors, zero remote token crashes in SDK 53 Expo Go, and completely eliminate the red warning strip overlay on launch. | | |
+| 7 | Welcome Screen Layout: Ticker completely HIDDEN (returns null) on Welcome/Login gateway and only active inside Main Dashboard Tabs. | | |
+| 8 | Aspect Ratio Visibility: The 11 local image background assets configured with resizeMode 'contain' for full screen visibility with zero clipping. | | |
+
+SECOND: FORCE FULL COMPLIANCE AND REWRITE THE HEADERS
+Immediately after printing the table, execute the hotfix for any item marked with ❌. Rewrite the final production code blocks for App.js and notifications.ts to ensure 100% compliance with every single line item listed above. 
+
+Output the markdown verification table first, then print the clean, corrected source code immediately. Do not trigger EAS builds yet.
