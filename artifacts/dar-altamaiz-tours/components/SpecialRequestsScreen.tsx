@@ -416,7 +416,8 @@ export function SpecialRequestsScreen() {
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 120}
         style={{ flex: 1 }}
       >
       <ScrollView
@@ -689,7 +690,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 60,
   },
   welcomeText: {
     color: "rgba(255,255,255,0.80)",
