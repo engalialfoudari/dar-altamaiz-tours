@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   brandCashback: {
     color: "#FFFFFF",
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 6,
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
   brandTagline: {
     color: "rgba(255,255,255,0.55)",
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Inter_700Bold",
     textAlign: "center",
     lineHeight: 16,
     marginBottom: 20,
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
   guestBtnText: {
     color: "#FFFFFF",
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 0.4,
   },
 
