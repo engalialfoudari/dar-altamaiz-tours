@@ -1,0 +1,41 @@
+================================================================================
+MASTER COMPLIANCE PROMPT: CRITICAL EXPO SDK 53 FIX, IMMERSIVE FULLSCREEN, 
+DYNAMIC DUAL-DIRECTION SECURITY-HARDENED TICKER, AND OBFUSCATION CONFIGURATION
+================================================================================
+
+You are instructed to perform a comprehensive production refactor of App.js and the local project workspace configuration. This is the final blueprint. You must implement all the following architectural, visual, and security requirements simultaneously before compiling the production bundle. Do NOT skip any section.
+
+1. CRITICAL EXPO SDK 53 ANDROID NOTIFICATION FIX (CRASH ELIMINATION):
+   - Locate the `expo-notifications` setup and registration functions. 
+   - Wrap the entire initialization flow inside a robust try/catch block.
+   - Implement a platform/environment check: If running inside Expo Go or an un-detached dev environment, gracefully fall back to local-only scheduling. Prevent any remote token retrieval from throwing the "Uncaught Error: remote notification functionality removed in SDK 53" red screen. The app MUST open cleanly on Android.
+
+2. NATIVE FULLSCREEN IMMERSIVE MODE (BOTH OS):
+   - Import `StatusBar` from 'react-native' or 'expo-status-bar' and force `<StatusBar hidden={true} />` at the absolute root layout level.
+   - Completely hide the native device hardware clock, battery metrics, cellular signals, and Wi-Fi icons from the top header.
+   - Hide the bottom system navigation button bars/home indicator line. Force the active layout bounds to safely stretch 100% from the absolute top edge to the absolute bottom edge of the device screen.
+
+3. REFINED PREMIUM DUAL-DIRECTION TICKER COMPONENT SPECIFICATION:
+   - BACKGROUND: Solid Premium Deep Royal Blue (كحلي غامج ملكي) spanning the full width, placed directly above the main DT Tours logo layout.
+   - LAYOUT: Strictly 2 vertically stacked lines with independent animated horizontal marquee looping containers.
+     * TOP LINE: Loops the Arabic phrase from LEFT-TO-RIGHT (من اليسار إلى اليمين).
+     * BOTTOM LINE: Loops the English translation from RIGHT-TO-LEFT (من اليمين إلى اليسار).
+   - SPEED & PACE: Significantly slow down the scrolling loop velocity for a smooth, majestic, and highly readable pace on both rows.
+   - TYPOGRAPHY: Both lines must use the exact same highly readable text size and a strict BOLD weight. All standard text characters must be Pure White (أبيض ناصع).
+   - TOTAL EMOJI PURGE: Completely sanitize and remove all emoji characters, icons, and graphic symbols from the text strings.
+   - LIVE DATA HIGHLIGHTS: Programmatically wrap the dynamic live Replit API variables (the live KWD exchange rates and London weather/temperature values) so that they render in a bright, vivid GREEN color within the white sentences.
+   - VISIBILITY CONDITION: The ticker must return NULL (completely hidden) on the Welcome, Log In, and Guest Entry gateway screens. It must ONLY mount and display inside the main dashboard Home/Tabs view once the user enters the app.
+
+4. INJECT EXACT 15 REFINED TEXT STRINGS ARRAY (SANUTIZED & FORMATTED):
+   - Block 1: [AR] "استمتع بمميزات الاسترداد النقدي الفوري عند إتمام حجزك القادم عبر التطبيق. سعر صرف الدولار الحالي: [LIVE_RATE_GREEN] د.ك" | [EN] "Enjoy instant cashback rewards on your next booking through the app. Current USD rate: [LIVE_RATE_GREEN] KWD"
+   - Block 2: [AR] "تذكير يرجى التأكد من صلاحية جواز السفر لمدة لا تقل عن 6 أشهر قبل موعد رحلتك القادمة" | [EN] "Reminder Please ensure your passport is valid for at least 6 months before your upcoming departure"
+   - Block 3: [AR] "تمنياتنا لك برحلة سعيدة درجة الحرارة الحالية في لندن الآن هي: [LIVE_TEMP_GREEN]" | [EN] "Wishing you a wonderful journey Current temperature in London is: [LIVE_TEMP_GREEN]"
+   - Block 4: [AR] "اختصر وقتك وجهدك صمم باقة عطلتك المتكاملة من طيران وفنادق بلمسة واحدة وبأعلى درجات السهولة" | [EN] "Save time and effort Customize your complete holiday package with flights and hotels in just a single tap"
+   - Block 5: [AR] "احجز بطمأنينة وأمان جميع معاملاتك وحجوزاتك عبر منصتنا محمية ومؤكدة بأعلى معايير الأمان العالمية" | [EN] "Book with confidence and peace of mind All your transactions and bookings are fully secured with top global standards"
+   - Block 6: [AR] "تخطط لسفرة جماعية تواصل معنا الآن لتنسيق أجمل الرحلات والقروبات السياحية المتكاملة لخدمتكم" | [EN] "Planning a group trip Connect with us now to coordinate the finest integrated curated tours for you"
+   - Block 7: [AR] "نصيحة سفر تأكد من مراجعة الأوزان المسموحة على تذكرتك قبل التوجه للمطار لتجنب أي رسوم إضافية" | [EN] "Travel Tip Be sure to check the baggage weight allowance on your ticket before heading to the airport to avoid extra fees"
+   - Block 8: [AR] "سافر مع رفيق دربك الموثوق دار التميز نضع خبرتنا الطويلة منذ عام 2008 بين يديك لضمان عطلة تفوق توقعاتك" | [EN] "Travel with your trusted partner Dar AlTamaiz puts over a decade of travel expertise at your service to guarantee a perfect holiday"
+   - Block 9: [AR] "مرونة تامة في التخطيط يمكنك متابعة تفاصيل حجزك وإدارته بسهولة تامة وبأعلى درجات الراحة عبر منصتنا" | [EN] "Full flexibility in planning Track and manage your booking details seamlessly with ultimate comfort through our platform"
+   - Block 10: [AR] "العالم ينتظرك لاستكشافه خطط لرحلتك القادمة بتميز ودع مستشاري السفر لدينا يرسمون لك تفاصيلها الفاخرة" | [EN] "The world is waiting to be explored Plan your next journey with excellence and let our travel experts curate every luxury detail for you"
+   - Block 11: [AR] "نصيحة ذكية تذكر تفعيل بطاقاتك المصرفية للاستخدام الدولي وتأكد من الحصول على تأمين السفر لرحلة آمنة" | [EN] "Smart Tip Remember to activate your bank cards for international use and ensure you have travel insurance for a secure trip"
+   - Block 12: [AR] "حجوزاتك تحت السيطرة تابع حالة رحلتك الجوية واستلم تذاكرك وبطاقات صعود الطائرة فورا وبكل سهولة" | [EN] "Your bookings under control Track your flight status and receive your tickets and boarding passes instantly and with ease

@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
@@ -85,6 +86,18 @@ function getWindowedDate(daysFromNow: number): Date {
  */
 export async function scheduleRetentionNotifications(): Promise<void> {
   if (Platform.OS === "web") return;
+
+  // Expo Go on Android removed remote notification support in SDK 53+.
+  // Attempting to register there throws an uncaught red-screen crash.
+  // Detect Expo Go via executionEnvironment and bail out gracefully.
+  const isExpoGo =
+    (Constants.executionEnvironment as string) === "storeClient";
+  if (Platform.OS === "android" && isExpoGo) {
+    console.log(
+      "[Notifications] Expo Go/Android detected — skipping (SDK 53+ limitation)",
+    );
+    return;
+  }
 
   try {
     type PermResult = { granted: boolean; canAskAgain: boolean };
