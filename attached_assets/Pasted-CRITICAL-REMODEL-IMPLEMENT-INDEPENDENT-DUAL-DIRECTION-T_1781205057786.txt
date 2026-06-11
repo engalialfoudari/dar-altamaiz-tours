@@ -1,0 +1,21 @@
+CRITICAL REMODEL: IMPLEMENT INDEPENDENT DUAL-DIRECTION TICKERS (ARABIC L-TO-R / ENGLISH R-TO-L), UNIFY BOLD WHITE TEXT, REMOVE EMOJIS, AND HIGHLIGHT LIVE DATA IN BRIGHT GREEN
+
+The current ticker setup is incorrect. You must completely refactor the Top Ticker component in App.js into TWO distinct, vertically stacked marquee containers with opposite moving directions and explicit color highlights:
+
+1. Dual-Direction Architecture (UX REFACTOR):
+   - TOP ROW (Arabic Ticker): Create an independent horizontal animated container that scrolls cleanly from LEFT TO RIGHT (من اليسار إلى اليمين).
+   - BOTTOM ROW (English Ticker): Create a secondary independent horizontal container directly underneath the Arabic one, scrolling from RIGHT TO LEFT (من اليمين إلى اليسار).
+   - Speed: Ensure both containers scroll at a unified, beautifully slowed-down, steady pace.
+
+2. Typography, Colors & Data Highlights (Pure Professional Look):
+   - Background: Keep the full-width banner container solid Premium Deep Royal Blue.
+   - Text Size & Weight: Unify both lines to use the exact same highly readable font size and BOLD weight.
+   - Core Text Color: Pure White for all standard text characters.
+   - Live Data Highlights (NO EMOJIS): Completely remove all emojis (like 💎, 🧳, ⛅). Instead, programmatically wrap the dynamic fetched live values (the USD rate text, and the London temperature text) so they render in a striking, bright custom GREEN color within the white sentence.
+
+3. Updated 15 Sync Arrays Structure (Sample Format for Renderer):
+   - Row 1 (Top Arabic Scroll): "استمتع بمميزات الاسترداد النقدي الفوري عند إتمام حجزك القادم عبر التطبيق. سعر صرف الدولار الحالي: [LIVE_RATE_GREEN] د.ك" -> Moving L-to-R.
+   - Row 2 (Bottom English Scroll): "Enjoy instant cashback rewards on your next booking through the app. Current USD rate: [LIVE_RATE_GREEN] KWD" -> Moving R-to-L.
+   - Repeat this clean formatting structure for all 15 predefined commercial and safety tips seamlessly.
+
+Maintain the background refresh interval sync for the live Replit API data, alongside the 11 dynamic image background visibility presets, notification triggers, and expo-haptics. Update App.js now and output the completed, separated dual-marquee code.
