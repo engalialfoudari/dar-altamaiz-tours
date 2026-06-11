@@ -1,0 +1,27 @@
+CRITICAL FORCED RESET OF notifications.ts: FIX SYNTAX BREAKAGE, FULL EMOJI SANITIZATION, AND INJECT EXPO SDK 53 SAFE STRUCTURE
+
+You are completely breaking the application with lazy syntax fixes and ignoring explicit design instructions. The app is now crashing at line 22 inside 'notifications.ts' due to a broken object/array layout, and emojis are still appearing on iOS. 
+
+You must completely OVERWRITE and REPLACE the entire content of 'notifications.ts' with the following clean, hardened production template right now:
+
+1. ABSOLUTE TOP-LEVEL SAFETY (NO STATIC IMPORTS):
+   - Remove any top-level import of "expo-notifications". It must NOT be loaded at the top of the file to prevent Android SDK 53 Expo Go crashes.
+
+2. EMBED CLEAN SANITIZED MESSAGES ARRAY (ZERO EMOJIS):
+   - Reconstruct the core MESSAGES notification array cleanly with pure bilingual text:
+     * Message 1 (4 PM): { ar: "تابع عروض دار التميز الحصرية، وخطط لرحلتك القادمة بأفضل الأسعار المتاحة", en: "Follow Dar AlTamaiz exclusive offers, and plan your next trip with the best available rates." }
+     * Message 2 (7 PM): "تصفح مقترحاتنا الفاخرة لرحلات السفر اليوم" / "Where to next? Open the app and explore our luxury travel curation."
+
+3. SAFE IMPLEMENTATION FOR SCHEDULING & TOKENS:
+   - Inside every functional block (e.g., registerForPushNotificationsAsync, scheduleLocalNotification), apply a strict runtime safe-load via dynamic inline require:
+     ```javascript
+     let Notifications;
+     try {
+       Notifications = require('expo-notifications');
+     } catch (e) {
+       console.log("Expo Notifications module not available in this environment.");
+     }
+     ```
+   - Wrap the internal device token retrieval logic and schedule hooks in strict try/catch loops. If the push tokens fail or cannot be fetched within the current simulated client, log it gracefully to the console and return a safe fallback state so the application process does not block or crash.
+
+Re-write the entire 'notifications.ts' file cleanly right now. Do not preserve any broken brackets. Ensure zero emojis exist inside this file or the iOS layouts. Print the fully corrected code block immediately.
