@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Platform,
   Pressable,
   StatusBar,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -14,54 +13,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import colors from "@/constants/colors";
 
 const { navy, navyMid } = colors.light;
-
-function DigitalClock() {
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const timeStr = now.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  const dd = String(now.getDate()).padStart(2, "0");
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yyyy = now.getFullYear();
-  const dateStr = `${dd}/${mm}/${yyyy}`;
-
-  return (
-    <View style={clockStyles.wrap}>
-      <Text style={clockStyles.time}>{timeStr}</Text>
-      <Text style={clockStyles.date}>{dateStr}</Text>
-    </View>
-  );
-}
-
-const clockStyles = StyleSheet.create({
-  wrap: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  time: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1.2,
-    lineHeight: 18,
-  },
-  date: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 0.8,
-    lineHeight: 14,
-  },
-});
 
 function ChevronLeft({ size, color }: { size: number; color: string }) {
   return (
@@ -80,7 +31,6 @@ function ChevronLeft({ size, color }: { size: number; color: string }) {
 function LightBulbIcon({ size }: { size: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* bulb body */}
       <Path
         d="M9 21h6"
         stroke="#FFFFFF"
@@ -151,10 +101,8 @@ export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps)
           <View style={styles.sideSlot} />
         )}
 
-        {/* Centre: clock */}
-        <View style={styles.clockWrap}>
-          <DigitalClock />
-        </View>
+        {/* Centre: spacer (clock removed — ticker banner replaces it) */}
+        <View style={styles.centreSlot} />
 
         {/* Right: info button */}
         {onInfo != null ? (
@@ -200,10 +148,8 @@ const styles = StyleSheet.create({
   iconBtnPressed: {
     backgroundColor: "rgba(201,168,76,0.18)",
   },
-  clockWrap: {
+  centreSlot: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   sideSlot: {
     width: 40,

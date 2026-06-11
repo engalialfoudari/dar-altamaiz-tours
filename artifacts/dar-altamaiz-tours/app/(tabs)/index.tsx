@@ -19,6 +19,7 @@ import Svg, { Path } from "react-native-svg";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
+import { MarqueeTicker } from "@/components/MarqueeTicker";
 import { InfoModal } from "@/components/InfoModal";
 import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import colors from "@/constants/colors";
@@ -172,16 +173,20 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
       <ImageBackground
         source={bgImage}
         style={styles.bgImage}
-        resizeMode="cover"
+        resizeMode="contain"
       >
         <View style={styles.topOverlay} />
         <View style={styles.bottomOverlay} />
+
+        <View style={[styles.tickerAbs, { top: insets.top }]}>
+          <MarqueeTicker />
+        </View>
 
         <Animated.View
           style={[
             styles.logoArea,
             {
-              paddingTop: insets.top + (isTablet ? 56 : 44),
+              paddingTop: insets.top + 28 + (isTablet ? 56 : 44),
               opacity: logoFade,
             },
           ]}
@@ -404,6 +409,7 @@ function WebShell({
         canGoBack={canGoBackState}
         onInfo={() => setShowInfo(true)}
       />
+      <MarqueeTicker />
       <InfoModal visible={showInfo} onClose={() => setShowInfo(false)} />
 
       <View style={styles.webArea}>
@@ -603,6 +609,7 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   return (
     <View style={[styles.shellRoot, { width, height }]}>
       <AppHeader />
+      <MarqueeTicker />
       <View style={styles.webArea}>
         <iframe
           src={webUrl}
@@ -719,6 +726,12 @@ const styles = StyleSheet.create({
   welcomeRoot: {
     flex: 1,
     backgroundColor: navy,
+  },
+  tickerAbs: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
   },
   bgImage: {
     flex: 1,

@@ -1,0 +1,38 @@
+IMPLEMENT COMBINED LUXURY TRAVEL TICKER (LIVE REPLIT API) & OPTIMIZE THE 11 LOCAL IMAGE BACKGROUNDS FOR FULL VISIBILITY
+
+Please remove the static center Clock and Date from the header completely (as it duplicates the native phone status bar). Replace it with an elegant, full-width top dynamic informational/marketing ticker banner placed directly above the main DT Tours logo layout.
+
+1. THE 11 LOCAL BACKGROUND IMAGES LAYOUT OPTIMIZATION (NEW UX CRITICAL FIX):
+   - Review the layout rendering the 11 local image assets. Ensure that all background images are scaled dynamically and are FULLY VISIBLE across all mobile screen sizes.
+   - Prevent any unwanted cropping, cutting, or awkward stretching. Adjust the image components to use responsive resizing parameters (e.g., resizeMode: 'contain' or 'cover' combined with strict dynamic aspect ratio calculations) so the full asset is perfectly displayed without losing context or being clipped.
+
+2. CRITICAL LOCAL DATA FETCH SPECIFICATION:
+   - The Replit backend environment must independently source and fetch data from free, open-access public APIs (like OpenWeatherMap for weather and ExchangeRate-API for currency) directly to update the ticker values dynamically without requiring any custom user-registered API keys.
+   - Variables to fetch and display in real-time inside the text array: Current Live USD to KWD exchange rate AND Current Live Temperature & Weather status for London.
+
+3. TICKER UI & VISUAL SPECIFICATION:
+   - Styling: Thin, premium full-width top banner background (Deep Matte Black or Deepest Royal Blue).
+   - Animation: A flawless, continuous horizontal scrolling marquee using a smooth React Native animated loop (no jumps, no stutters, and lightweight on performance).
+   - Typography: Refined, crisp, small Gold corporate text.
+
+EXACT 15 REFINED BILINGUAL TEXT ARRAY TO INJECT INTO THE MARQUEE:
+1. "💎 استمتع بمميزات الاسترداد النقدي الفوري (Cashback) عند إتمام حجزك القادم عبر التطبيق. [سعر صرف الدولار الحالي: {LIVE_USD_KWD} د.ك] || Enjoy instant cashback rewards on your next booking through the app. [Current USD rate: {LIVE_USD_KWD} KWD]"
+2. "🧳 تذكير: يرجى التأكد من صلاحية جواز السفر لمدة لا تقل عن 6 أشهر قبل موعد رحلتك القادمة || Reminder: Please ensure your passport is valid for at least 6 months before your upcoming departure"
+3. "⛅️ تمنياتنا لك برحلة سعيدة.. درجة الحرارة الحالية في لندن الآن هي: {LIVE_LONDON_TEMP} || Wishing you a wonderful journey.. Current temperature in London is: {LIVE_LONDON_TEMP}"
+4. "✈️ اختصر وقتك وجهدك.. صمم باقة عطلتك المتكاملة من طيران وفنادق بلمسة واحدة وبأعلى درجات السهولة || Save time and effort.. Customize your complete holiday package with flights and hotels in just a single tap"
+5. "🔒 احجز بطمأنينة وأمان.. جميع معاملاتك وحجوزاتك عبر منصتنا محمية ومؤكدة بأعلى معايير الأمان العالمية || Book with confidence and peace of mind.. All your transactions and bookings are fully secured with top global standards"
+6. "👥 تخطيط لسفرة جماعية? تواصل معنا الآن لتنسيق أجمل الرحلات والقروبات السياحية المتكاملة لخدمتكم || Planning a group trip? Connect with us now to coordinate the finest integrated curated tours for you"
+7. "⚖️ نصيحة سفر: تأكد من مراجعة الأوزان المسموحة على تذكرتك قبل التوجه للمطار لتجنب أي رسوم إضافية || Travel Tip: Be sure to check the baggage weight allowance on your ticket before heading to the airport to avoid extra fees"
+8. "🧳 سافر مع رفيق دربك الموثوق.. دار التميز نضع خبرتنا الطويلة منذ عام 2008 بين يديك لضمان عطلة تفوق توقعاتك || Travel with your trusted partner.. Dar AlTamaiz puts over a decade of travel expertise at your service to guarantee a perfect holiday"
+9. "🔄 مرونة تامة في التخطيط.. يمكنك متابعة تفاصيل حجزك وإدارته بسهولة تامة وبأعلى درجات الراحة عبر منصتنا || Full flexibility in planning.. Track and manage your booking details seamlessly with ultimate comfort through our platform"
+10. "🗺️ العالم ينتظرك لاستكشافه.. خطط لرحلتك القادمة بتميز ودع مستشاري السفر لدينا يرسمون لك تفاصيلها الفاخرة || The world is waiting to be explored.. Plan your next journey with excellence and let our travel experts curate every luxury detail for you"
+11. "💳 نصيحة ذكية: تذكر تفعيل بطاقاتك المصرفية للاستخدام الدولي، وتأكَّد من الحصول على تأمين السفر لرحلة آمنة || Smart Tip: Remember to activate your bank cards for international use, and ensure you have travel insurance for a secure trip"
+12. "📲 حجوزاتك تحت السيطرة.. تابع حالة رحلتك الجوية واستلم تذاكرك وبطاقات صعود الطائرة فوراً وبكل سهولة || Your bookings under control.. Track your flight status and receive your tickets and boarding passes instantly and with ease"
+13. "⏰ نصيحة سفر: يُنصح بالوصول إلى المطار قبل 4 ساعات من موعد الرحلات الدولية لضمان إنهاء إجراءات سفرك براحة تامة || Travel Tip: It is recommended to arrive at the airport 4 hours before international flights to ensure a smooth check-in experience"
+14. "✨ الرفاهية تكمن في التفاصيل.. نحن هنا لنهتم بكل جزئية في رحلتك لنمنحك تجربة سفر ملكية تفخر بها || Luxury is in the details.. We are here to take care of every aspect of your trip to grant you a royal travel experience"
+15. "📞 أينما كنت حول العالم.. فريق دعم دار التميز معك على مدار الساعة طوال رحلتك لتقديم المساعدة الفورية || Wherever you are in the world.. Dar AlTamaiz support team is with you 24/7 throughout your journey to provide instant assistance"
+
+PRESERVED ARCHITECTURE:
+Maintain the persistent navigation tab loading overlay freeze fix, the 4 PM - 7 PM 3-tier notification sequence, AsyncStorage caching, and expo-haptics feedback.
+
+Update App.js locally in the workspace now. Print the updated background image layout configuration, the new Header code block, and the dynamic animated loop. Do NOT trigger an EAS build yet.
