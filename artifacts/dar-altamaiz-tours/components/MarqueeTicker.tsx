@@ -156,7 +156,11 @@ interface StepState {
   lang: Lang;
 }
 
-export function MarqueeTicker() {
+interface MarqueeTickerProps {
+  embedded?: boolean;
+}
+
+export function MarqueeTicker({ embedded = false }: MarqueeTickerProps) {
   const [usdKwd, setUsdKwd] = useState("0.307");
   const [eurKwd, setEurKwd] = useState("0.334");
   const [step, setStep] = useState<StepState>({ msgIdx: 0, lang: "ar" });
@@ -220,6 +224,24 @@ export function MarqueeTicker() {
     return parseSegments(template, usdKwd, eurKwd);
   }, [step, usdKwd, eurKwd]);
 
+  if (embedded) {
+    return (
+      <Animated.View style={[styles.embeddedContent, { opacity }]}>
+        <Text style={styles.embeddedText} numberOfLines={1} ellipsizeMode="tail">
+          {segments.map((seg, i) =>
+            seg.live ? (
+              <Text key={i} style={styles.embeddedLive}>
+                {seg.text}
+              </Text>
+            ) : (
+              seg.text
+            ),
+          )}
+        </Text>
+      </Animated.View>
+    );
+  }
+
   return (
     <View style={styles.banner}>
       <Animated.View style={[styles.content, { opacity }]}>
@@ -269,5 +291,25 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontWeight: "bold",
     fontSize: 13,
+  },
+  embeddedContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  embeddedText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    fontWeight: "700",
+    textAlign: "center",
+    includeFontPadding: false,
+  },
+  embeddedLive: {
+    color: LIVE_GREEN,
+    fontFamily: "Inter_700Bold",
+    fontWeight: "700",
+    fontSize: 12,
   },
 });

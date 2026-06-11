@@ -19,7 +19,6 @@ import Svg, { Path } from "react-native-svg";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
-import { MarqueeTicker } from "@/components/MarqueeTicker";
 import { InfoModal } from "@/components/InfoModal";
 import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import colors from "@/constants/colors";
@@ -405,7 +404,6 @@ function WebShell({
         canGoBack={canGoBackState}
         onInfo={() => setShowInfo(true)}
       />
-      <MarqueeTicker />
       <InfoModal visible={showInfo} onClose={() => setShowInfo(false)} />
 
       <View style={styles.webArea}>
@@ -605,7 +603,6 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
   return (
     <View style={[styles.shellRoot, { width, height }]}>
       <AppHeader />
-      <MarqueeTicker />
       <View style={styles.webArea}>
         <iframe
           src={webUrl}

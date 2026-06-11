@@ -10,6 +10,7 @@ import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
+import { MarqueeTicker } from "@/components/MarqueeTicker";
 
 const { navy, navyMid } = colors.light;
 
@@ -66,7 +67,7 @@ export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps)
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  const headerHeight = isTablet ? 60 : 52;
+  const headerHeight = 50;
   const iconSize = isTablet ? 24 : 22;
   const chevronColor = canGoBack ? "#FFFFFF" : "rgba(255,255,255,0.25)";
 
@@ -91,7 +92,7 @@ export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps)
           <View style={styles.sideSlot} />
         )}
 
-        <View style={styles.centreSlot} />
+        <MarqueeTicker embedded />
 
         {onInfo != null ? (
           <Pressable
@@ -138,6 +139,10 @@ const styles = StyleSheet.create({
   },
   centreSlot: {
     flex: 1,
+    marginHorizontal: 12,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
   },
   sideSlot: {
     width: 40,

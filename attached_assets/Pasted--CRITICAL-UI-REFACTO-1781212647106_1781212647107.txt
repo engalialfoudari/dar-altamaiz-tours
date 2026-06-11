@@ -1,0 +1,25 @@
+================================================================================
+CRITICAL UI REFACTOR: COMPACT SINGLE-ROW HEADER ARCHITECTURE (FORCE INLINE LAYOUT)
+================================================================================
+
+[UX DIRECTIVE]: The current header implementation vertically stacks elements, which consumes excessive screen real estate and reduces the vertical viewport for the main webview container. You must completely refactor the layout structure inside 'AppHeader.tsx' and 'MarqueeTicker.tsx' to merge all core navigation and informational controls into a single, highly-optimized horizontal line container.
+
+1. SINGLE-ROW FLEXBOX INTEGRATION (AppHeader.tsx):
+   - Redesign the top layout header wrapper to be a single horizontal row with a strict fixed height: `height: 48` or `height: 50` max.
+   - Use `flexDirection: 'row'`, `alignItems: 'center'`, and `justifyContent: 'space-between'` configuration to structurally align all elements on the exact same vertical plane:
+     * LEFT ACTION SLOT: Place the Back Arrow (<) button component cleanly on the left margin.
+     * CENTER ACTION SLOT: Inject the Stepped Fading Carousel Ticker directly in the middle. Give it a flexible width (`flex: 1`, `marginHorizontal: 12`) so it populates the entire safe center space without crowding.
+     * RIGHT ACTION SLOT: Place the functional instruction LightBulb button (💡) cleanly on the right margin.
+
+2. TICKER COMPACTNESS & TYPOGRAPHY STANDARDS (MarqueeTicker.tsx):
+   - Adapt the 4.0-second fading text carousel component to sit cleanly inside the new narrow middle layout block without causing any line wrapping.
+   - Adjust the text properties to look exceptionally premium and readable:
+     * Font Weight must be strictly set to 'bold' / '700' for all language phases.
+     * Ensure all dynamic variable highlights (USD, EUR, and phrases like "كاش باك" / "instant cashback rewards") retain their vivid green (`color: '#00FF00'`) parameters.
+     * Ensure the background of the ticker blends seamlessly with the master Deep Royal Blue corporate header container.
+
+3. WORKSPACE CLEANUP AND CACHE RESET:
+   - Ensure that the global hidden flag for the system device status bars (`StatusBar.setHidden(true)`) remains perfectly stable and unaffected by this layout inline tightening.
+   - Clean the bundle stack and refresh the local compiler server cache to verify the changes immediately.
+
+Execute this architectural single-row header consolidation now. Provide the updated file structures and confirm that the main view height has been successfully expanded.
