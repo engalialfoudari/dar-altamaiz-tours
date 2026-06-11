@@ -5,6 +5,7 @@ import {
   BackHandler,
   Image,
   ImageBackground,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
@@ -34,6 +36,7 @@ const INJECTED_JS = `
 `;
 
 const LOGIN_HOME_URL = "https://dt-tours.com/";
+const WHATSAPP_URL = "https://wa.me/96590087797";
 
 const LOGIN_MODAL_JS = `
 (function() {
@@ -76,7 +79,38 @@ function LoadingOverlay() {
   );
 }
 
-function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin: () => void }) {
+function OfflineBanner() {
+  return (
+    <View style={styles.offlineBanner} pointerEvents="none">
+      <Text style={styles.offlineBannerText}>
+        عذراً، اتصالك بالإنترنت غير مستقر. يرجى التحقق من الشبكة.
+      </Text>
+    </View>
+  );
+}
+
+function WhatsAppFAB({ bottom }: { bottom: number }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.whatsappFab, { bottom }, pressed && { opacity: 0.75 }]}
+      onPress={() => Linking.openURL(WHATSAPP_URL).catch(() => {})}
+      accessibilityLabel="Contact support on WhatsApp"
+    >
+      <Svg width={26} height={26} viewBox="0 0 24 24">
+        <Path
+          d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"
+          fill={gold}
+        />
+        <Path
+          d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.979-1.404A9.953 9.953 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.073-1.115l-.292-.174-3.035.855.806-3.02-.19-.31A7.948 7.948 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"
+          fill={gold}
+        />
+      </Svg>
+    </Pressable>
+  );
+}
+
+function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => void; onLogin: () => void; isOffline: boolean }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -193,20 +227,22 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
             Your Trusted Travel Partner Since 2008
           </Text>
 
-          <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%" }}>
+          <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%", opacity: isOffline ? 0.4 : 1 }}>
             <Pressable
               style={styles.ctaBtn}
-              onPress={onLogin}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
+              onPress={isOffline ? undefined : onLogin}
+              onPressIn={isOffline ? undefined : handlePressIn}
+              onPressOut={isOffline ? undefined : handlePressOut}
+              disabled={isOffline}
             >
               <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>Log In</Text>
             </Pressable>
           </Animated.View>
 
           <Pressable
-            style={({ pressed }) => [styles.guestBtn, pressed && { opacity: 0.7 }]}
-            onPress={onExplore}
+            style={({ pressed }) => [styles.guestBtn, pressed && !isOffline && { opacity: 0.7 }, isOffline && { opacity: 0.4 }]}
+            onPress={isOffline ? undefined : onExplore}
+            disabled={isOffline}
           >
             <Text style={[styles.guestBtnText, isTablet && { fontSize: 15 }]}>
               Continue as Guest
@@ -515,11 +551,20 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const [triggerLogin, setTriggerLogin] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web";
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!(state.isConnected && state.isInternetReachable !== false));
+    });
+    return () => unsubscribe();
+  }, []);
 
   const transitionToShell = (url: string, loginTrigger = false) => {
     setInitialShellUrl(url);
@@ -563,9 +608,15 @@ export default function HomeScreen() {
           style={[layerStyle, { opacity: welcomeOpacity }]}
           pointerEvents={phase === "transitioning" ? "none" : "auto"}
         >
-          <WelcomeScreen onExplore={handleExplore} onLogin={handleLogin} />
+          <WelcomeScreen onExplore={handleExplore} onLogin={handleLogin} isOffline={isOffline} />
         </Animated.View>
       )}
+
+      {/* Offline banner — floats over everything when connection drops */}
+      {isOffline && <OfflineBanner />}
+
+      {/* WhatsApp FAB — always visible, above the tab bar */}
+      <WhatsAppFAB bottom={insets.bottom + 80} />
     </View>
   );
 }
@@ -823,12 +874,43 @@ const styles = StyleSheet.create({
   },
 
   offlineBanner: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: navy,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(10,22,40,0.97)",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 36,
-    zIndex: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: gold,
+    zIndex: 9999,
+  },
+  offlineBannerText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  whatsappFab: {
+    position: "absolute",
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: navy,
+    borderWidth: 2,
+    borderColor: gold,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    zIndex: 1000,
   },
   offlineIcon: {
     fontSize: 52,
