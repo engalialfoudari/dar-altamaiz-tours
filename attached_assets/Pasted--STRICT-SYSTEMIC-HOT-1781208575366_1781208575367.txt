@@ -1,0 +1,29 @@
+================================================================================
+STRICT SYSTEMIC HOTFIX DIRECTIVE: ELIMINATE HALLUCINATION, FORCE 2-ROW FLEX COMPONENT, 
+AND ENFORCE TOTAL TEXT SANITIZATION VIA DIRECT CODE INJECTION
+================================================================================
+
+[CRITICAL WARNING]: DO NOT HALLUCINATE. Do not write generic explanations, do not reuse cached broken wrappers, and do not ignore the structural layout constraints. The client UI is failing because you are incorrectly using absolute positioning and layout structures that crash on Android rendering engines and bleed on iOS. You must strictly execute the following engineering modifications in 'MarqueeTicker.tsx' and 'AppHeader.tsx' NOW.
+
+1. ZERO-HALLUCINATION UI RE-CONSTRUCTION (MarqueeTicker.tsx):
+   - Completely DEPRECATE and remove any code path using `position: 'absolute'` or absolute horizontal translation layers that allow child nodes to bleed out of container bounds.
+   - Force a predictable, static vertical stacking pipeline using the exact React Native JSX primitive template below. Overwrite your current return statement with this:
+
+   ```jsx
+   <View style={{ flexDirection: 'column', height: 64, width: '100%', backgroundColor: '#0A192F', paddingVertical: 6, zIndex: 999 }}>
+     {/* ROW 1: ARABIC ONLY CONTAINER */}
+     <View style={{ height: 26, width: '100%', overflow: 'hidden', justifyContent: 'center' }}>
+       {/* Inject Left-to-Right Animated Marquee Content here */}
+       <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 'bold', textAlign: 'right' }}>
+         استمتع بمميزات الاسترداد النقدي الفوري عند إتمام حجزك القادم عبر التطبيق. سعر صرف الدولار الحالي: <Text style={{ color: '#00FF00', fontWeight: 'bold' }}>{LIVE_USD_KWD}</Text> د.ك
+       </Text>
+     </View>
+     
+     {/* ROW 2: ENGLISH ONLY CONTAINER */}
+     <View style={{ height: 26, width: '100%', overflow: 'hidden', justifyContent: 'center', marginTop: 6 }}>
+       {/* Inject Right-to-Left Animated Marquee Content here */}
+       <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 'bold', textAlign: 'left' }}>
+         Enjoy instant cashback rewards on your next booking through the app. Current USD rate: <Text style={{ color: '#00FF00', fontWeight: 'bold' }}>{LIVE_USD_KWD}</Text> KWD
+       </Text>
+     </View>
+   </View>

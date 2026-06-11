@@ -9,13 +9,13 @@ import {
   View,
 } from "react-native";
 
-export const TICKER_HEIGHT = 56;
-const SCROLL_SPEED = 28; // px/s — slow, majestic
+export const TICKER_HEIGHT = 64;
+const SCROLL_SPEED = 28; // px/s
 const API_BASE = (process.env["EXPO_PUBLIC_API_BASE"] ?? "").replace(/\/$/, "");
 const REFRESH_MS = 30 * 60 * 1000;
 const SEPARATOR = "               —               ";
 const ND = Platform.OS !== "web";
-const LIVE_GREEN = "#00E676";
+const LIVE_GREEN = "#00FF00";
 
 type Segment = { text: string; live?: boolean };
 
@@ -82,7 +82,6 @@ const MESSAGES: Array<{ ar: string; en: string }> = [
   },
 ];
 
-// "{USD_KWD}".length === 9, "{LONDON_TEMP}".length === 13
 function parseSegments(
   template: string,
   usdKwd: string,
@@ -97,8 +96,7 @@ function parseSegments(
       result.push({ text: remaining });
       break;
     }
-    const isUsd =
-      ui !== -1 && (ti === -1 || ui < ti);
+    const isUsd = ui !== -1 && (ti === -1 || ui < ti);
     const idx = isUsd ? ui : ti;
     if (idx > 0) result.push({ text: remaining.slice(0, idx) });
     result.push({ text: isUsd ? usdKwd : londonTemp, live: true });
@@ -141,8 +139,7 @@ function SegText({ segments, onLayout }: SegTextProps) {
 }
 
 function useMarqueeAnim(direction: "ltr" | "rtl") {
-  const fromVal = direction === "ltr" ? -1 : 0; // will be updated in start()
-  const translateX = useRef(new Animated.Value(fromVal)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
   const widthRef = useRef(0);
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -179,8 +176,8 @@ export function MarqueeTicker() {
   const [usdKwd, setUsdKwd] = useState("0.307");
   const [londonTemp, setLondonTemp] = useState("—°C");
 
-  const arAnim = useMarqueeAnim("ltr"); // Arabic: left → right
-  const enAnim = useMarqueeAnim("rtl"); // English: right → left
+  const arAnim = useMarqueeAnim("ltr");
+  const enAnim = useMarqueeAnim("rtl");
 
   useEffect(() => {
     const refresh = () => {
@@ -211,7 +208,7 @@ export function MarqueeTicker() {
 
   return (
     <View style={styles.banner}>
-      {/* TOP ROW — Arabic, scrolls LEFT → RIGHT */}
+      {/* ROW 1: ARABIC ONLY — scrolls Left to Right */}
       <View style={styles.row}>
         <Animated.View
           style={[styles.track, { transform: [{ translateX: arAnim.translateX }] }]}
@@ -224,8 +221,8 @@ export function MarqueeTicker() {
         </Animated.View>
       </View>
 
-      {/* BOTTOM ROW — English, scrolls RIGHT → LEFT */}
-      <View style={styles.row}>
+      {/* ROW 2: ENGLISH ONLY — scrolls Right to Left */}
+      <View style={[styles.row, styles.rowGap]}>
         <Animated.View
           style={[styles.track, { transform: [{ translateX: enAnim.translateX }] }]}
         >
@@ -242,37 +239,41 @@ export function MarqueeTicker() {
 
 const styles = StyleSheet.create({
   banner: {
+    flexDirection: "column",
     width: "100%",
     height: TICKER_HEIGHT,
-    backgroundColor: "#0C1E3E",
-    overflow: "hidden",
-    justifyContent: "center",
-    paddingVertical: 5,
+    backgroundColor: "#0A192F",
+    paddingVertical: 0,
+    zIndex: 999,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.15)",
   },
   row: {
-    height: 22,
+    height: 26,
+    width: "100%",
     overflow: "hidden",
+    justifyContent: "center",
+    marginTop: 6,
+  },
+  rowGap: {
+    marginTop: 6,
   },
   track: {
     flexDirection: "row",
     alignItems: "center",
-    height: 22,
+    height: 26,
     flexShrink: 0,
   },
   text: {
     color: "#FFFFFF",
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.1,
-    paddingHorizontal: 12,
+    fontSize: 14,
+    fontWeight: "bold",
     includeFontPadding: false,
     flexShrink: 0,
   },
   live: {
     color: LIVE_GREEN,
-    fontFamily: "Inter_700Bold",
-    fontSize: 12,
+    fontWeight: "bold",
+    fontSize: 14,
   },
 });
