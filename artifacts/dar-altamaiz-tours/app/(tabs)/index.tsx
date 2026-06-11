@@ -158,7 +158,7 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
             adjustsFontSizeToFit
             style={[
               styles.brandTitle,
-              isTablet && { fontSize: 22 },
+              isTablet && { fontSize: 34 },
               {
                 color: titleShimmer.interpolate({
                   inputRange: [0, 0.5, 1],
@@ -631,11 +631,11 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     color: gold,
-    fontSize: 19,
+    fontSize: 28,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     marginBottom: 8,
-    letterSpacing: 0.2,
+    letterSpacing: 0.5,
   },
   brandCashback: {
     color: "#FFFFFF",
