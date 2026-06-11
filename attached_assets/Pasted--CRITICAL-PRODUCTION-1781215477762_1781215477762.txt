@@ -1,0 +1,31 @@
+================================================================================
+CRITICAL PRODUCTION CRASH ALERT: FIX APK CRASH ON LAUNCH (IMMEDIATE REFACTOR)
+================================================================================
+
+[EMERGENCY]: The compiled Android APK installs successfully, but instantly CRASHES (opens and closes in the same millisecond) upon launching on a physical device. This indicates a fatal native runtime rejection, typically caused by unsafe StatusBar hiding APIs, unprotected network fetches at early mount, or invalid Animation native driver configurations.
+
+You must immediately execute this 3-step refactor before any further compilation:
+
+1. PROTECT EARLY API FETCHES (MarqueeTicker.tsx / App.js):
+   - Locate the USD and EUR exchange rate network fetch functions.
+   - Wrap the entire execution block inside a strict `try { ... } catch (error) { ... }` block.
+   - Ensure that if the network fetches fail or delay, the component defaults to fallback hardcoded safe strings (e.g., "0.307 KWD") so the layout NEVER renders a null/undefined value which causes an instant native app crash.
+
+2. FIX ANDROID IMMERSIVE STYLING SAFELY (app.json & App.js):
+   - Remove any unstable imperially forced `Platform.OS === 'android'` navigation bar hiding code that overrides native view layout stacks.
+   - To hide the status bar safely on Android configuration, open `app.json` and ensure it is declared structurally via Expo configurations:
+     ```json
+     "android": {
+       "statusBar": {
+         "hidden": true,
+         "translucent": true
+       }
+     }
+     ```
+   - In the root JS layer, safely use `<StatusBar hidden={true} translucent />` from 'expo-status-bar' rather than raw react-native system control locks.
+
+3. AUDIT ANIMATION DRIVER TIMING (MarqueeTicker.tsx):
+   - Check your `Animated.timing` loops for the 4.0-second fading text carousel.
+   - Ensure that `useNativeDriver: true` is ONLY applied to the `opacity` property. If you applied it to non-layout scale parameters, change it to `useNativeDriver: false` or verify it strictly against Android engine compatibility.
+
+Review these three failure points right now. Implement the safe protections across the codebase, clear the production build caches, and prepare to rebuild the corrected APK package. Print the modified code blocks immediately.

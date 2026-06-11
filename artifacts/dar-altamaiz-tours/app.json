@@ -31,6 +31,10 @@
       "bundleIdentifier": "com.dttours.app"
     },
     "android": {
+      "statusBar": {
+        "hidden": true,
+        "translucent": true
+      },
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.INTERNET",

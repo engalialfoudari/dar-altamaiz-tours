@@ -48,10 +48,13 @@ export default function RootLayout() {
 
   // Immersive fullscreen: hide system bars on both platforms
   useEffect(() => {
-    // Imperative hide — overrides any component that tries to show the bar
-    RNStatusBar.setHidden(true, "slide");
+    try {
+      RNStatusBar.setHidden(true, "slide");
+    } catch {}
     if (Platform.OS === "android") {
-      NavigationBar.setVisibilityAsync("hidden").catch(() => {});
+      try {
+        NavigationBar.setVisibilityAsync("hidden").catch(() => {});
+      } catch {}
     }
   }, []);
 
