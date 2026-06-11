@@ -51,8 +51,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
-            {/* Hide status bar on both platforms — fullscreen immersive */}
-            <StatusBar hidden />
+            <StatusBar hidden={false} style="light" backgroundColor="#0A192F" />
             <RootLayoutNav />
             {showSplash && (
               <AnimatedSplash onAnimationEnd={() => setShowSplash(false)} />

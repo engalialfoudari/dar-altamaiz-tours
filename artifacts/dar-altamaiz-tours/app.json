@@ -32,8 +32,9 @@
     },
     "android": {
       "statusBar": {
-        "hidden": true,
-        "translucent": true
+        "hidden": false,
+        "translucent": false,
+        "backgroundColor": "#0A192F"
       },
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
