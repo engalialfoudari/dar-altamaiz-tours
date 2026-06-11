@@ -75,6 +75,10 @@ function getWindowedDate(daysFromNow: number): Date {
  * notifications before re-scheduling.
  */
 export async function scheduleRetentionNotifications(): Promise<void> {
+  // Completely bypass on Android — expo-notifications crashes Expo Go on
+  // Android (SDK 53+). Re-enable for production APK/AAB when using a
+  // development build instead of Expo Go.
+  if (Platform.OS === "android") return;
   if (Platform.OS === "web") return;
 
   // Dynamically load the module so that if expo-notifications throws on

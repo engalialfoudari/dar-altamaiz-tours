@@ -638,7 +638,11 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    scheduleRetentionNotifications();
+    // Android: notifications disabled — expo-notifications crashes Expo Go on SDK 53+.
+    // Re-enable when using a development build / production APK.
+    if (Platform.OS !== "android") {
+      scheduleRetentionNotifications();
+    }
   }, []);
 
   const transitionToShell = (url: string, loginTrigger = false) => {
