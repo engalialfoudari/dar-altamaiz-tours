@@ -39,6 +39,20 @@ const INJECTED_JS = `
 const LOGIN_HOME_URL = "https://dt-tours.com/";
 const WHATSAPP_URL = "https://wa.me/96590087797";
 
+const BG_IMAGES = [
+  require("../../assets/images/bg-01.jpg"),
+  require("../../assets/images/bg-02.jpg"),
+  require("../../assets/images/bg-03.jpg"),
+  require("../../assets/images/bg-04.jpg"),
+  require("../../assets/images/bg-05.jpg"),
+  require("../../assets/images/bg-06.jpg"),
+  require("../../assets/images/bg-07.jpg"),
+  require("../../assets/images/bg-08.jpg"),
+  require("../../assets/images/bg-09.jpg"),
+  require("../../assets/images/bg-10.jpg"),
+  require("../../assets/images/bg-11.jpg"),
+];
+
 const LOGIN_MODAL_JS = `
 (function() {
   var selectors = [
@@ -117,6 +131,8 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
   const isTablet = width >= 768;
   const nd = Platform.OS !== "web";
 
+  const bgImage = useRef(BG_IMAGES[Math.floor(Math.random() * 11)]).current;
+
   const logoFade = useRef(new Animated.Value(0)).current;
   const cardFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(48)).current;
@@ -149,7 +165,7 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
   return (
     <View style={styles.welcomeRoot}>
       <ImageBackground
-        source={require("../../assets/images/welcome-bg.png")}
+        source={bgImage}
         style={styles.bgImage}
         resizeMode="cover"
       >
