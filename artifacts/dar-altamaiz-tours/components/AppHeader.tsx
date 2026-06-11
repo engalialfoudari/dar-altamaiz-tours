@@ -67,7 +67,7 @@ export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps)
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  const headerHeight = 64;
+  const headerHeight = 90;
   const iconSize = isTablet ? 24 : 22;
   const chevronColor = canGoBack ? "#FFFFFF" : "rgba(255,255,255,0.25)";
 
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   },
   centreSlot: {
     flex: 1,
-    marginHorizontal: 12,
+    marginHorizontal: 20,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",

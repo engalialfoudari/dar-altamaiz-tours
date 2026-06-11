@@ -227,7 +227,7 @@ export function MarqueeTicker({ embedded = false }: MarqueeTickerProps) {
   if (embedded) {
     return (
       <Animated.View style={[styles.embeddedContent, { opacity }]}>
-        <Text style={styles.embeddedText} numberOfLines={2}>
+        <Text style={styles.embeddedText} numberOfLines={3}>
           {segments.map((seg, i) =>
             seg.live ? (
               <Text key={i} style={styles.embeddedLive}>
@@ -300,10 +300,11 @@ const styles = StyleSheet.create({
   },
   embeddedText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "Inter_700Bold",
     fontWeight: "700",
     textAlign: "center",
+    lineHeight: 18,
     includeFontPadding: false,
   },
   embeddedLive: {

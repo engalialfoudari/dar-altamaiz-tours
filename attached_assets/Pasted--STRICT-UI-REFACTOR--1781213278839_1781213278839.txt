@@ -1,0 +1,27 @@
+================================================================================
+STRICT UI REFACTOR: 3-LINE TEXT COMPLIANCE & INCREASED HORIZONTAL GUTTERS
+FOR PROFESSIONAL BILINGUAL HEADER SYMMETRY
+================================================================================
+
+[ENGINEERING DIRECTIVE]: The current header height is still slightly restrictive. We need to expand the vertical and horizontal breathing room to ensure a "3-line text wrap" is possible without the text touching the navigation icons. 
+
+Please apply these strict architectural changes to 'AppHeader.tsx' and 'MarqueeTicker.tsx':
+
+1. VERTICAL EXPANSION & MASTER ALIGNMENT:
+   - Increase the Header container height to exactly `height: 90` to comfortably accommodate 3 lines of text plus internal padding.
+   - Force `alignItems: 'center'` and `flexDirection: 'row'` on the master wrapper to keep the Back Arrow (<) and LightBulb (💡) perfectly centered vertically within this new 90px height.
+
+2. TEXT AREA RE-SPACING (THE "BREATHING ROOM"):
+   - Apply a strict `marginHorizontal: 20` or `paddingHorizontal: 20` to the central Ticker container. 
+   - Ensure there is a CLEAR visible gap between the text and the icons on both sides. The text should NEVER overlap or get too close to the arrow or the bulb.
+
+3. 3-LINE TEXT WRAP CONFIGURATION (MarqueeTicker.tsx):
+   - Set the Text component style to support exactly 3 lines of text:
+     `style={{ color: '#FFFFFF', fontSize: 13, fontWeight: 'bold', textAlign: 'center', flexWrap: 'wrap', lineHeight: 18 }}`
+   - Ensure `numberOfLines={3}` is set to allow full visibility of the longest Arabic/English phrases in the 15-string array.
+   - Maintain the Vivid Green (#00FF00) bold highlights for: {LIVE_USD_KWD}, {LIVE_EUR_KWD}, "كاش باك", "instant cashback rewards", and dates.
+
+4. BUNDLE CACHE REFRESH:
+   - Perform a hard refresh of the bundler to ensure the new 90px height and the 3-line wrap logic are rendered correctly on the Android and iOS simulators.
+
+Execute this finalized layout optimization now. Ensure the header looks clean, spacious, and perfectly balanced. Print the updated layout blocks immediately.
