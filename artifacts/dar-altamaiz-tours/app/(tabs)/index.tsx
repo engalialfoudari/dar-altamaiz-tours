@@ -155,10 +155,9 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
         >
           <Animated.Text
             numberOfLines={1}
-            adjustsFontSizeToFit
             style={[
               styles.brandTitle,
-              isTablet && { fontSize: 34 },
+              isTablet && { fontSize: 28 },
               {
                 color: titleShimmer.interpolate({
                   inputRange: [0, 0.5, 1],
@@ -631,11 +630,11 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     color: gold,
-    fontSize: 28,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     marginBottom: 8,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   brandCashback: {
     color: "#FFFFFF",
