@@ -256,10 +256,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   track: {
-    position: "absolute",
     flexDirection: "row",
     alignItems: "center",
     height: 22,
+    flexShrink: 0,
   },
   text: {
     color: "#FFFFFF",

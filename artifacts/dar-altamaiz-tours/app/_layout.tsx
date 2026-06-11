@@ -10,7 +10,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, StatusBar as RNStatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -46,8 +46,10 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Immersive fullscreen: hide Android software navigation bar
+  // Immersive fullscreen: hide system bars on both platforms
   useEffect(() => {
+    // Imperative hide — overrides any component that tries to show the bar
+    RNStatusBar.setHidden(true, "none");
     if (Platform.OS === "android") {
       NavigationBar.setVisibilityAsync("hidden").catch(() => {});
     }

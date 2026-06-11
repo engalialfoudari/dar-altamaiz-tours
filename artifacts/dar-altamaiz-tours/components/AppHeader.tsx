@@ -2,7 +2,6 @@ import React from "react";
 import {
   Platform,
   Pressable,
-  StatusBar,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -28,61 +27,24 @@ function ChevronLeft({ size, color }: { size: number; color: string }) {
   );
 }
 
-function LightBulbIcon({ size }: { size: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M9 21h6"
-        stroke="#FFFFFF"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M9 18h6"
-        stroke="#FFFFFF"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M15 15.5A6 6 0 1 0 9 15.5V18h6v-2.5z"
-        stroke="#FFFFFF"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
 interface AppHeaderProps {
   onBack?: () => void;
   canGoBack?: boolean;
   onInfo?: () => void;
 }
 
-export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps) {
+export function AppHeader({ onBack, canGoBack = false }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
-
-  const statusBarHeight =
-    Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : insets.top;
 
   const headerHeight = isTablet ? 60 : 52;
   const iconSize = isTablet ? 24 : 22;
   const chevronColor = canGoBack ? "#FFFFFF" : "rgba(255,255,255,0.25)";
 
   return (
-    <View style={[styles.header, { paddingTop: statusBarHeight }]}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={navy}
-        translucent={Platform.OS === "android"}
-      />
+    <View style={[styles.header, { paddingTop: insets.top }]}>
       <View style={[styles.inner, { height: headerHeight }]}>
-        {/* Left: back chevron */}
         {onBack != null ? (
           <Pressable
             style={({ pressed }) => [
@@ -101,26 +63,9 @@ export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps)
           <View style={styles.sideSlot} />
         )}
 
-        {/* Centre: spacer (clock removed — ticker banner replaces it) */}
         <View style={styles.centreSlot} />
 
-        {/* Right: info button */}
-        {onInfo != null ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconBtn,
-              pressed && styles.iconBtnPressed,
-            ]}
-            onPress={onInfo}
-            hitSlop={12}
-            accessibilityLabel="Search guidelines"
-            accessibilityRole="button"
-          >
-            <LightBulbIcon size={iconSize} />
-          </Pressable>
-        ) : (
-          <View style={styles.sideSlot} />
-        )}
+        <View style={styles.sideSlot} />
       </View>
     </View>
   );
