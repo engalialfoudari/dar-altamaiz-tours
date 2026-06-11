@@ -381,12 +381,10 @@ function WebShell({
       <InfoModal visible={showInfo} onClose={() => setShowInfo(false)} />
 
       <View style={styles.webArea}>
-        {showRequests && <SpecialRequestsScreen />}
-
         <WebView
           ref={webviewRef}
           source={{ uri: webUrl }}
-          style={[{ flex: 1 }, showRequests && { display: "none" as any }]}
+          style={{ flex: 1 }}
           javaScriptEnabled
           domStorageEnabled={true}
           mixedContentMode="always"
@@ -512,6 +510,14 @@ function WebShell({
             >
               <Text style={[styles.retryBtnText, isTablet && { fontSize: 16 }]}>Retry</Text>
             </Pressable>
+          </View>
+        )}
+
+        {/* Special Requests form — absolute overlay so it always fills
+            the full webArea height regardless of WebView flex layout */}
+        {showRequests && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#0A1628" }]}>
+            <SpecialRequestsScreen />
           </View>
         )}
       </View>
@@ -666,8 +672,6 @@ export default function HomeScreen() {
       {/* Offline banner — floats over everything when connection drops */}
       {isOffline && <OfflineBanner />}
 
-      {/* WhatsApp FAB — visible on welcome screen only; shell handles its own FAB */}
-      {phase === "welcome" && <WhatsAppFAB bottom={insets.bottom + 80} />}
     </View>
   );
 }
