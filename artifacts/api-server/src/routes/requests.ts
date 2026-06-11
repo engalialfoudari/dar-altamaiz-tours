@@ -63,7 +63,7 @@ router.post("/requests/submit", async (req, res) => {
 
   try {
     const info = await transporter.sendMail({
-      from: `"Dar AlTamaiz App" <${smtpUser}>`,
+      from: `"Dar AlTamaiz System" <${smtpUser}>`,
       to: mailTo,
       subject: `طلب خاص ${requestId} — ${flightFrom} → ${flightTo}`,
       html: `
