@@ -329,6 +329,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           setSupportMultipleWindows={false}
+          textZoom={100}
           injectedJavaScript={INJECTED_JS}
           injectedJavaScriptBeforeContentLoaded={INJECTED_JS}
           onNavigationStateChange={(navState: any) => {
@@ -340,8 +341,15 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
             setHasError(false);
             setWebError(null);
           }}
-          onLoad={() => setLoading(false)}
+          onLoadProgress={({ nativeEvent }: any) => {
+            // Hide the overlay as soon as 70% is painted — don't wait for
+            // background tracking scripts that delay onLoad by seconds.
+            if (nativeEvent.progress >= 0.7) {
+              setLoading(false);
+            }
+          }}
           onLoadEnd={() => {
+            // Final safety-net: ensure overlay is gone + trigger login modal.
             setLoading(false);
             if (pendingLoginTrigger.current) {
               pendingLoginTrigger.current = false;
