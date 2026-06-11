@@ -4,13 +4,11 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
-import * as NavigationBar from "expo-navigation-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { Platform, StatusBar as RNStatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -45,18 +43,6 @@ export default function RootLayout() {
       });
     }
   }, [fontsLoaded, fontError]);
-
-  // Immersive fullscreen: hide system bars on both platforms
-  useEffect(() => {
-    try {
-      RNStatusBar.setHidden(true, "slide");
-    } catch {}
-    if (Platform.OS === "android") {
-      try {
-        NavigationBar.setVisibilityAsync("hidden").catch(() => {});
-      } catch {}
-    }
-  }, []);
 
   if (!appReady) return null;
 
