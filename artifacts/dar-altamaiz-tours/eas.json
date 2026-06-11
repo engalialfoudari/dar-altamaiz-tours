@@ -12,6 +12,15 @@
       "env": {
         "ORG_GRADLE_PROJECT_newArchEnabled": "true"
       }
+    },
+    "production": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "ORG_GRADLE_PROJECT_newArchEnabled": "true"
+      }
     }
   }
 }
