@@ -1,0 +1,25 @@
+================================================================================
+CRITICAL UI REFACTOR: EXPAND HEADER VERTICALLY FOR 2-ROW TEXT MULTI-LINE COMPLIANCE
+AND FORCE PERFECT VERTICAL CENTER ALIGNMENT FOR NAVIGATION CONTROLS
+================================================================================
+
+[ENGINEERING ADJUSTMENT]: The single-row inline optimization is visually accurate, but the layout width restricts longer text phrases from rendering fully. We need to allow the text to wrap into exactly TWO lines maximum, while keeping the structural controls (Back Arrow and LightBulb) perfectly centered vertically inside the expanded header.
+
+Please modify 'AppHeader.tsx' and 'MarqueeTicker.tsx' immediately with the following strict styling parameters:
+
+1. INCREASE HEADER VERTICAL AREA & ENFORCE VERTICAL CENTERING:
+   - Increase the structural master wrapper row container in 'AppHeader.tsx' to a fixed height of `height: 64`.
+   - Maintain `flexDirection: 'row'` and explicitly ensure `alignItems: 'center'` is active on this master horizontal layout wrapper. This guarantees that both the Left Back Arrow (<) and the Right LightBulb Button (💡) remain perfectly centered vertically relative to the new 64px height context (no floating or misaligned icons).
+
+2. CONVERT TICKER TEXT LAYOUT TO MULTI-LINE/2-ROWS (MarqueeTicker.tsx):
+   - Locate the central `<Text>` rendering component inside the fading carousel.
+   - REMOVE any styling properties causing truncation like `numberOfLines={1}` or `ellipsizeMode`.
+   - Configure the Text component style to support text-wrapping naturally:
+     `style={{ color: '#FFFFFF', fontSize: 13, fontWeight: 'bold', textAlign: 'center', flexWrap: 'wrap', maxLines: 2 }}`
+   - Ensure that inside the center flex component, the Arabic and English phrases can drop to a second line dynamically if needed to show the FULL text context completely.
+   - Retain the pure bold white layout with vivid green (`#00FF00`) highlights for sensitive corporate terms and dynamic live currency variables.
+
+3. CACHE FORM FORCE RELOAD:
+   - Clear the current active expo bundler state to ensure this vertical sizing shift and alignment matrix synchronize smoothly on both Android and iOS viewports.
+
+Execute this layout tuning now. Verify the complete text visibility without horizontal cut-offs, and print the clean modified layout code blocks immediately.

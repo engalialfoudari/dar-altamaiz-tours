@@ -227,7 +227,7 @@ export function MarqueeTicker({ embedded = false }: MarqueeTickerProps) {
   if (embedded) {
     return (
       <Animated.View style={[styles.embeddedContent, { opacity }]}>
-        <Text style={styles.embeddedText} numberOfLines={1} ellipsizeMode="tail">
+        <Text style={styles.embeddedText} numberOfLines={2}>
           {segments.map((seg, i) =>
             seg.live ? (
               <Text key={i} style={styles.embeddedLive}>
