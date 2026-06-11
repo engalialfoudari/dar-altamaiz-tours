@@ -1,7 +1,10 @@
-import React, { useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -292,9 +295,24 @@ export function SpecialRequestsScreen() {
   const [activePicker, setActivePicker] = useState<"from" | "to" | null>(null);
 
   const [notes, setNotes] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
   const [successModal, setSuccessModal] = useState(false);
   const [requestId, setRequestId] = useState("");
+
+  useEffect(() => {
+    AsyncStorage.multiGet(["dt_contact_name", "dt_contact_email", "dt_contact_phone"])
+      .then((pairs) => {
+        const [name, email, phone] = pairs.map(([, v]) => v ?? "");
+        if (name) setContactName(name);
+        if (email) setContactEmail(email);
+        if (phone) setContactPhone(phone);
+      })
+      .catch(() => {});
+  }, []);
 
   const addHotel = () =>
     setHotels((p) => [
@@ -341,6 +359,9 @@ export function SpecialRequestsScreen() {
       );
       return;
     }
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
     const rid = generateRequestId();
     setSubmitting(true);
     try {
@@ -352,6 +373,9 @@ export function SpecialRequestsScreen() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             requestId: rid,
+            contactName: contactName.trim(),
+            contactEmail: contactEmail.trim(),
+            contactPhone: contactPhone.trim(),
             flightFrom: flightFrom.trim(),
             flightTo: flightTo.trim(),
             hotels: hotels
@@ -364,6 +388,12 @@ export function SpecialRequestsScreen() {
         });
         if (!res.ok) throw new Error("server_error");
       }
+      // Cache contact details for autofill on next visit
+      AsyncStorage.multiSet([
+        ["dt_contact_name", contactName.trim()],
+        ["dt_contact_email", contactEmail.trim()],
+        ["dt_contact_phone", contactPhone.trim()],
+      ]).catch(() => {});
       setFlightFrom("");
       setFlightTo("");
       setHotels([{ id: "1", name: "", city: "" }]);
@@ -389,6 +419,44 @@ export function SpecialRequestsScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Contact Info Section */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>👤  معلومات التواصل</Text>
+          <Text style={styles.fieldLabel}>Full Name (الاسم الكامل)</Text>
+          <TextInput
+            style={[styles.input, { marginBottom: 10 }]}
+            value={contactName}
+            onChangeText={setContactName}
+            placeholder="اسمك الكامل"
+            placeholderTextColor="rgba(255,255,255,0.25)"
+          />
+          <View style={styles.row}>
+            <View style={styles.halfField}>
+              <Text style={styles.fieldLabel}>Email (البريد)</Text>
+              <TextInput
+                style={styles.input}
+                value={contactEmail}
+                onChangeText={setContactEmail}
+                placeholder="email@example.com"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            <View style={[styles.halfField, { marginLeft: 10 }]}>
+              <Text style={styles.fieldLabel}>Phone (الهاتف)</Text>
+              <TextInput
+                style={styles.input}
+                value={contactPhone}
+                onChangeText={setContactPhone}
+                placeholder="+965 XXXX XXXX"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+        </View>
+
         {/* Welcome copy — exact spec Arabic */}
         <Text style={styles.welcomeText}>
           مرحباً بك في دار التميز. صمم رحلة مجموعتك أو قروبك الخاص وسنقوم

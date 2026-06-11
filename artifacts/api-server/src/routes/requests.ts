@@ -4,16 +4,29 @@ import nodemailer from "nodemailer";
 const router = Router();
 
 router.post("/requests/submit", async (req, res) => {
-  const { requestId, flightFrom, flightTo, hotels, dateFrom, dateTo, notes } =
-    req.body as {
-      requestId: string;
-      flightFrom: string;
-      flightTo: string;
-      hotels: Array<{ name: string; city: string } | string>;
-      dateFrom: string;
-      dateTo: string;
-      notes: string;
-    };
+  const {
+    requestId,
+    contactName,
+    contactEmail,
+    contactPhone,
+    flightFrom,
+    flightTo,
+    hotels,
+    dateFrom,
+    dateTo,
+    notes,
+  } = req.body as {
+    requestId: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    flightFrom: string;
+    flightTo: string;
+    hotels: Array<{ name: string; city: string } | string>;
+    dateFrom: string;
+    dateTo: string;
+    notes: string;
+  };
 
   req.log.info(
     { requestId, flightFrom, flightTo, hotels, dateFrom, dateTo },
@@ -73,6 +86,9 @@ router.post("/requests/submit", async (req, res) => {
           </h2>
           <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             <tr><td style="padding:8px;font-weight:bold;width:160px;">رقم الطلب</td><td style="padding:8px;color:#C9A84C;font-weight:bold;">${requestId}</td></tr>
+            ${contactName ? `<tr style="background:#fff;"><td style="padding:8px;font-weight:bold;">الاسم</td><td style="padding:8px;">${contactName}</td></tr>` : ""}
+            ${contactEmail ? `<tr><td style="padding:8px;font-weight:bold;">البريد</td><td style="padding:8px;">${contactEmail}</td></tr>` : ""}
+            ${contactPhone ? `<tr style="background:#fff;"><td style="padding:8px;font-weight:bold;">الهاتف</td><td style="padding:8px;">${contactPhone}</td></tr>` : ""}
             <tr style="background:#fff;"><td style="padding:8px;font-weight:bold;">من / From</td><td style="padding:8px;">${flightFrom}</td></tr>
             <tr><td style="padding:8px;font-weight:bold;">إلى / To</td><td style="padding:8px;">${flightTo}</td></tr>
             <tr style="background:#fff;"><td style="padding:8px;font-weight:bold;">تاريخ المغادرة</td><td style="padding:8px;">${dateFrom}</td></tr>

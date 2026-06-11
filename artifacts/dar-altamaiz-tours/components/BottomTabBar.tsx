@@ -6,6 +6,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -216,7 +217,10 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
           <Pressable
             key={tab.key}
             style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
-            onPress={() => onTabPress(tab)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              onTabPress(tab);
+            }}
             hitSlop={4}
           >
             {isActive && (

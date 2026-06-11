@@ -1,0 +1,31 @@
+CRITICAL PRODUCTION UPDATE: ENFORCE STRICT 4PM-7PM TIME WINDOW FOR ALL NOTIFICATION TIERS (INCLUDING MONTHLY CONTINUITY)
+
+Please review the local notification triggers and enforce a strict delivery window logic for ALL 3 tiers. The monthly ongoing continuity notification MUST also strictly execute only between 4:00 PM and 7:00 PM local time.
+
+Please completely update the codebase locally in Replit now with these exact final parameters:
+
+1. Premium UX Enhancements:
+   - A) Smart Local Caching (AsyncStorage): Autofill Name, Email, and Phone after the first successful Special Request.
+   - B) Haptic Feedback: Integrate light tactile haptics (`expo-haptics`) on tab navigation and submit buttons.
+   - C) Skeleton Placeholders: Render elegant pulsing structural blocks instead of raw spinners during page loading.
+
+2. Advanced 3-Tier Local Retention Notifications (Strict 4:00 PM - 7:00 PM Constraint):
+   - Every time the app opens, clear all existing scheduled notification triggers to reset the user cycle.
+   - When scheduling the background sequence, use a calendar-based or calculated time trigger that guarantees delivery strictly between 16:00 and 19:00 local time for ALL of the following:
+     * Tier 1: Exactly 7 days from the last app session (Delivered between 4 PM - 7 PM).
+     * Tier 2: Exactly 14 days after Tier 1 if the app remains unopened (Delivered between 4 PM - 7 PM).
+     * Tier 3 (Ongoing Monthly Continuity): Repeats every 30 days dynamically, and MUST strictly trigger only within the 4 PM - 7 PM window if the user hasn't logged back in.
+
+3. Final Approved Curated Bilingual Phrases (Classical Arabic & English):
+     1. "أهلاً بك مجدداً.. وجهاتنا السياحية الجديدة باتت جاهزة ومعدة بالكامل لأجلك. ✨" / "Welcome back! Discover our newly updated premium destinations. ✨"
+     2. "يسعدنا تواصلك معنا.. هل تخطط لرحلتك القادمة؟ دار التميز في خدمتك دائماً. ✈️" / "Ready for your next getaway? Dar AlTamaiz is at your service. ✈️"
+     3. "رحلتك القادمة تبدأ من هنا.. تصفح أفضل خيارات الفنادق ورحلات الطيران المتوفرة الآن. ✈️" / "Your next journey starts here.. Browse the best hotel and flight options available now. ✈️"
+     4. "ندعوك لأخذ قسط من الراحة.. تصفح مقترحاتنا الفاخرة لرحلات السفر اليوم. 🗺️" / "Where to next? Open the app and explore our premium travel guides. 🗺️"
+     5. "سافر براحة بال مطلقة.. خدماتنا المتكاملة بانتظار تشريفك بلمسة واحدة. 💎" / "Travel with peace of mind. Complete bespoke services are ready for you. 💎"
+     6. "عطلتك الفاخرة القادمة بانتظارك.. احجز الآن واستمتع بمميزات الاسترداد النقدي. 🌊" / "A premium holiday awaits. Book now and enjoy exclusive cashback. 🌊"
+     7. "جدول أعمالك مزدحم؟ رتب رحلتك القادمة بثوانٍ معدودة ودع الباقي علينا. 🗓️" / "Busy schedule? Arrange your next luxury tour in seconds. 🗓️"
+     8. "نتطلع لخدمتك دائماً.. تواصل مع مستشاري السفر لدينا لتخطيط رحلتك القادمة. 👑" / "Always honored to serve you. Connect with our experts for your next tour. 👑"
+     9. "يسعدنا دائماً أن نكون جزءاً من ذكرياتك.. دار التميز، شريك سفرك الموثوق منذ 2008. 🧳" / "We value your presence. Your trusted travel partner since 2008. 🧳"
+     10. "خطط لرحلتك القادمة بتميز.. تواصل معنا الآن لترتيب برنامجك السياحي المتكامل. ✨" / "Plan with excellence. Connect with us to arrange your complete itinerary. ✨"
+
+Inject these final updates locally into App.js now. Print the final verification logs showing the logic for the monthly time constraint. Do NOT trigger an EAS build yet.

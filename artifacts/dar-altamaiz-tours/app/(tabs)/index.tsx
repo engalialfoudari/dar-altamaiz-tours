@@ -1,5 +1,6 @@
 import NetInfo from "@react-native-community/netinfo";
 import React, { useEffect, useRef, useState } from "react";
+import { scheduleRetentionNotifications } from "@/utils/notifications";
 import {
   Animated,
   BackHandler,
@@ -73,23 +74,27 @@ const LOGIN_MODAL_JS = `
 })(); true;
 `;
 
-const DOT_STAGES = ["", ".", "..", "..."] as const;
-
-function LoadingOverlay() {
-  const [dotIndex, setDotIndex] = useState(0);
+function SkeletonLoader() {
+  const pulse = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setDotIndex((prev) => (prev + 1) % DOT_STAGES.length);
-    }, 480);
-    return () => clearInterval(id);
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.85, duration: 750, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.35, duration: 750, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
   }, []);
 
   return (
-    <View style={styles.loadingOverlay} pointerEvents="none">
-      <Text style={styles.loadingText}>
-        {"Loading your exciting experience" + DOT_STAGES[dotIndex]}
-      </Text>
+    <View style={styles.skeletonWrap} pointerEvents="none">
+      <Animated.View style={[styles.skeletonBar, { width: "72%", opacity: pulse }]} />
+      <Animated.View style={[styles.skeletonBar, { width: "90%", height: 120, marginTop: 12, opacity: pulse }]} />
+      <Animated.View style={[styles.skeletonBar, { width: "55%", marginTop: 12, opacity: pulse }]} />
+      <Animated.View style={[styles.skeletonBar, { width: "80%", height: 80, marginTop: 12, opacity: pulse }]} />
+      <Animated.View style={[styles.skeletonBar, { width: "40%", marginTop: 12, opacity: pulse }]} />
     </View>
   );
 }
@@ -488,7 +493,7 @@ function WebShell({
           showsVerticalScrollIndicator={false}
         />
 
-        {loading && !hasError && <LoadingOverlay />}
+        {loading && !hasError && <SkeletonLoader />}
 
         {webError !== null && (
           <View style={[StyleSheet.absoluteFillObject, styles.webErrorScreen]}>
@@ -627,6 +632,10 @@ export default function HomeScreen() {
       setIsOffline(!(state.isConnected && state.isInternetReachable !== false));
     });
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    scheduleRetentionNotifications();
   }, []);
 
   const transitionToShell = (url: string, loginTrigger = false) => {
@@ -853,19 +862,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     lineHeight: 22,
   },
-  loadingOverlay: {
+  skeletonWrap: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(10,22,40,0.93)",
-    alignItems: "center",
-    justifyContent: "center",
+    padding: 24,
+    paddingTop: 48,
     zIndex: 5,
   },
-  loadingText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    letterSpacing: 0.5,
+  skeletonBar: {
+    height: 20,
+    borderRadius: 8,
+    backgroundColor: "rgba(201,168,76,0.25)",
   },
   errorScreen: {
     ...StyleSheet.absoluteFillObject,
