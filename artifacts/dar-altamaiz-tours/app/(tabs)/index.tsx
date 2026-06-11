@@ -278,6 +278,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { width, height } = useWindowDimensions();
   const isTablet = width >= 768;
+  const shellInsets = useSafeAreaInsets();
 
   const dismissToast = () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -497,6 +498,10 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
 
       <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
 
+      {!showRequests && (
+        <WhatsAppFAB bottom={shellInsets.bottom + 76} />
+      )}
+
       {showToast && (
         <Animated.View
           style={[
@@ -624,8 +629,8 @@ export default function HomeScreen() {
       {/* Offline banner — floats over everything when connection drops */}
       {isOffline && <OfflineBanner />}
 
-      {/* WhatsApp FAB — always visible, above the tab bar */}
-      <WhatsAppFAB bottom={insets.bottom + 80} />
+      {/* WhatsApp FAB — visible on welcome screen only; shell handles its own FAB */}
+      {phase === "welcome" && <WhatsAppFAB bottom={insets.bottom + 80} />}
     </View>
   );
 }

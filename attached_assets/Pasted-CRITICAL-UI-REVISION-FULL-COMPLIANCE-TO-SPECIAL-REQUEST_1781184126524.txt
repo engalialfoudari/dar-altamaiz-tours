@@ -1,0 +1,24 @@
+CRITICAL UI REVISION: FULL COMPLIANCE TO SPECIAL REQUESTS SPECIFICATIONS (100% ACCURACY REQUIRED)
+
+Please halt and revise the local Replit code immediately. The current preview is missing critical fields. Rewrite the component logic locally based on these exact 100% complete specifications:
+
+1. Exact Header & Welcome Copy:
+   - Display this exact premium Arabic copy at the top of the form screen:
+     "مرحباً بك في دار التميز. صمم رحلة مجموعتك أو قروبك الخاص وسنقوم بتوفير أفضل العروض لك. الرد سيكون خلال ثلاثة أيام عمل إن شاء الله."
+
+2. Layout Fields Structure (Top to Bottom):
+   - Flight Section: Two clean text inputs labeled "From (من)" and "To (إلى)".
+   - Dynamic Hotel Section: Input fields for "Hotel Name (اسم الفندق)" and "City (المدينة)". Directly below them, a dynamic button "+ Add Another Hotel" (إضافة فندق آخر) that pushes a new set of empty hotel/city inputs into the component state array when clicked.
+   - Date Selection: Fields for "From (من)" and "To (إلى)" dates using native calendar pickers.
+   - Notes Box (REQUIRED): A large multiline text area labeled "Special Remarks / Notes (ملاحظات إضافية)" for group sizes, budgets, and extra requests.
+
+3. Submission, Non-Colliding ID & Success Behavior:
+   - When "Submit Request" is clicked, generate a 100% unique Request ID using (Date.now() + 2 random digits) formatted as: DT-XXXXX (e.g., DT-76439).
+   - Send the compiled form payload silently via background API to the enterprise inbox.
+   - Clear the form and trigger a clean Native Success Modal with a green checkmark showing the tracking ID and stating:
+     "تم إرسال طلبك بنجاح! رقم الطلب الخاص بك هو: [Generated ID]. يمكنك استخدام هذا الرقم للمتابعة معنا عبر الواتساب أو الإيميل."
+
+4. Footer Navigation Entry:
+   - Ensure the new navigation button in the bottom footer is labeled exactly "Special Requests" with a clean group/users icon. Remove any conflicting floating icons over this screen.
+
+Apply these modifications locally to App.js now. Do NOT build on EAS yet. Print the complete updated code block in the chat for my confirmation.
