@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -414,6 +415,10 @@ export function SpecialRequestsScreen() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -612,6 +617,7 @@ export function SpecialRequestsScreen() {
           </Text>
         </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Departure date picker */}
       <DatePickerModal
@@ -655,18 +661,19 @@ export function SpecialRequestsScreen() {
                 fill="none"
               />
             </Svg>
+            <Text style={styles.modalTitle}>
+              تم إرسال طلبك بنجاح | Request Submitted Successfully
+            </Text>
             <Text style={styles.modalText}>
-              {"تم إرسال طلبك بنجاح! رقم الطلب الخاص بك هو: "}
+              {"شكراً لك، تم استلام طلبك الخاص وسيقوم فريق مستشاري السفر لدينا بالتواصل معك قريباً.\n\nThank you, your special request has been received. Our travel consultants team will contact you shortly.\n\n"}
+              <Text style={styles.modalRequestIdLabel}>{"Request ID: "}</Text>
               <Text style={styles.modalRequestId}>{requestId}</Text>
-              {
-                ". يمكنك استخدام هذا الرقم للمتابعة معنا عبر الواتساب أو الإيميل."
-              }
             </Text>
             <Pressable
               style={styles.modalCloseBtn}
               onPress={() => setSuccessModal(false)}
             >
-              <Text style={styles.modalCloseBtnText}>حسناً</Text>
+              <Text style={styles.modalCloseBtnText}>حسناً  |  OK</Text>
             </Pressable>
           </View>
         </View>
@@ -819,18 +826,31 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 380,
   },
-  modalText: {
+  modalTitle: {
     color: "#FFFFFF",
     fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 14,
+  },
+  modalText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 26,
+    lineHeight: 24,
     marginBottom: 24,
+  },
+  modalRequestIdLabel: {
+    color: "rgba(255,255,255,0.6)",
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
   },
   modalRequestId: {
     color: gold,
     fontFamily: "Inter_700Bold",
-    fontSize: 16,
+    fontSize: 15,
   },
   modalCloseBtn: {
     backgroundColor: gold,
