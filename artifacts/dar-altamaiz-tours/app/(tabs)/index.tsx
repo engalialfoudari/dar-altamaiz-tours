@@ -19,6 +19,7 @@ import Svg, { Path } from "react-native-svg";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
 import { InfoModal } from "@/components/InfoModal";
+import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import colors from "@/constants/colors";
 
 const { gold, navy } = colors.light;
@@ -269,6 +270,7 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
   const [isOffline, setIsOffline] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [canGoBackState, setCanGoBackState] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const wasOffline = useRef(false);
   const toastSlide = useRef(new Animated.Value(-90)).current;
@@ -332,6 +334,11 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
     setActiveTab(tab.key);
     setHasError(false);
     setWebError(null);
+    if (tab.isNative) {
+      setShowRequests(true);
+      return;
+    }
+    setShowRequests(false);
     setLoading(true);
     setWebUrl(tab.url);
   };
@@ -353,10 +360,12 @@ function WebShell({ initialUrl = TABS[0].url, openLoginOnLoad = false }: { initi
       <InfoModal visible={showInfo} onClose={() => setShowInfo(false)} />
 
       <View style={styles.webArea}>
+        {showRequests && <SpecialRequestsScreen />}
+
         <WebView
           ref={webviewRef}
           source={{ uri: webUrl }}
-          style={{ flex: 1 }}
+          style={[{ flex: 1 }, showRequests && { display: "none" as any }]}
           javaScriptEnabled
           domStorageEnabled={true}
           mixedContentMode="always"

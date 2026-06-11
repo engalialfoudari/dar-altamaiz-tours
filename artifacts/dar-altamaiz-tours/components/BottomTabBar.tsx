@@ -13,12 +13,13 @@ import colors from "@/constants/colors";
 
 const { gold, navy, navyMid, mutedForeground } = colors.light;
 
-export type TabKey = "home" | "trips" | "bookings" | "settings";
+export type TabKey = "home" | "trips" | "bookings" | "settings" | "requests";
 
 export interface Tab {
   key: TabKey;
   labelEn: string;
   url: string;
+  isNative?: boolean;
 }
 
 export const TABS: Tab[] = [
@@ -41,6 +42,12 @@ export const TABS: Tab[] = [
     key: "settings",
     labelEn: "Contact",
     url: "https://dt-tours.com/general/contact_us/",
+  },
+  {
+    key: "requests",
+    labelEn: "Special Requests",
+    url: "",
+    isNative: true,
   },
 ];
 
@@ -131,12 +138,50 @@ function IconPhone({ size, color, active }: { size: number; color: string; activ
   );
 }
 
+function IconUsers({ size, color, active }: { size: number; color: string; active: boolean }) {
+  const sw = active ? 2.2 : 1.6;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"
+        stroke={color}
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Circle
+        cx="9"
+        cy="7"
+        r="4"
+        stroke={color}
+        strokeWidth={sw}
+        fill={active ? `${color}22` : "none"}
+      />
+      <Path
+        d="M23 21v-2a4 4 0 00-3-3.87"
+        stroke={color}
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M16 3.13a4 4 0 010 7.75"
+        stroke={color}
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function TabIcon({ tabKey, size, color, active }: { tabKey: TabKey; size: number; color: string; active: boolean }) {
   switch (tabKey) {
     case "home":      return <IconHome size={size} color={color} active={active} />;
     case "trips":     return <IconGlobe size={size} color={color} active={active} />;
     case "bookings":  return <IconBriefcase size={size} color={color} active={active} />;
     case "settings":  return <IconPhone size={size} color={color} active={active} />;
+    case "requests":  return <IconUsers size={size} color={color} active={active} />;
   }
 }
 
@@ -150,9 +195,9 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  const iconSize = isTablet ? 26 : 22;
-  const labelSize = isTablet ? 12 : 10;
-  const tabHeight = isTablet ? 68 : 54;
+  const iconSize = isTablet ? 24 : 20;
+  const labelSize = isTablet ? 10 : 8;
+  const tabHeight = isTablet ? 68 : 56;
 
   return (
     <View
@@ -175,7 +220,7 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
             hitSlop={4}
           >
             {isActive && (
-              <View style={[styles.activeIndicator, isTablet && { width: 36, height: 3 }]} />
+              <View style={[styles.activeIndicator, isTablet && { width: 32, height: 3 }]} />
             )}
             <TabIcon tabKey={tab.key} size={iconSize} color={iconColor} active={isActive} />
             <Text
@@ -184,7 +229,9 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
                 { fontSize: labelSize },
                 isActive && styles.labelActive,
               ]}
-              numberOfLines={1}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
             >
               {tab.labelEn}
             </Text>
@@ -215,7 +262,7 @@ const styles = StyleSheet.create({
   activeIndicator: {
     position: "absolute",
     top: -7,
-    width: 28,
+    width: 24,
     height: 3,
     borderRadius: 2,
     backgroundColor: gold,
