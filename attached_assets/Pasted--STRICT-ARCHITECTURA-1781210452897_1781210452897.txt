@@ -1,0 +1,35 @@
+================================================================================
+STRICT ARCHITECTURAL REFACTOR: CONVERT TO STEPPED FADE-IN/OUT CAROUSEL OVERRIDE, 
+RESTORE TOP-RIGHT LIGHTBULB BUTTON, CLEAN UP CODEBASES, AND GENERATE FINAL COMPLIANCE MATRIX
+================================================================================
+
+[ENGINEERING MANDATE - NO HALLUCINATIONS]: You are instructed to completely deprecate the moving horizontal scrolling marquee mechanism in 'MarqueeTicker.tsx' and 'AppHeader.tsx' which is causing severe layout bleed and overlapping text on Android rendering layers. Instead, you must implement a robust, high-performance stepped fading sequence. Treat this as a zero-fault production freeze.
+
+1. RE-ENGINEER TICKER VIA AN ANIMATION FADE CAROUSEL LOOP:
+   - Completely rewrite the dynamic informational banner component using an animated state fade loop (`Animated.timing` with opacity 0 to 1 and back).
+   - STATE CYCLE LOGIC: 
+     * Mount Arabic Phrase (Text only, NO emojis) -> Fade In smoothly -> Stand completely STATIC and readable for 3.0 seconds (3000ms) -> Fade Out smoothly to 0 opacity.
+     * Instantly switch context to the corresponding English Phrase -> Fade In smoothly -> Stand completely STATIC and readable for 3.0 seconds (3000ms) -> Fade Out smoothly to 0 opacity.
+     * Move sequentially to the next block in the 15-string index array and repeat the exact same static stepped fading loop indefinitely.
+   - STYLING CRITERIA: Center the text inside the premium Deep Royal Blue (#0A192F) container banner. Font weight MUST be bold and white. Live variables ({LIVE_USD_KWD} and London weather) must be isolated in a nested Text layer with clear vivid GREEN (#00FF00) font color. Text must NEVER overlap or bleed since only one string renders at a single time.
+
+2. RESTORE THE NATIVE TOP-RIGHT LIGHTBULB COMPONENT:
+   - You erroneously deleted the functional application helper '💡' (LightBulbButton/Icon) from the right side of the header view when asked to purge line icons from the text array.
+   - Re-instantiate and fix the LightBulb Icon button asset directly back into its original absolute layout position on the top-right corner of the persistent header context wrapper inside 'AppHeader.tsx'.
+
+3. PRODUCTION CLEANUP, REFRESHEING, AND HARD SANITIZATION:
+   - Conduct an exhaustive file audit. Purge all commented-out deprecated code blocks, broken bracket remains, and phantom absolute layouts from 'MarqueeTicker.tsx', 'AppHeader.tsx', and 'notifications.ts'.
+   - Clear runtime bundler discrepancies to ensure strict state sync.
+
+4. REQUIRED OUTPUT GENERATION:
+   - Before executing, you must output a structured markdown checklist table detailing every task. Mark each with a green check (✅ Verification Complete) only after testing that it renders perfectly on screen.
+
+| Task ID | Component Upgrade & Security Validation | Status (✅) | Exact Source File Reference |
+|---|---|---|---|
+| L-01 | Stepped Fading Animation Carousel (3s Arabic static / 3s English static) | | |
+| L-02 | Total Elimination of Text Bleed and Overlap on Android System Engines | | |
+| L-03 | Re-injecting Top-Right Functional LightBulb Instruction Button in Header | | |
+| L-04 | Full Variable Highlights in Vivid Green Text Layouts | | |
+| L-05 | Codebase De-cluttering & Elimination of Zombie/Deprecating Stubs | | |
+
+Execute this complete refactor pipeline immediately. Print the verification table first, then output the pristine updated layout code blocks. Ensure zero system-clock overlays. Do NOT initiate EAS build commands.

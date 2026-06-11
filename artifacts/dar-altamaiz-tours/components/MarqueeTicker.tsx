@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
-  LayoutChangeEvent,
   Platform,
   StyleSheet,
   Text,
@@ -10,14 +9,14 @@ import {
 } from "react-native";
 
 export const TICKER_HEIGHT = 64;
-const SCROLL_SPEED = 28; // px/s
 const API_BASE = (process.env["EXPO_PUBLIC_API_BASE"] ?? "").replace(/\/$/, "");
 const REFRESH_MS = 30 * 60 * 1000;
-const SEPARATOR = "               —               ";
-const ND = Platform.OS !== "web";
+const FADE_MS = 350;
+const HOLD_MS = 3000;
 const LIVE_GREEN = "#00FF00";
 
 type Segment = { text: string; live?: boolean };
+type Lang = "ar" | "en";
 
 const MESSAGES: Array<{ ar: string; en: string }> = [
   {
@@ -105,83 +104,20 @@ function parseSegments(
   return result;
 }
 
-function buildRowSegments(
-  lang: "ar" | "en",
-  usdKwd: string,
-  londonTemp: string,
-): Segment[] {
-  const out: Segment[] = [];
-  MESSAGES.forEach((msg, i) => {
-    out.push(...parseSegments(lang === "ar" ? msg.ar : msg.en, usdKwd, londonTemp));
-    if (i < MESSAGES.length - 1) out.push({ text: SEPARATOR });
-  });
-  return out;
-}
-
-interface SegTextProps {
-  segments: Segment[];
-  onLayout?: (e: LayoutChangeEvent) => void;
-}
-function SegText({ segments, onLayout }: SegTextProps) {
-  return (
-    <Text style={styles.text} onLayout={onLayout}>
-      {segments.map((seg, i) =>
-        seg.live ? (
-          <Text key={i} style={styles.live}>
-            {seg.text}
-          </Text>
-        ) : (
-          seg.text
-        ),
-      )}
-    </Text>
-  );
-}
-
-function useMarqueeAnim(direction: "ltr" | "rtl") {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const widthRef = useRef(0);
-  const animRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  const start = (width: number) => {
-    if (!width) return;
-    animRef.current?.stop();
-    const from = direction === "ltr" ? -width : 0;
-    const to = direction === "ltr" ? 0 : -width;
-    translateX.setValue(from);
-    animRef.current = Animated.loop(
-      Animated.timing(translateX, {
-        toValue: to,
-        duration: (width / SCROLL_SPEED) * 1000,
-        easing: Easing.linear,
-        useNativeDriver: ND,
-      }),
-    );
-    animRef.current.start();
-  };
-
-  const onLayout = (w: number) => {
-    if (w > 0 && w !== widthRef.current) {
-      widthRef.current = w;
-      start(w);
-    }
-  };
-
-  useEffect(() => () => animRef.current?.stop(), []);
-
-  return { translateX, onLayout };
+interface StepState {
+  msgIdx: number;
+  lang: Lang;
 }
 
 export function MarqueeTicker() {
   const [usdKwd, setUsdKwd] = useState("0.307");
   const [londonTemp, setLondonTemp] = useState("—°C");
-
-  const arAnim = useMarqueeAnim("ltr");
-  const enAnim = useMarqueeAnim("rtl");
+  const [step, setStep] = useState<StepState>({ msgIdx: 0, lang: "ar" });
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!API_BASE) return;
     const refresh = () => {
-      if (!API_BASE) return;
       fetch(`${API_BASE}/ticker-data`)
         .then((r) => r.json() as Promise<{ ok: boolean; usdKwd?: string; londonTemp?: string }>)
         .then((d) => {
@@ -197,83 +133,89 @@ export function MarqueeTicker() {
     return () => clearInterval(id);
   }, []);
 
-  const arSegs = useMemo(
-    () => buildRowSegments("ar", usdKwd, londonTemp),
-    [usdKwd, londonTemp],
-  );
-  const enSegs = useMemo(
-    () => buildRowSegments("en", usdKwd, londonTemp),
-    [usdKwd, londonTemp],
-  );
+  useEffect(() => {
+    opacity.setValue(0);
+    const anim = Animated.sequence([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: FADE_MS,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+      Animated.delay(HOLD_MS),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: FADE_MS,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    ]);
+    anim.start(({ finished }) => {
+      if (!finished) return;
+      setStep((prev) => {
+        if (prev.lang === "ar") {
+          return { msgIdx: prev.msgIdx, lang: "en" };
+        }
+        return { msgIdx: (prev.msgIdx + 1) % MESSAGES.length, lang: "ar" };
+      });
+    });
+    return () => anim.stop();
+  }, [step.msgIdx, step.lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const segments = useMemo(() => {
+    const msg = MESSAGES[step.msgIdx];
+    const template = step.lang === "ar" ? msg.ar : msg.en;
+    return parseSegments(template, usdKwd, londonTemp);
+  }, [step, usdKwd, londonTemp]);
 
   return (
     <View style={styles.banner}>
-      {/* ROW 1: ARABIC ONLY — scrolls Left to Right */}
-      <View style={styles.row}>
-        <Animated.View
-          style={[styles.track, { transform: [{ translateX: arAnim.translateX }] }]}
-        >
-          <SegText
-            segments={arSegs}
-            onLayout={(e) => arAnim.onLayout(e.nativeEvent.layout.width)}
-          />
-          <SegText segments={arSegs} />
-        </Animated.View>
-      </View>
-
-      {/* ROW 2: ENGLISH ONLY — scrolls Right to Left */}
-      <View style={[styles.row, styles.rowGap]}>
-        <Animated.View
-          style={[styles.track, { transform: [{ translateX: enAnim.translateX }] }]}
-        >
-          <SegText
-            segments={enSegs}
-            onLayout={(e) => enAnim.onLayout(e.nativeEvent.layout.width)}
-          />
-          <SegText segments={enSegs} />
-        </Animated.View>
-      </View>
+      <Animated.View style={[styles.content, { opacity }]}>
+        <Text style={styles.text} numberOfLines={2}>
+          {segments.map((seg, i) =>
+            seg.live ? (
+              <Text key={i} style={styles.live}>
+                {seg.text}
+              </Text>
+            ) : (
+              seg.text
+            ),
+          )}
+        </Text>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   banner: {
-    flexDirection: "column",
     width: "100%",
     height: TICKER_HEIGHT,
     backgroundColor: "#0A192F",
-    paddingVertical: 0,
-    zIndex: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(255,255,255,0.15)",
   },
-  row: {
-    height: 26,
+  content: {
     width: "100%",
-    overflow: "hidden",
-    justifyContent: "center",
-    marginTop: 6,
-  },
-  rowGap: {
-    marginTop: 6,
-  },
-  track: {
-    flexDirection: "row",
     alignItems: "center",
-    height: 26,
-    flexShrink: 0,
+    justifyContent: "center",
   },
   text: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
     fontWeight: "bold",
+    textAlign: "center",
     includeFontPadding: false,
-    flexShrink: 0,
+    lineHeight: 19,
   },
   live: {
     color: LIVE_GREEN,
+    fontFamily: "Inter_700Bold",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 13,
   },
 });

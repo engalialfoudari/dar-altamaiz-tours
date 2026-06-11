@@ -27,13 +27,41 @@ function ChevronLeft({ size, color }: { size: number; color: string }) {
   );
 }
 
+function LightBulbIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 21h6"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M9 18h6"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15 15.5A6 6 0 1 0 9 15.5V18h6v-2.5z"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 interface AppHeaderProps {
   onBack?: () => void;
   canGoBack?: boolean;
   onInfo?: () => void;
 }
 
-export function AppHeader({ onBack, canGoBack = false }: AppHeaderProps) {
+export function AppHeader({ onBack, canGoBack = false, onInfo }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -65,7 +93,22 @@ export function AppHeader({ onBack, canGoBack = false }: AppHeaderProps) {
 
         <View style={styles.centreSlot} />
 
-        <View style={styles.sideSlot} />
+        {onInfo != null ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && styles.iconBtnPressed,
+            ]}
+            onPress={onInfo}
+            hitSlop={12}
+            accessibilityLabel="Search guidelines"
+            accessibilityRole="button"
+          >
+            <LightBulbIcon size={iconSize} />
+          </Pressable>
+        ) : (
+          <View style={styles.sideSlot} />
+        )}
       </View>
     </View>
   );
