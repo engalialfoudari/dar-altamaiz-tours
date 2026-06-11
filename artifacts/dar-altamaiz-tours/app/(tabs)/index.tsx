@@ -157,7 +157,7 @@ function WelcomeScreen({ onExplore, onLogin }: { onExplore: () => void; onLogin:
             numberOfLines={1}
             style={[
               styles.brandTitle,
-              isTablet && { fontSize: 28 },
+              isTablet && { fontSize: 32 },
               {
                 color: titleShimmer.interpolate({
                   inputRange: [0, 0.5, 1],
@@ -622,7 +622,8 @@ const styles = StyleSheet.create({
   brandCard: {
     backgroundColor: "rgba(10,22,40,0.75)",
     borderRadius: 20,
-    padding: 28,
+    paddingHorizontal: 16,
+    paddingVertical: 28,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(201,168,76,0.35)",
@@ -630,7 +631,7 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     color: gold,
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     marginBottom: 8,
