@@ -1,0 +1,41 @@
+================================================================================
+FINAL EXECUTABLE COMPLIANCE MANDATE: INJECT ADVANCED KEYBOARD-AVOIDING OFFSETS, 
+GENERATE POST-VERIFICATION CHECKLIST, AND FREEZE PRODUCTION CODE
+================================================================================
+
+[STRICT REFACTOR ORDER]: Do not explain, do not hallucinate, and do not compromise layout structure. The Special Requests text input field is still being heavily occluded/cut off by the native soft keyboard on Android devices due to lacking explicit layout multipliers. You must apply the final layout refactor in App.js (or the dedicated form component) and immediately output the post-fix Compliance Matrix Table.
+
+1. HARDCODE THE ADVANCED KEYBOARD SHIFT MECHANISM:
+   - Locate the form wrapping layers and ensure the `<KeyboardAvoidingView>` layout utilizes precise layout logic to clear both Android and iOS engine variations. 
+   - Overwrite the view wrappers with the exact layout logic below:
+     ```jsx
+     <KeyboardAvoidingView 
+       behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
+       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 120}
+       style={{ flex: 1 }}
+     >
+       <ScrollView 
+         contentContainerStyle={{ paddingBottom: 60 }}
+         keyboardShouldPersistTaps="handled"
+       >
+         {/* Render Request Description TextInputs & Submit Buttons cleanly here */}
+       </ScrollView>
+     </KeyboardAvoidingView>
+     ```
+   - The inclusion of `keyboardVerticalOffset={120}` on Android paired with explicit `paddingBottom` inside the ScrollView content layout is a strict requirement to force the screen structure to slide entirely free of the keyboard frame.
+
+2. GENERATE REQUIRED TASK VERIFICATION CHECKLIST:
+   - Immediately after updating the files, you must output a finalized, clean Markdown Checklist Table summarizing the exact fixes applied across this production sprint. 
+   - Do NOT populate checkmarks unless the current runtime source state completely verifies the feature.
+
+| Feature ID | Implemented Engineering Task Details | Sync Status (✅) | Affected Production File |
+|---|---|---|---|
+| UX-01 | Advanced KeyboardAvoidingView (120px Offset + Scroll Padding for Android Box) | | |
+| UX-02 | Bilingual Alert Modal Popup for Request Submission Success (AR + EN Layouts) | | |
+| UI-01 | Stepped Fading Animation Ticker (4.0s Static Interleaved Timing Sequence) | | |
+| UI-02 | Vivid Green Color Emphasizing (#00FF00) on KWD/EUR Rates, "كاش باك", and Dates | | |
+| UI-03 | Total System Level Fullscreen (Persistent Hiding of Native Top Clock & Soft Bars) | | |
+| UI-04 | Functional Header Restoration (Re-injection of Top-Right LightBulb Helper Component) | | |
+| SEC-01 | Production Security Hardening & Safe AsyncStorage Codebase Housekeeping | | |
+
+Apply these target input layout parameters right now, clear the bundle cache to force view component refresh, print the verification matrix first, and output the clean updated layout snippet immediately. Do NOT run build triggers yet.
