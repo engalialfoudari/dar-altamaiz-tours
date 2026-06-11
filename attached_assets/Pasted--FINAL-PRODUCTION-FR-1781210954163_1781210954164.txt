@@ -1,0 +1,28 @@
+================================================================================
+FINAL PRODUCTION FREEZE: IMPLEMENT EUR TO KWD TRANSITION, ADJUST FADE TO 4s, 
+HIGHLIGHT SENSITIVE MARKETING TERMS IN GREEN, AND FORCE TRUE IMPERSIVE FULLSCREEN
+================================================================================
+
+The fade transition layout is successful. We are now freezing the codebase and preparing the final production deployment. Please apply these final hotfixes to App.js, MarqueeTicker.tsx, and AppHeader.tsx immediately:
+
+1. EXCHANGE WEATHER FOR LIVE EUR TO KWD RATE:
+   - Completely remove the London weather API data-fetching logic and its text placeholder.
+   - Replace it by fetching the Live EUR to KWD (اليورو مقابل الدينار الكويتي) exchange rate from your independent free public API backend environment.
+   - Inject this live data dynamically into the 15-string layout array.
+
+2. EXTEND TIMING WINDOW TO 4 SECONDS:
+   - Adjust the static rendering duration timer inside the stepped animation carousel sequence from 3000ms to exactly 4000ms (4.0 seconds) for both Arabic and English text displays before triggering the smooth fade-out effect.
+
+3. VIVID GREEN VALUE HIGHLIGHTING (MARKETING & SENSITIVE TERMS):
+   - Wrap the following high-priority text snippets inside nested `<Text style={{ color: '#00FF00', fontWeight: 'bold' }}>` tags so they stand out in bright, glowing GREEN within the pure white sentences:
+     * Dynamic numeric rates: The Live USD to KWD value AND the new Live EUR to KWD value.
+     * The Arabic text: "الاسترداد النقدي الفوري" and "كاش باك".
+     * The English text: "instant cashback rewards" and "Cashback".
+     * Any major numerical travel advice threshold (e.g., "6 أشهر" / "6 months", "4 ساعات" / "4 hours", "2008").
+
+4. ENFORCE ABSOLUTE NATIVE FULLSCREEN (ELIMINATE TOP SYSTEM CLOCK & NAVIGATION BAR):
+   - Go to the root layout rendering file. Import BOTH `StatusBar` and `Platform` from 'react-native'.
+   - Run `StatusBar.setHidden(true, 'slide');` globally at the entry point execution layer.
+   - Ensure that the phone's native top system clock (e.g., 22:47), battery, Wi-Fi status icons, and the bottom system soft navigation bar lines are COMPLETELY HIDDEN and invisible on Android and iOS. The app must scale edge-to-edge flawlessly.
+
+Verify all 15 sanitized text strings are correctly compiled into this new 4-second fade transition, clear the build cache, and output the finalized production components now. Do NOT execute EAS builds yet.

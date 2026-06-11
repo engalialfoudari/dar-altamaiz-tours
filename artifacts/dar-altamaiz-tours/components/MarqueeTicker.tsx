@@ -12,7 +12,7 @@ export const TICKER_HEIGHT = 64;
 const API_BASE = (process.env["EXPO_PUBLIC_API_BASE"] ?? "").replace(/\/$/, "");
 const REFRESH_MS = 30 * 60 * 1000;
 const FADE_MS = 350;
-const HOLD_MS = 3000;
+const HOLD_MS = 4000;
 const LIVE_GREEN = "#00FF00";
 
 type Segment = { text: string; live?: boolean };
@@ -20,16 +20,16 @@ type Lang = "ar" | "en";
 
 const MESSAGES: Array<{ ar: string; en: string }> = [
   {
-    ar: "استمتع بمميزات الاسترداد النقدي الفوري عند إتمام حجزك القادم عبر التطبيق. سعر صرف الدولار الحالي: {USD_KWD} د.ك",
-    en: "Enjoy instant cashback rewards on your next booking through the app. Current USD rate: {USD_KWD} KWD",
+    ar: "استمتع بمميزات الاسترداد النقدي الفوري عند إتمام حجزك. كاش باك فوري عبر التطبيق. سعر صرف الدولار: {USD_KWD} د.ك",
+    en: "Enjoy instant cashback rewards on every booking. Cashback credited instantly through the app. Current USD rate: {USD_KWD} KWD",
   },
   {
     ar: "تذكير يرجى التأكد من صلاحية جواز السفر لمدة لا تقل عن 6 أشهر قبل موعد رحلتك القادمة",
     en: "Reminder Please ensure your passport is valid for at least 6 months before your upcoming departure",
   },
   {
-    ar: "تمنياتنا لك برحلة سعيدة درجة الحرارة الحالية في لندن الآن هي: {LONDON_TEMP}",
-    en: "Wishing you a wonderful journey Current temperature in London is: {LONDON_TEMP}",
+    ar: "تابع سعر صرف اليورو مقابل الدينار الكويتي في الوقت الفعلي. السعر الحالي: {EUR_KWD} د.ك لكل يورو",
+    en: "Track live Euro to KWD exchange rates in real time. Current rate: {EUR_KWD} KWD per Euro",
   },
   {
     ar: "اختصر وقتك وجهدك صمم باقة عطلتك المتكاملة من طيران وفنادق بلمسة واحدة وبأعلى درجات السهولة",
@@ -49,7 +49,7 @@ const MESSAGES: Array<{ ar: string; en: string }> = [
   },
   {
     ar: "سافر مع رفيق دربك الموثوق دار التميز نضع خبرتنا الطويلة منذ عام 2008 بين يديك لضمان عطلة تفوق توقعاتك",
-    en: "Travel with your trusted partner Dar AlTamaiz puts over a decade of travel expertise at your service to guarantee a perfect holiday",
+    en: "Travel with your trusted partner Dar AlTamaiz puts over a decade of expertise since 2008 at your service to guarantee a perfect holiday",
   },
   {
     ar: "مرونة تامة في التخطيط يمكنك متابعة تفاصيل حجزك وإدارته بسهولة تامة وبأعلى درجات الراحة عبر منصتنا",
@@ -81,26 +81,73 @@ const MESSAGES: Array<{ ar: string; en: string }> = [
   },
 ];
 
+type HPattern = { pattern: string; value?: string };
+
+const HIGHLIGHT: HPattern[] = [
+  // tokens replaced with live API values
+  { pattern: "{USD_KWD}" },
+  { pattern: "{EUR_KWD}" },
+  // Arabic keywords
+  { pattern: "الاسترداد النقدي الفوري" },
+  { pattern: "كاش باك" },
+  { pattern: "6 أشهر" },
+  { pattern: "4 ساعات" },
+  // English keywords
+  { pattern: "instant cashback rewards" },
+  { pattern: "Cashback" },
+  { pattern: "6 months" },
+  { pattern: "4 hours" },
+  // shared
+  { pattern: "2008" },
+];
+
 function parseSegments(
   template: string,
   usdKwd: string,
-  londonTemp: string,
+  eurKwd: string,
 ): Segment[] {
+  const patterns: Array<{ pattern: string; value: string }> = HIGHLIGHT.map(
+    (h) => ({
+      pattern: h.pattern,
+      value:
+        h.pattern === "{USD_KWD}"
+          ? usdKwd
+          : h.pattern === "{EUR_KWD}"
+            ? eurKwd
+            : h.pattern,
+    }),
+  );
+
   const result: Segment[] = [];
   let remaining = template;
+
   while (remaining.length > 0) {
-    const ui = remaining.indexOf("{USD_KWD}");
-    const ti = remaining.indexOf("{LONDON_TEMP}");
-    if (ui === -1 && ti === -1) {
+    let earliest = -1;
+    let hit: (typeof patterns)[0] | null = null;
+
+    for (const p of patterns) {
+      const idx = remaining.indexOf(p.pattern);
+      if (idx === -1) continue;
+      if (
+        earliest === -1 ||
+        idx < earliest ||
+        (idx === earliest && p.pattern.length > (hit?.pattern.length ?? 0))
+      ) {
+        earliest = idx;
+        hit = p;
+      }
+    }
+
+    if (earliest === -1 || !hit) {
       result.push({ text: remaining });
       break;
     }
-    const isUsd = ui !== -1 && (ti === -1 || ui < ti);
-    const idx = isUsd ? ui : ti;
-    if (idx > 0) result.push({ text: remaining.slice(0, idx) });
-    result.push({ text: isUsd ? usdKwd : londonTemp, live: true });
-    remaining = remaining.slice(idx + (isUsd ? 9 : 13));
+
+    if (earliest > 0) result.push({ text: remaining.slice(0, earliest) });
+    result.push({ text: hit.value, live: true });
+    remaining = remaining.slice(earliest + hit.pattern.length);
   }
+
   return result;
 }
 
@@ -111,7 +158,7 @@ interface StepState {
 
 export function MarqueeTicker() {
   const [usdKwd, setUsdKwd] = useState("0.307");
-  const [londonTemp, setLondonTemp] = useState("—°C");
+  const [eurKwd, setEurKwd] = useState("0.334");
   const [step, setStep] = useState<StepState>({ msgIdx: 0, lang: "ar" });
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -119,11 +166,18 @@ export function MarqueeTicker() {
     if (!API_BASE) return;
     const refresh = () => {
       fetch(`${API_BASE}/ticker-data`)
-        .then((r) => r.json() as Promise<{ ok: boolean; usdKwd?: string; londonTemp?: string }>)
+        .then(
+          (r) =>
+            r.json() as Promise<{
+              ok: boolean;
+              usdKwd?: string;
+              eurKwd?: string;
+            }>,
+        )
         .then((d) => {
           if (d.ok) {
             setUsdKwd(d.usdKwd ?? "0.307");
-            setLondonTemp(d.londonTemp ?? "—°C");
+            setEurKwd(d.eurKwd ?? "0.334");
           }
         })
         .catch(() => {});
@@ -153,9 +207,7 @@ export function MarqueeTicker() {
     anim.start(({ finished }) => {
       if (!finished) return;
       setStep((prev) => {
-        if (prev.lang === "ar") {
-          return { msgIdx: prev.msgIdx, lang: "en" };
-        }
+        if (prev.lang === "ar") return { msgIdx: prev.msgIdx, lang: "en" };
         return { msgIdx: (prev.msgIdx + 1) % MESSAGES.length, lang: "ar" };
       });
     });
@@ -165,8 +217,8 @@ export function MarqueeTicker() {
   const segments = useMemo(() => {
     const msg = MESSAGES[step.msgIdx];
     const template = step.lang === "ar" ? msg.ar : msg.en;
-    return parseSegments(template, usdKwd, londonTemp);
-  }, [step, usdKwd, londonTemp]);
+    return parseSegments(template, usdKwd, eurKwd);
+  }, [step, usdKwd, eurKwd]);
 
   return (
     <View style={styles.banner}>
