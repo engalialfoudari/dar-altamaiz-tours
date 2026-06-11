@@ -19,7 +19,7 @@ import Svg, { Path } from "react-native-svg";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
-import { MarqueeTicker, TICKER_HEIGHT } from "@/components/MarqueeTicker";
+import { MarqueeTicker } from "@/components/MarqueeTicker";
 import { InfoModal } from "@/components/InfoModal";
 import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import colors from "@/constants/colors";
@@ -178,15 +178,11 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
         <View style={styles.topOverlay} />
         <View style={styles.bottomOverlay} />
 
-        <View style={[styles.tickerAbs, { top: insets.top }]}>
-          <MarqueeTicker />
-        </View>
-
         <Animated.View
           style={[
             styles.logoArea,
             {
-              paddingTop: insets.top + TICKER_HEIGHT + (isTablet ? 56 : 44),
+              paddingTop: insets.top + (isTablet ? 56 : 44),
               opacity: logoFade,
             },
           ]}
@@ -726,12 +722,6 @@ const styles = StyleSheet.create({
   welcomeRoot: {
     flex: 1,
     backgroundColor: navy,
-  },
-  tickerAbs: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 20,
   },
   bgImage: {
     flex: 1,
