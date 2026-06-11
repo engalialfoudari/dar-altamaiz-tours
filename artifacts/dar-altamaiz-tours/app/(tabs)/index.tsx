@@ -19,7 +19,7 @@ import Svg, { Path } from "react-native-svg";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
-import { MarqueeTicker } from "@/components/MarqueeTicker";
+import { MarqueeTicker, TICKER_HEIGHT } from "@/components/MarqueeTicker";
 import { InfoModal } from "@/components/InfoModal";
 import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import colors from "@/constants/colors";
@@ -186,7 +186,7 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
           style={[
             styles.logoArea,
             {
-              paddingTop: insets.top + 28 + (isTablet ? 56 : 44),
+              paddingTop: insets.top + TICKER_HEIGHT + (isTablet ? 56 : 44),
               opacity: logoFade,
             },
           ]}
