@@ -273,6 +273,7 @@ function WebShell({
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [webUrl, setWebUrl] = useState(initialUrl);
   const [loading, setLoading] = useState(true);
+  const hasInitiallyLoaded = useRef(false);
   const [hasError, setHasError] = useState(false);
   const [webError, setWebError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
@@ -360,7 +361,11 @@ function WebShell({
       return;
     }
     setShowRequests(false);
-    setLoading(true);
+    // Only show loading overlay on very first page load; subsequent tab
+    // switches use the cached WebView so no spinner is needed.
+    if (!hasInitiallyLoaded.current) {
+      setLoading(true);
+    }
     setWebUrl(tab.url);
   };
 
@@ -400,7 +405,10 @@ function WebShell({
             setCanGoBackState(navState.canGoBack);
           }}
           onLoadStart={() => {
-            setLoading(true);
+            // Only show loading overlay on the very first load of the session.
+            if (!hasInitiallyLoaded.current) {
+              setLoading(true);
+            }
             setHasError(false);
             setWebError(null);
           }}
@@ -413,6 +421,7 @@ function WebShell({
           }}
           onLoadEnd={() => {
             // Final safety-net: ensure overlay is gone + trigger login modal.
+            hasInitiallyLoaded.current = true;
             setLoading(false);
             if (pendingLoginTrigger.current) {
               pendingLoginTrigger.current = false;
