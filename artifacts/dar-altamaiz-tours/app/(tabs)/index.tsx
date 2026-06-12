@@ -6,14 +6,11 @@ import {
   BackHandler,
   Image,
   ImageBackground,
-  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -71,80 +68,6 @@ const BG_IMAGES = [
   require("../../assets/images/bg-11.jpg"),
 ];
 
-const LOGIN_MODAL_JS = `
-(function() {
-  var selectors = [
-    '[data-target="#myModal_new_emp"]',
-    '.open_sign_in',
-    '.logindown.open_sign_in',
-    'a.logindown',
-    '[data-toggle="modal"][data-target*="login"]'
-  ];
-  function tryClick(attempts) {
-    for (var i = 0; i < selectors.length; i++) {
-      var el = document.querySelector(selectors[i]);
-      if (el) { el.click(); return; }
-    }
-    if (attempts > 0) setTimeout(function() { tryClick(attempts - 1); }, 500);
-  }
-  tryClick(8);
-})(); true;
-`;
-
-function buildCredentialInjectionJS(email: string, password: string): string {
-  const safeEmail = email.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-  const safePass = password.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-  return `
-(function() {
-  // Suppress Bootstrap modal backdrop immediately so it never freezes the layout
-  var bds = document.createElement('style');
-  bds.innerHTML = '.modal-backdrop, .modal-backdrop.fade, .modal-backdrop.show, .modal-backdrop.fade.show { display: none !important; opacity: 0 !important; } body.modal-open { overflow: auto !important; padding-right: 0 !important; }';
-  document.head.appendChild(bds);
-
-  var em = '${safeEmail}';
-  var pw = '${safePass}';
-
-  function tryFill(attempts) {
-    var emailEl = document.querySelector(
-      '#myModal_new_emp input[type="email"], #myModal_new_emp input[name="email"], ' +
-      '#myModal_new_emp input[placeholder*="mail" i], #myModal_new_emp input[placeholder*="user" i]'
-    );
-    var passEl = document.querySelector('#myModal_new_emp input[type="password"]');
-    if (!emailEl || !passEl) {
-      if (attempts > 0) setTimeout(function() { tryFill(attempts - 1); }, 400);
-      return;
-    }
-    emailEl.value = em;
-    emailEl.dispatchEvent(new Event('input', { bubbles: true }));
-    emailEl.dispatchEvent(new Event('change', { bubbles: true }));
-    passEl.value = pw;
-    passEl.dispatchEvent(new Event('input', { bubbles: true }));
-    passEl.dispatchEvent(new Event('change', { bubbles: true }));
-    var btn = document.querySelector(
-      '#myModal_new_emp [type="submit"], #myModal_new_emp button.btn-primary, ' +
-      '#myModal_new_emp button[class*="login"], #myModal_new_emp input[type="submit"]'
-    );
-    if (btn) { btn.click(); }
-    else {
-      var form = emailEl.closest('form');
-      if (form) form.submit();
-    }
-  }
-
-  var triggers = [
-    '[data-target="#myModal_new_emp"]', '.open_sign_in',
-    '.logindown.open_sign_in', 'a.logindown',
-    '[data-toggle="modal"][data-target*="login"]'
-  ];
-  for (var i = 0; i < triggers.length; i++) {
-    var t = document.querySelector(triggers[i]);
-    if (t) { t.click(); break; }
-  }
-  setTimeout(function() { tryFill(8); }, 450);
-  true;
-})();`.trim();
-}
-
 function SkeletonLoader() {
   const pulse = useRef(new Animated.Value(0.35)).current;
 
@@ -198,134 +121,6 @@ function WhatsAppFAB({ bottom }: { bottom: number }) {
         />
       </Svg>
     </Pressable>
-  );
-}
-
-interface NativeLoginScreenProps {
-  onSubmit: (email: string, password: string) => void;
-  onGuest: () => void;
-  isOffline: boolean;
-}
-
-function NativeLoginScreen({ onSubmit, onGuest, isOffline }: NativeLoginScreenProps) {
-  const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
-  const nd = Platform.OS !== "web";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-
-  const fadeIn = useRef(new Animated.Value(0)).current;
-  const slideUp = useRef(new Animated.Value(36)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeIn, { toValue: 1, duration: 380, useNativeDriver: nd }),
-      Animated.timing(slideUp, { toValue: 0, duration: 360, useNativeDriver: nd }),
-    ]).start();
-  }, []);
-
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !isOffline;
-
-  return (
-    <View style={[nls.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <ScrollView
-          contentContainerStyle={[nls.scroll, isTablet && { paddingHorizontal: width * 0.15 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Animated.View style={[nls.header, { opacity: fadeIn }]}>
-            <Image
-              source={require("../../assets/images/dt-tours-logo-transparent.png")}
-              style={[nls.logo, { width: Math.min(width * 0.72, 320), height: Math.min(width * 0.72, 320) * 0.46 }]}
-              resizeMode="contain"
-              tintColor="#FFFFFF"
-            />
-            <View style={nls.logoSeparator} />
-            <Text style={[nls.heading, isTablet && { fontSize: 32 }]}>Welcome Back</Text>
-            <Text style={nls.subheading}>Sign in to your Dar AlTamaiz account</Text>
-          </Animated.View>
-
-          <Animated.View
-            style={[nls.card, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}
-          >
-            <Text style={nls.label}>Email Address</Text>
-            <TextInput
-              style={nls.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="your@email.com"
-              placeholderTextColor="rgba(255,255,255,0.25)"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-            />
-
-            <Text style={[nls.label, { marginTop: 14 }]}>Password</Text>
-            <View style={nls.passRow}>
-              <TextInput
-                style={[nls.input, { flex: 1, marginBottom: 0 }]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                secureTextEntry={!showPass}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={() => { if (canSubmit) onSubmit(email.trim(), password); }}
-              />
-              <Pressable
-                style={({ pressed }) => [nls.eyeBtn, pressed && { opacity: 0.55 }]}
-                onPress={() => setShowPass((p) => !p)}
-                hitSlop={10}
-              >
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                  {showPass ? (
-                    <>
-                      <Path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="rgba(255,255,255,0.45)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                    </>
-                  ) : (
-                    <>
-                      <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="rgba(255,255,255,0.45)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                      <Path d="M12 9a3 3 0 100 6 3 3 0 000-6z" stroke="rgba(255,255,255,0.45)" strokeWidth={1.8} />
-                    </>
-                  )}
-                </Svg>
-              </Pressable>
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [nls.loginBtn, (!canSubmit || pressed) && { opacity: 0.55 }]}
-              onPress={() => { if (canSubmit) onSubmit(email.trim(), password); }}
-              disabled={!canSubmit}
-            >
-              <Text style={nls.loginBtnText}>Log In  →</Text>
-            </Pressable>
-
-            <View style={nls.divider}>
-              <View style={nls.dividerLine} />
-              <Text style={nls.dividerText}>or</Text>
-              <View style={nls.dividerLine} />
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [nls.guestBtn, pressed && { opacity: 0.7 }]}
-              onPress={onGuest}
-            >
-              <Text style={nls.guestBtnText}>Continue as Guest</Text>
-            </Pressable>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
   );
 }
 
@@ -479,18 +274,13 @@ const WebView = require("react-native-webview").WebView;
 
 function WebShell({
   initialUrl = TABS[0].url,
-  openLoginOnLoad = false,
   externalNavigation = null,
-  loginCredentials = null,
 }: {
   initialUrl?: string;
-  openLoginOnLoad?: boolean;
   externalNavigation?: { url: string; login: boolean; seq: number } | null;
-  loginCredentials?: { email: string; password: string } | null;
 }) {
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
-  const pendingLoginTrigger = useRef(openLoginOnLoad);
 
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [webUrl, setWebUrl] = useState(initialUrl);
@@ -561,16 +351,13 @@ function WebShell({
     return () => sub.remove();
   }, []);
 
-  // Handle post-mount navigation from HomeScreen (Login flow while shell is pre-mounted)
+  // Handle post-mount navigation from HomeScreen
   useEffect(() => {
     if (!externalNavigation) return;
     setWebUrl(externalNavigation.url);
     setLoading(true);
     setHasError(false);
     setWebError(null);
-    if (externalNavigation.login) {
-      pendingLoginTrigger.current = true;
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalNavigation?.seq]);
 
@@ -644,13 +431,6 @@ function WebShell({
           onLoadEnd={() => {
             hasInitiallyLoaded.current = true;
             setLoading(false);
-            if (pendingLoginTrigger.current) {
-              pendingLoginTrigger.current = false;
-              const js = loginCredentials
-                ? buildCredentialInjectionJS(loginCredentials.email, loginCredentials.password)
-                : LOGIN_MODAL_JS;
-              webviewRef.current?.injectJavaScript?.(js);
-            }
           }}
           userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
           onError={(syntheticEvent: any) => {
@@ -820,15 +600,13 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [phase, setPhase] = useState<"welcome" | "nativeLogin" | "transitioning" | "shell">("welcome");
+  const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const [triggerLogin, setTriggerLogin] = useState(false);
   const [externalNav, setExternalNav] = useState<{ url: string; login: boolean; seq: number } | null>(null);
-  const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null);
   const navSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
-  const nativeLoginOpacity = useRef(new Animated.Value(0)).current;
   const nd = Platform.OS !== "web";
 
   useEffect(() => {
@@ -868,23 +646,7 @@ export default function HomeScreen() {
   };
 
   const handleExplore = () => transitionToShell(TABS[0].url, false);
-
-  const handleLogin = () => {
-    nativeLoginOpacity.setValue(0);
-    setPhase("nativeLogin");
-    Animated.timing(nativeLoginOpacity, { toValue: 1, duration: 320, useNativeDriver: nd }).start();
-  };
-
-  const handleCredentialSubmit = (email: string, password: string) => {
-    setPendingCredentials({ email, password });
-    // Push external nav so WebShell opens the login URL with credential injection
-    navSeq.current += 1;
-    setExternalNav({ url: LOGIN_HOME_URL, login: true, seq: navSeq.current });
-    // Instant unmount — WebShell is already preloaded in the background
-    setPhase("shell");
-    // Wipe credentials from state after injection window
-    setTimeout(() => setPendingCredentials(null), 8000);
-  };
+  const handleLogin = () => transitionToShell(LOGIN_HOME_URL, false);
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
@@ -910,9 +672,7 @@ export default function HomeScreen() {
           ) : (
             <WebShell
               initialUrl={TABS[0].url}
-              openLoginOnLoad={false}
               externalNavigation={externalNav}
-              loginCredentials={pendingCredentials}
             />
           )}
         </View>
@@ -925,20 +685,6 @@ export default function HomeScreen() {
           pointerEvents={phase === "welcome" ? "auto" : "none"}
         >
           <WelcomeScreen onExplore={handleExplore} onLogin={handleLogin} isOffline={isOffline} />
-        </Animated.View>
-      )}
-
-      {/* Native login overlay — slides in over the welcome screen */}
-      {phase === "nativeLogin" && (
-        <Animated.View
-          style={[layerStyle, { opacity: nativeLoginOpacity }]}
-          pointerEvents="auto"
-        >
-          <NativeLoginScreen
-            onSubmit={handleCredentialSubmit}
-            onGuest={handleExplore}
-            isOffline={isOffline}
-          />
         </Animated.View>
       )}
 
@@ -1259,129 +1005,3 @@ const styles = StyleSheet.create({
   },
 });
 
-const nls = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: navy,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 52,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 36,
-  },
-  logo: {
-    marginBottom: 22,
-  },
-  logoSeparator: {
-    width: 52,
-    height: 2,
-    backgroundColor: gold,
-    borderRadius: 1,
-    marginBottom: 18,
-    opacity: 0.85,
-  },
-  heading: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.4,
-    marginBottom: 6,
-    textAlign: "center",
-  },
-  subheading: {
-    color: "rgba(255,255,255,0.48)",
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(201,168,76,0.18)",
-    padding: 24,
-  },
-  label: {
-    color: "rgba(255,255,255,0.65)",
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 4,
-  },
-  passRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-    gap: 8,
-  },
-  eyeBtn: {
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  loginBtn: {
-    marginTop: 22,
-    backgroundColor: gold,
-    borderRadius: 50,
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loginBtnText: {
-    color: navy,
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-    gap: 10,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  dividerText: {
-    color: "rgba(255,255,255,0.35)",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 0.5,
-  },
-  guestBtn: {
-    height: 46,
-    borderRadius: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  guestBtnText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.4,
-  },
-});
