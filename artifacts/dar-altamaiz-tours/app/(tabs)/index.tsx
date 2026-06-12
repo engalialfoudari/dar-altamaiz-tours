@@ -96,6 +96,11 @@ function buildCredentialInjectionJS(email: string, password: string): string {
   const safePass = password.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   return `
 (function() {
+  // Suppress Bootstrap modal backdrop immediately so it never freezes the layout
+  var bds = document.createElement('style');
+  bds.innerHTML = '.modal-backdrop, .modal-backdrop.fade, .modal-backdrop.show, .modal-backdrop.fade.show { display: none !important; opacity: 0 !important; } body.modal-open { overflow: auto !important; padding-right: 0 !important; }';
+  document.head.appendChild(bds);
+
   var em = '${safeEmail}';
   var pw = '${safePass}';
 
@@ -238,11 +243,12 @@ function NativeLoginScreen({ onSubmit, onGuest, isOffline }: NativeLoginScreenPr
           <Animated.View style={[nls.header, { opacity: fadeIn }]}>
             <Image
               source={require("../../assets/images/dt-tours-logo-transparent.png")}
-              style={nls.logo}
+              style={[nls.logo, { width: Math.min(width * 0.72, 320), height: Math.min(width * 0.72, 320) * 0.46 }]}
               resizeMode="contain"
               tintColor="#FFFFFF"
             />
-            <Text style={[nls.heading, isTablet && { fontSize: 30 }]}>Welcome Back</Text>
+            <View style={nls.logoSeparator} />
+            <Text style={[nls.heading, isTablet && { fontSize: 32 }]}>Welcome Back</Text>
             <Text style={nls.subheading}>Sign in to your Dar AlTamaiz account</Text>
           </Animated.View>
 
@@ -871,8 +877,12 @@ export default function HomeScreen() {
 
   const handleCredentialSubmit = (email: string, password: string) => {
     setPendingCredentials({ email, password });
-    transitionToShell(LOGIN_HOME_URL, true);
-    // Wipe from state after injection window (8 s is well past any page load)
+    // Push external nav so WebShell opens the login URL with credential injection
+    navSeq.current += 1;
+    setExternalNav({ url: LOGIN_HOME_URL, login: true, seq: navSeq.current });
+    // Instant unmount — WebShell is already preloaded in the background
+    setPhase("shell");
+    // Wipe credentials from state after injection window
     setTimeout(() => setPendingCredentials(null), 8000);
   };
 
@@ -1257,28 +1267,34 @@ const nls = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 52,
     paddingBottom: 40,
   },
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 36,
   },
   logo: {
-    width: 120,
-    height: 56,
-    marginBottom: 20,
+    marginBottom: 22,
+  },
+  logoSeparator: {
+    width: 52,
+    height: 2,
+    backgroundColor: gold,
+    borderRadius: 1,
+    marginBottom: 18,
+    opacity: 0.85,
   },
   heading: {
     color: "#FFFFFF",
-    fontSize: 26,
+    fontSize: 28,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
     marginBottom: 6,
     textAlign: "center",
   },
   subheading: {
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.48)",
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
