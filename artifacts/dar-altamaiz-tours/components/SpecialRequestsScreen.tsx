@@ -407,7 +407,8 @@ export function SpecialRequestsScreen() {
       setSuccessModal(true);
     } catch (error) {
       const msg = error instanceof Error ? error.message : JSON.stringify(error);
-      Alert.alert("Network Error Details", msg);
+      const status = (error as any)?.response?.status ?? "Unknown";
+      Alert.alert("🚨 Server Response Error", `Message: ${msg}\nStatus: ${status}`);
     } finally {
       setSubmitting(false);
     }

@@ -33,6 +33,16 @@ const INJECTED_JS = `
   if (existing) existing.remove();
   style.textContent = 'body{overflow-x:hidden!important}html{overflow-x:hidden!important}';
   document.head.appendChild(style);
+
+  // Rewrite target="_blank" to target="_self" so every link opens in the
+  // same WebView on the first tap — prevents Android from silently eating
+  // the first press as a "new window" attempt.
+  document.addEventListener('click', function(e) {
+    var el = e.target;
+    while (el && el.tagName !== 'A') el = el.parentElement;
+    if (el && el.target === '_blank') el.target = '_self';
+  }, true);
+
   true;
 })();
 `;
@@ -467,9 +477,7 @@ function WebShell({
           }}
           onShouldStartLoadWithRequest={(request: any) => {
             const url: string = request.url;
-            // Allow dt-tours.com (all subdomains), about:, javascript:, and any
-            // intermediate redirects that the site may route through.
-            // Block only clearly external navigations (non-dt-tours HTTP/HTTPS).
+            // Internal dt-tours.com pages, about: frames, javascript: — load immediately.
             if (
               url.startsWith("about:") ||
               url.startsWith("javascript:") ||
@@ -477,12 +485,13 @@ function WebShell({
             ) {
               return true;
             }
-            // Allow all non-http schemes (tel:, mailto:, etc. handled by OS)
+            // OS-handled schemes (tel:, mailto:, whatsapp:, etc.) — hand off to
+            // the OS and return false so the WebView never blocks the tap.
             if (!url.startsWith("http")) {
+              Linking.openURL(url).catch(() => {});
               return false;
             }
-            // For any other HTTP/HTTPS URL (external site), allow it to load
-            // inside the WebView rather than silently dropping it.
+            // Any other HTTP/HTTPS (external site) — allow inside WebView.
             return true;
           }}
           allowsBackForwardNavigationGestures={true}
