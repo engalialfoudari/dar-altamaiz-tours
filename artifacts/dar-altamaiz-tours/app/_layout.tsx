@@ -51,7 +51,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
-            <StatusBar hidden={false} style="light" backgroundColor="#0A192F" />
+            <StatusBar hidden style="light" />
             <RootLayoutNav />
             {showSplash && (
               <AnimatedSplash onAnimationEnd={() => setShowSplash(false)} />
