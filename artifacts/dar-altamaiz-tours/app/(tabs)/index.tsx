@@ -54,6 +54,17 @@ const INJECTED_JS = `
 const LOGIN_HOME_URL = "https://dt-tours.com/";
 const WHATSAPP_URL = "https://wa.me/96590087797";
 
+const GOLD = "#D4AF37";
+const BLACK = "#000000";
+
+const LOGIN_MODAL_JS = `
+(function() {
+  var el = document.querySelector('a[data-toggle="modal"][data-target="#login"]');
+  if (el) { el.click(); }
+  true;
+})();
+`;
+
 const BG_IMAGES = [
   require("../../assets/images/bg-01.jpg"),
   require("../../assets/images/bg-02.jpg"),
@@ -124,7 +135,7 @@ function WhatsAppFAB({ bottom }: { bottom: number }) {
   );
 }
 
-function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => void; onLogin: () => void; isOffline: boolean }) {
+function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => void; onLogin: () => void; isOffline: boolean; }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -211,14 +222,14 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
               {
                 color: titleShimmer.interpolate({
                   inputRange: [0, 0.5, 1],
-                  outputRange: ["#C9A84C", "#FFF3A0", "#C9A84C"],
+                  outputRange: ["#D4AF37", "#FFF5A0", "#D4AF37"],
                 }),
                 textShadowColor: titleShimmer.interpolate({
                   inputRange: [0, 0.5, 1],
                   outputRange: [
-                    "rgba(201,168,76,0)",
-                    "rgba(255,240,110,0.85)",
-                    "rgba(201,168,76,0)",
+                    "rgba(212,175,55,0)",
+                    "rgba(255,245,100,0.85)",
+                    "rgba(212,175,55,0)",
                   ],
                 }),
                 textShadowRadius: 14,
@@ -251,7 +262,7 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
               onPressOut={isOffline ? undefined : handlePressOut}
               disabled={isOffline}
             >
-              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>Log In</Text>
+              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>تسجيل دخول كمستخدم</Text>
             </Pressable>
           </Animated.View>
 
@@ -261,7 +272,7 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
             disabled={isOffline}
           >
             <Text style={[styles.guestBtnText, isTablet && { fontSize: 15 }]}>
-              Continue as Guest
+              الدخول كزائر
             </Text>
           </Pressable>
         </Animated.View>
@@ -275,9 +286,11 @@ const WebView = require("react-native-webview").WebView;
 function WebShell({
   initialUrl = TABS[0].url,
   externalNavigation = null,
+  loginTrigger = 0,
 }: {
   initialUrl?: string;
   externalNavigation?: { url: string; seq: number } | null;
+  loginTrigger?: number;
 }) {
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
@@ -360,6 +373,15 @@ function WebShell({
     setWebError(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalNavigation?.seq]);
+
+  // Trigger login modal 1.5 s after Login button is pressed
+  useEffect(() => {
+    if (!loginTrigger) return;
+    const timer = setTimeout(() => {
+      webviewRef.current?.injectJavaScript(LOGIN_MODAL_JS);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [loginTrigger]);
 
   const handleTabPress = (tab: Tab) => {
     setActiveTab(tab.key);
@@ -604,6 +626,8 @@ export default function HomeScreen() {
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const [externalNav, setExternalNav] = useState<{ url: string; seq: number } | null>(null);
   const navSeq = useRef(0);
+  const [loginTrigger, setLoginTrigger] = useState(0);
+  const loginTriggerSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web";
@@ -642,7 +666,11 @@ export default function HomeScreen() {
   };
 
   const handleExplore = () => transitionToShell(TABS[0].url);
-  const handleLogin = () => transitionToShell(LOGIN_HOME_URL);
+  const handleLogin = () => {
+    loginTriggerSeq.current += 1;
+    setLoginTrigger(loginTriggerSeq.current);
+    transitionToShell(LOGIN_HOME_URL);
+  };
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
@@ -669,6 +697,7 @@ export default function HomeScreen() {
             <WebShell
               initialUrl={TABS[0].url}
               externalNavigation={externalNav}
+              loginTrigger={loginTrigger}
             />
           )}
         </View>
@@ -699,7 +728,7 @@ const styles = StyleSheet.create({
 
   welcomeRoot: {
     flex: 1,
-    backgroundColor: navy,
+    backgroundColor: BLACK,
   },
   bgImage: {
     flex: 1,
@@ -712,7 +741,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 360,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(0,0,0,0.65)",
   },
   bottomOverlay: {
     position: "absolute",
@@ -720,7 +749,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 360,
-    backgroundColor: "rgba(6,16,32,0.85)",
+    backgroundColor: "rgba(0,0,0,0.90)",
   },
   logoArea: {
     width: "100%",
@@ -741,17 +770,17 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }],
   },
   brandCard: {
-    backgroundColor: "rgba(10,22,40,0.75)",
+    backgroundColor: "rgba(0,0,0,0.82)",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 28,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(201,168,76,0.35)",
+    borderColor: "rgba(212,175,55,0.45)",
     zIndex: 10,
   },
   brandTitle: {
-    color: gold,
+    color: GOLD,
     fontSize: 24,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
@@ -777,41 +806,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   ctaBtn: {
-    backgroundColor: "#0A1931",
-    height: 44,
+    backgroundColor: GOLD,
+    height: 50,
     paddingHorizontal: 20,
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowColor: GOLD,
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(201,168,76,0.4)",
+    elevation: 8,
+    marginBottom: 12,
   },
   ctaBtnText: {
-    color: "#FFFFFF",
+    color: BLACK,
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.5,
   },
   guestBtn: {
     width: "100%",
-    height: 44,
+    height: 50,
     paddingHorizontal: 20,
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0A1931",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: GOLD,
   },
   guestBtnText: {
-    color: "#FFFFFF",
+    color: GOLD,
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.4,
