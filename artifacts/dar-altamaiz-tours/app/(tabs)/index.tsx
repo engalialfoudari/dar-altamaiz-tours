@@ -51,7 +51,7 @@ const INJECTED_JS = `
 })();
 `;
 
-const LOGIN_HOME_URL = "https://dt-tours.com/auth/login";
+const LOGIN_HOME_URL = "https://dt-tours.com/";
 const WHATSAPP_URL = "https://wa.me/96590087797";
 
 const BG_IMAGES = [
