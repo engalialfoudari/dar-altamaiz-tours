@@ -39,6 +39,7 @@
         "visible": "immersive"
       },
       "softwareKeyboardLayoutMode": "resize",
+      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"

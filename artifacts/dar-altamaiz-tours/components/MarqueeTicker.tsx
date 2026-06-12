@@ -311,6 +311,6 @@ const styles = StyleSheet.create({
     color: LIVE_GREEN,
     fontFamily: "Inter_700Bold",
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: 13,
   },
 });
