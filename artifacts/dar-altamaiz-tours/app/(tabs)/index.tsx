@@ -252,6 +252,7 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
               disabled={isOffline}
             >
               <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>Log In</Text>
+              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 13 }, { fontSize: 12, opacity: 0.85 }]}>تسجيل دخول</Text>
             </Pressable>
           </Animated.View>
 
@@ -262,6 +263,9 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
           >
             <Text style={[styles.guestBtnText, isTablet && { fontSize: 15 }]}>
               Continue as Guest
+            </Text>
+            <Text style={[styles.guestBtnText, isTablet && { fontSize: 12 }, { fontSize: 11, opacity: 0.85 }]}>
+              الدخول كزائر
             </Text>
           </Pressable>
         </Animated.View>
