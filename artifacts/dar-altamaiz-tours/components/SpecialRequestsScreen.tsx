@@ -367,27 +367,29 @@ export function SpecialRequestsScreen() {
     setSubmitting(true);
     try {
       if (!API_BASE) {
-        await new Promise((r) => setTimeout(r, 700));
-      } else {
-        const res = await fetch(`${API_BASE}/requests/submit`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requestId: rid,
-            contactName: contactName.trim(),
-            contactEmail: contactEmail.trim(),
-            contactPhone: contactPhone.trim(),
-            flightFrom: flightFrom.trim(),
-            flightTo: flightTo.trim(),
-            hotels: hotels
-              .filter((h) => h.name.trim())
-              .map((h) => ({ name: h.name.trim(), city: h.city.trim() })),
-            dateFrom: dateFromStr,
-            dateTo: dateToStr,
-            notes: notes.trim(),
-          }),
-        });
-        if (!res.ok) throw new Error("server_error");
+        throw new Error("API_BASE is not configured — rebuild the app with EXPO_PUBLIC_API_BASE set.");
+      }
+      const res = await fetch(`${API_BASE}/requests/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: rid,
+          contactName: contactName.trim(),
+          contactEmail: contactEmail.trim(),
+          contactPhone: contactPhone.trim(),
+          flightFrom: flightFrom.trim(),
+          flightTo: flightTo.trim(),
+          hotels: hotels
+            .filter((h) => h.name.trim())
+            .map((h) => ({ name: h.name.trim(), city: h.city.trim() })),
+          dateFrom: dateFromStr,
+          dateTo: dateToStr,
+          notes: notes.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => res.status.toString());
+        throw new Error(`HTTP ${res.status}: ${body}`);
       }
       // Cache contact details for autofill on next visit
       AsyncStorage.multiSet([
@@ -403,11 +405,9 @@ export function SpecialRequestsScreen() {
       setNotes("");
       setRequestId(rid);
       setSuccessModal(true);
-    } catch {
-      Alert.alert(
-        "خطأ",
-        "حدث خطأ أثناء إرسال طلبك. يرجى المحاولة مرة أخرى.",
-      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : JSON.stringify(error);
+      Alert.alert("Network Error Details", msg);
     } finally {
       setSubmitting(false);
     }
