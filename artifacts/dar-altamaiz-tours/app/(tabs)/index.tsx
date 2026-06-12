@@ -34,13 +34,17 @@ const INJECTED_JS = `
   style.textContent = 'body{overflow-x:hidden!important}html{overflow-x:hidden!important}';
   document.head.appendChild(style);
 
-  // Rewrite target="_blank" to target="_self" so every link opens in the
-  // same WebView on the first tap — prevents Android from silently eating
-  // the first press as a "new window" attempt.
+  // Rewrite target="_blank" ONLY for real navigable URLs (http/https/root-relative).
+  // Modal triggers (href="#...", href="javascript:...", data-toggle) are left
+  // completely untouched so the login pop-up and all DOM overlays keep working.
   document.addEventListener('click', function(e) {
     var el = e.target;
     while (el && el.tagName !== 'A') el = el.parentElement;
-    if (el && el.target === '_blank') el.target = '_self';
+    if (!el || el.target !== '_blank') return;
+    var href = el.getAttribute('href') || '';
+    if (href.startsWith('http://') || href.startsWith('https://') || (href.startsWith('/') && !href.startsWith('//'))) {
+      el.target = '_self';
+    }
   }, true);
 
   true;
