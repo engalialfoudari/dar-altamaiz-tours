@@ -277,7 +277,7 @@ function WebShell({
   externalNavigation = null,
 }: {
   initialUrl?: string;
-  externalNavigation?: { url: string; login: boolean; seq: number } | null;
+  externalNavigation?: { url: string; seq: number } | null;
 }) {
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
@@ -602,8 +602,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
-  const [triggerLogin, setTriggerLogin] = useState(false);
-  const [externalNav, setExternalNav] = useState<{ url: string; login: boolean; seq: number } | null>(null);
+  const [externalNav, setExternalNav] = useState<{ url: string; seq: number } | null>(null);
   const navSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
@@ -624,18 +623,15 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const transitionToShell = (url: string, loginTrigger = false) => {
+  const transitionToShell = (url: string) => {
     if (Platform.OS !== "web") {
-      // Native: shell is already pre-mounted at TABS[0].url.
-      // Only push an external navigation when the target differs or login is needed.
-      if (url !== TABS[0].url || loginTrigger) {
+      // Native: shell is pre-mounted. Push external nav only when target differs from default.
+      if (url !== TABS[0].url) {
         navSeq.current += 1;
-        setExternalNav({ url, login: loginTrigger, seq: navSeq.current });
+        setExternalNav({ url, seq: navSeq.current });
       }
     } else {
-      // Web iframe shell: still uses the initial-prop approach.
       setInitialShellUrl(url);
-      setTriggerLogin(loginTrigger);
     }
     setPhase("transitioning");
     Animated.timing(welcomeOpacity, {
@@ -645,8 +641,8 @@ export default function HomeScreen() {
     }).start(() => setPhase("shell"));
   };
 
-  const handleExplore = () => transitionToShell(TABS[0].url, false);
-  const handleLogin = () => transitionToShell(LOGIN_HOME_URL, false);
+  const handleExplore = () => transitionToShell(TABS[0].url);
+  const handleLogin = () => transitionToShell(LOGIN_HOME_URL);
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
