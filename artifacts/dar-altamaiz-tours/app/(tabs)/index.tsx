@@ -6,14 +6,11 @@ import {
   BackHandler,
   Image,
   ImageBackground,
-  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -56,64 +53,6 @@ const INJECTED_JS = `
 
 const LOGIN_HOME_URL = "https://dt-tours.com/";
 const WHATSAPP_URL = "https://wa.me/96590087797";
-
-const GOLD = "#D4AF37";
-const BLACK = "#000000";
-
-function buildCredentialInjectionJS(email: string, password: string): string {
-  const safeEmail = JSON.stringify(email);
-  const safePass = JSON.stringify(password);
-  return `
-(function() {
-  function setNativeValue(el, value) {
-    var proto = (el.tagName === 'TEXTAREA')
-      ? window.HTMLTextAreaElement.prototype
-      : window.HTMLInputElement.prototype;
-    var desc = Object.getOwnPropertyDescriptor(proto, 'value');
-    if (desc && desc.set) desc.set.call(el, value);
-    el.dispatchEvent(new Event('input',  { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  function tryFillAndSubmit() {
-    var emailEl = document.querySelector('input[type="email"]') ||
-                  document.querySelector('input[name="email"]') ||
-                  document.querySelector('input[placeholder*="mail" i]');
-    var passEl  = document.querySelector('input[type="password"]');
-    if (emailEl && passEl) {
-      setNativeValue(emailEl, ${safeEmail});
-      setNativeValue(passEl,  ${safePass});
-      setTimeout(function() {
-        var btn = document.querySelector('button[type="submit"]') ||
-                  document.querySelector('input[type="submit"]') ||
-                  document.querySelector('form button');
-        if (btn) btn.click();
-        else {
-          var form = document.querySelector('form');
-          if (form) form.submit();
-        }
-      }, 400);
-      return true;
-    }
-    return false;
-  }
-
-  if (!tryFillAndSubmit()) {
-    var loginTrigger = document.querySelector(
-      'a[data-toggle="modal"][data-target="#login"], ' +
-      'a[data-target="#myModal_new_emp"], ' +
-      '.logindown, .open_sign_in, ' +
-      'a[href*="login" i], button[class*="login" i], ' +
-      'nav a:contains("Login"), nav button:contains("Login")'
-    );
-    if (loginTrigger) loginTrigger.click();
-    setTimeout(function() { tryFillAndSubmit(); }, 900);
-  }
-
-  true;
-})();
-`;
-}
 
 const BG_IMAGES = [
   require("../../assets/images/bg-01.jpg"),
@@ -185,7 +124,7 @@ function WhatsAppFAB({ bottom }: { bottom: number }) {
   );
 }
 
-function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => void; onLogin: () => void; isOffline: boolean; }) {
+function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => void; onLogin: () => void; isOffline: boolean }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -272,14 +211,14 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
               {
                 color: titleShimmer.interpolate({
                   inputRange: [0, 0.5, 1],
-                  outputRange: ["#D4AF37", "#FFF5A0", "#D4AF37"],
+                  outputRange: ["#C9A84C", "#FFF3A0", "#C9A84C"],
                 }),
                 textShadowColor: titleShimmer.interpolate({
                   inputRange: [0, 0.5, 1],
                   outputRange: [
-                    "rgba(212,175,55,0)",
-                    "rgba(255,245,100,0.85)",
-                    "rgba(212,175,55,0)",
+                    "rgba(201,168,76,0)",
+                    "rgba(255,240,110,0.85)",
+                    "rgba(201,168,76,0)",
                   ],
                 }),
                 textShadowRadius: 14,
@@ -312,7 +251,7 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
               onPressOut={isOffline ? undefined : handlePressOut}
               disabled={isOffline}
             >
-              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>تسجيل دخول كمستخدم</Text>
+              <Text style={[styles.ctaBtnText, isTablet && { fontSize: 18 }]}>Log In</Text>
             </Pressable>
           </Animated.View>
 
@@ -322,7 +261,7 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
             disabled={isOffline}
           >
             <Text style={[styles.guestBtnText, isTablet && { fontSize: 15 }]}>
-              الدخول كزائر
+              Continue as Guest
             </Text>
           </Pressable>
         </Animated.View>
@@ -331,261 +270,14 @@ function WelcomeScreen({ onExplore, onLogin, isOffline }: { onExplore: () => voi
   );
 }
 
-function NativeLoginScreen({
-  onSubmit,
-  onBack,
-}: {
-  onSubmit: (email: string, password: string) => void;
-  onBack: () => void;
-}) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const isTablet = width >= 768;
-  const nd = Platform.OS !== "web";
-
-  const fadeIn = useRef(new Animated.Value(0)).current;
-  const slideUp = useRef(new Animated.Value(40)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeIn,  { toValue: 1, duration: 380, useNativeDriver: nd }),
-      Animated.timing(slideUp, { toValue: 0, duration: 360, useNativeDriver: nd }),
-    ]).start();
-  }, []);
-
-  const handleSubmit = () => {
-    if (!email.trim() || !password) return;
-    setSubmitting(true);
-    onSubmit(email.trim(), password);
-  };
-
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
-
-  return (
-    <KeyboardAvoidingView
-      style={nlsStyles.root}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        contentContainerStyle={[
-          nlsStyles.scroll,
-          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 32 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View
-          style={[
-            nlsStyles.card,
-            {
-              marginHorizontal: isTablet ? width * 0.18 : 24,
-              opacity: fadeIn,
-              transform: [{ translateY: slideUp }],
-            },
-          ]}
-        >
-          <Image
-            source={require("../../assets/images/dt-tours-logo-transparent.png")}
-            style={nlsStyles.logo}
-            resizeMode="contain"
-            tintColor="#FFFFFF"
-          />
-
-          <Text style={nlsStyles.title}>تسجيل الدخول</Text>
-          <Text style={nlsStyles.subtitle}>أدخل بيانات حسابك للمتابعة</Text>
-
-          <View style={nlsStyles.fieldWrap}>
-            <Text style={nlsStyles.label}>البريد الإلكتروني</Text>
-            <TextInput
-              style={nlsStyles.input}
-              placeholder="example@email.com"
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-              editable={!submitting}
-            />
-          </View>
-
-          <View style={nlsStyles.fieldWrap}>
-            <Text style={nlsStyles.label}>كلمة المرور</Text>
-            <View style={nlsStyles.passRow}>
-              <TextInput
-                style={[nlsStyles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="••••••••"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPass}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={handleSubmit}
-                editable={!submitting}
-              />
-              <Pressable
-                style={nlsStyles.eyeBtn}
-                onPress={() => setShowPass((v) => !v)}
-                hitSlop={10}
-              >
-                <Text style={nlsStyles.eyeText}>{showPass ? "🙈" : "👁️"}</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <Pressable
-            style={({ pressed }) => [
-              nlsStyles.submitBtn,
-              !canSubmit && nlsStyles.submitBtnDisabled,
-              pressed && canSubmit && { opacity: 0.85 },
-            ]}
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-          >
-            <Text style={nlsStyles.submitBtnText}>
-              {submitting ? "جارٍ تسجيل الدخول..." : "تسجيل الدخول"}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [nlsStyles.backBtn, pressed && { opacity: 0.6 }]}
-            onPress={onBack}
-            disabled={submitting}
-          >
-            <Text style={nlsStyles.backBtnText}>← العودة</Text>
-          </Pressable>
-        </Animated.View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-const nlsStyles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: BLACK,
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-  card: {
-    backgroundColor: "rgba(20,20,20,0.97)",
-    borderRadius: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 36,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.4)",
-    alignItems: "center",
-  },
-  logo: {
-    width: 160,
-    height: 70,
-    marginBottom: 28,
-  },
-  title: {
-    color: GOLD,
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-    marginBottom: 6,
-    letterSpacing: 0.3,
-  },
-  subtitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    marginBottom: 32,
-  },
-  fieldWrap: {
-    width: "100%",
-    marginBottom: 18,
-  },
-  label: {
-    color: "rgba(212,175,55,0.85)",
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 8,
-    textAlign: "right",
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    textAlign: "right",
-    marginBottom: 0,
-  },
-  passRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  eyeBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-  },
-  eyeText: {
-    fontSize: 18,
-  },
-  submitBtn: {
-    backgroundColor: GOLD,
-    borderRadius: 50,
-    height: 52,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    shadowColor: GOLD,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  submitBtnDisabled: {
-    opacity: 0.45,
-  },
-  submitBtnText: {
-    color: BLACK,
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.4,
-  },
-  backBtn: {
-    marginTop: 20,
-    paddingVertical: 8,
-  },
-  backBtnText: {
-    color: "rgba(212,175,55,0.7)",
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 0.3,
-  },
-});
-
 const WebView = require("react-native-webview").WebView;
 
 function WebShell({
   initialUrl = TABS[0].url,
   externalNavigation = null,
-  credentialTrigger = null,
 }: {
   initialUrl?: string;
   externalNavigation?: { url: string; seq: number } | null;
-  credentialTrigger?: { email: string; password: string; seq: number } | null;
 }) {
   const webviewRef = useRef<any>(null);
   const canGoBack = useRef(false);
@@ -668,17 +360,6 @@ function WebShell({
     setWebError(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalNavigation?.seq]);
-
-  // Inject credentials into the WebView after native login form submission
-  useEffect(() => {
-    if (!credentialTrigger) return;
-    const js = buildCredentialInjectionJS(credentialTrigger.email, credentialTrigger.password);
-    const timer = setTimeout(() => {
-      webviewRef.current?.injectJavaScript(js);
-    }, 1200);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [credentialTrigger?.seq]);
 
   const handleTabPress = (tab: Tab) => {
     setActiveTab(tab.key);
@@ -919,12 +600,10 @@ function WebIframeShell({ initialUrl = TABS[0].url }: { initialUrl?: string }) {
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [phase, setPhase] = useState<"welcome" | "nativeLogin" | "transitioning" | "shell">("welcome");
+  const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">("welcome");
   const [initialShellUrl, setInitialShellUrl] = useState(TABS[0].url);
   const [externalNav, setExternalNav] = useState<{ url: string; seq: number } | null>(null);
   const navSeq = useRef(0);
-  const [credentialTrigger, setCredentialTrigger] = useState<{ email: string; password: string; seq: number } | null>(null);
-  const credSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web";
@@ -963,14 +642,7 @@ export default function HomeScreen() {
   };
 
   const handleExplore = () => transitionToShell(TABS[0].url);
-  const handleLogin = () => setPhase("nativeLogin");
-  const handleBackToWelcome = () => setPhase("welcome");
-
-  const handleCredentialSubmit = (email: string, password: string) => {
-    credSeq.current += 1;
-    setCredentialTrigger({ email, password, seq: credSeq.current });
-    transitionToShell(LOGIN_HOME_URL);
-  };
+  const handleLogin = () => transitionToShell(LOGIN_HOME_URL);
 
   const ShellComponent = Platform.OS === "web" ? WebIframeShell : WebShell;
 
@@ -997,30 +669,19 @@ export default function HomeScreen() {
             <WebShell
               initialUrl={TABS[0].url}
               externalNavigation={externalNav}
-              credentialTrigger={credentialTrigger}
             />
           )}
         </View>
       )}
 
-      {/* Welcome screen — visible during welcome and fade-out transition */}
-      {(phase === "welcome" || phase === "transitioning") && (
+      {/* Welcome screen fades out on top; shell already fully visible behind */}
+      {phase !== "shell" && (
         <Animated.View
           style={[layerStyle, { opacity: welcomeOpacity }]}
           pointerEvents={phase === "welcome" ? "auto" : "none"}
         >
           <WelcomeScreen onExplore={handleExplore} onLogin={handleLogin} isOffline={isOffline} />
         </Animated.View>
-      )}
-
-      {/* Native login screen — shown when user taps "تسجيل دخول كمستخدم" */}
-      {phase === "nativeLogin" && (
-        <View style={[layerStyle, { zIndex: 10 }]}>
-          <NativeLoginScreen
-            onSubmit={handleCredentialSubmit}
-            onBack={handleBackToWelcome}
-          />
-        </View>
       )}
 
       {/* Offline banner — floats over everything when connection drops */}
@@ -1038,7 +699,7 @@ const styles = StyleSheet.create({
 
   welcomeRoot: {
     flex: 1,
-    backgroundColor: BLACK,
+    backgroundColor: navy,
   },
   bgImage: {
     flex: 1,
@@ -1051,7 +712,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 360,
-    backgroundColor: "rgba(0,0,0,0.65)",
+    backgroundColor: "rgba(0,0,0,0.55)",
   },
   bottomOverlay: {
     position: "absolute",
@@ -1059,7 +720,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 360,
-    backgroundColor: "rgba(0,0,0,0.90)",
+    backgroundColor: "rgba(6,16,32,0.85)",
   },
   logoArea: {
     width: "100%",
@@ -1080,17 +741,17 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }],
   },
   brandCard: {
-    backgroundColor: "rgba(0,0,0,0.82)",
+    backgroundColor: "rgba(10,22,40,0.75)",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 28,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
+    borderColor: "rgba(201,168,76,0.35)",
     zIndex: 10,
   },
   brandTitle: {
-    color: GOLD,
+    color: gold,
     fontSize: 24,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
@@ -1116,39 +777,41 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   ctaBtn: {
-    backgroundColor: GOLD,
-    height: 50,
+    backgroundColor: "#0A1931",
+    height: 44,
     paddingHorizontal: 20,
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    shadowColor: GOLD,
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-    marginBottom: 12,
+    elevation: 6,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(201,168,76,0.4)",
   },
   ctaBtnText: {
-    color: BLACK,
+    color: "#FFFFFF",
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.5,
   },
   guestBtn: {
     width: "100%",
-    height: 50,
+    height: 44,
     paddingHorizontal: 20,
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "transparent",
-    borderWidth: 1.5,
-    borderColor: GOLD,
+    backgroundColor: "#0A1931",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
   },
   guestBtnText: {
-    color: GOLD,
+    color: "#FFFFFF",
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.4,
