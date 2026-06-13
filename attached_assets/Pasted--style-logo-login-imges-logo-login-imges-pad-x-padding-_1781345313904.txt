@@ -1,0 +1,654 @@
+<style>
+.logo_login_imges.logo_login_imges_pad_x {
+    padding: 0;
+    position: relative;
+    top: 21px;
+}
+.open_sign_in_pdfives {font-family: 'Open Sans';
+    padding: 10px;
+    text-align: center;
+    width: 100%;
+    display: block;}
+
+button#reset-password-trigger {
+    font-family: 'Open Sans';
+    margin-top: 15px;
+}
+
+ 
+
+h4.passLogins {
+    padding: 10px;
+}
+
+.facebook_img img{
+	width: 100%;
+/*	height: 30%;
+*/}	
+.signdiv.login_page{
+padding: 0;
+}
+.dropdown-menu{
+	padding: 0!important;
+}
+.log_close{
+   background: #fff !important;
+    width: 35px;
+    color: #000000 !important;
+    font-size: 21px !important;
+    right: 10px;
+    top: 10px;
+    border: 1px solid #000000 !important;
+    border-radius: 50%;
+    height: 35px;
+    line-height: 0 !important;
+    margin-top: 0;
+}
+.leftpul {
+    padding: 0px 20px;
+}
+
+.iconsCode {
+    position: unset !important;
+}
+
+</style>
+
+
+<?php
+$social1 = is_active_social_login ( 'facebook' );
+$social2 = is_active_social_login ( 'twitter' );
+$social3 = is_active_social_login ( 'googleplus' );
+
+if ($social1 == true) {
+	$GLOBALS ['CI']->load->library ( 'social_network/facebook' );
+}
+
+if ($social2 == true) {
+	// Not Yet Active 
+}
+
+if ($social3 == true) {
+	$GLOBALS ['CI']->load->library ( 'social_network/google' );
+}
+
+if (isset ( $login ) == false || is_object ( $login ) == false) {
+	$login = new CI_Provab_Page_Loader ( 'login' );
+}
+if (is_logged_in_user () == true) {
+	echo '<div class="hide">' . $GLOBALS ['CI']->facebook->login_button () . '</div>';
+	?>
+
+<div class="dropdown-menu mysign exploreul">
+	<div class="signdiv">
+		<div class="clearfix">
+			<li><a
+				href="<?=base_url()?>index.php/user/profile/<?=@$GLOBALS['CI']->name?>"><?php echo $this->lang->line('My Account');?></a></li>
+			<li class="divider"></li>
+			<li><a href="<?=base_url().'index.php/auth/change_password'?>"><?php echo $this->lang->line('Change Password');?></a></li>
+			<li class="divider"></li> 
+			<li><a class="user_logout_button"><?php echo $this->lang->line('Logout');?></a></li>
+		</div>
+	</div>
+</div>
+<?php } else { ?>
+<div class="dropdown-menu my_account_dropdown mysign exploreul">
+	<div class="signdiv login_page">
+		  <div class="rowputscd">
+		      
+		      <div class="logo_login_imges logo_login_imges_pad_x"> <img src="https://dt-tours.com/extras/system/template_list/template_v1/images/logo_dttours.svg" alt=""></div>
+						 <!--<div class="facebook_img">-->
+						 <!--    <img src="<?= DOMAIN_IMAGE_DIR?>login_bg.png" alt="">-->
+						 <!--    </div>-->
+					</div>
+	  <button type="button" class="close log_close" data-dismiss="modal">&times;</button>
+
+		<div class="insigndiv for_sign_in">
+			<div class="leftpul">
+				<div><h4><?php echo $this->lang->line('Log In');?></div>
+										<div class="pass_reset_3 d-flex">
+											<!-- <div class="reset_icons"></div> -->
+										 <div class="cus_pad_log_txt grey_clr"><i class="fa fa-lock"></i></div>
+	                   <span class=" grey_clr"> <?php echo $this->lang->line('We never share anything without your permission');?></span>
+	                </div>
+			<div class="ritpul">
+				<form role="form" id="login" action="" autocomplete="off"
+					name="login">
+					<!--<strong class="text-danger pull-right" style="">*</strong> -->
+					
+					<div class="rowput">
+						 <input type="email" id="email"
+							class="email form-control logpadding forgetPass em" placeholder="<?php echo $this->lang->line('Email Address');?>"
+							required="required" name="email">
+					</div>
+					<!-- <strong class="text-danger pull-right" style="">*</strong> -->
+					<!--<div class="rowput">
+						 <input type="password"
+							id="password" class="password form-control logpadding"
+							placeholder="Password" required="required" name="password"
+							value="">
+					</div>-->
+					<div class="pass_email iconsCode">
+						<i  class="far fa-eye" id="eye_login" style="top: 70px;"></i>
+						<input type="password"  placeholder="<?php echo $this->lang->line('password');?>" name="password" id="password_login"class="form-control password logpadding forgetPass ps" required="required"></div>
+					<div class="clearfix"></div>
+					<div id="login-status-wrapper" class="alert alert-danger"
+						style="display: none">
+						<p>
+							<i class="fa fa-warning"></i>
+						</p>
+					</div>
+					<div class="misclog">
+						
+						<a href="javascript:void(0)" class="hand-cursor forgtpsw forgot_pasword"
+							id=""><?php echo $this->lang->line('Forgot Password ?');?> </a>
+					</div>
+					<br/>
+					<div class="clearfix"></div>
+					
+					<div class="clear"></div>
+
+
+					<div class="pass_email_1">
+		                 	<button tyle="" class="form-control mailSend" id="login_submit"><?php echo $this->lang->line('Log In');?></button>
+		                 </div>
+
+		                 <!-- <div class="od-login-button-container">
+		                 	<div  class="od-login-or-then">
+		                  <span ><?php echo $this->lang->line('or use one of these options');?></span> 
+		             </div> 
+		              </div>-->
+
+	                  <!-- <div class="register_iconfb" id="regi_face">
+		                  <span class="facebook_icons"><img src="<?= DOMAIN_IMAGE_DIR?>logo-facebookpng-32204.png" alt=""></span>
+		                   <span class="facebook_text"><?php echo $this->lang->line('Facebook');?></span>  
+		             </div>
+		              <div class="register_google" id="regi_google_icons">
+		                  <span class="google_icons"><img src="<?= DOMAIN_IMAGE_DIR?>google-logo-history-png-2591.png" alt=""></span>
+		                   <span class="facebook_text"><?php echo $this->lang->line('Google');?></span>  
+		             </div> -->
+
+
+		             <div class="register_text_ft">
+		                  <span  class="od-login-or-then"><h4 class="passLogins"><?php echo $this->lang->line('No account yet?');?> <a href="<?= base_url().'index.php/auth/register'?>" class="logi_pass"> <?php echo $this->lang->line('Sign up for free');?></a></h4></span> 
+		             </div>
+
+
+				</form>
+			</div>
+			<?php
+	if ($social1) {
+		
+		//echo $GLOBALS ['CI']->facebook->login_button ();
+		?><!-- <center><div class="fb-login-button" data-width="" data-size="large" data-button-type="login_with" data-layout="default" data-auto-logout-link="false" data-use-continue-as="false"></div></center> -->
+<?php 	}
+	
+	if ($social2) {
+		?>
+				<a class="logspecify tweetcolor"> <span class="fa fa-twitter"></span>
+					<div class="mensionsoc"><?php echo $this->lang->line('Login with Twitter');?></div>
+				</a>
+				<?php
+	}
+	
+	if ($social3) {
+		?>
+				<?php
+		echo $GLOBALS ['CI']->google->login_button ();
+		?>
+				<?php } ?>
+			</div>
+			<?php $no_social=no_social(); if($no_social != 0) {?>
+			<div class="centerpul">
+				<div class="orbar">
+					<strong>Or</strong>
+				</div>
+			</div>
+			<?php }?>
+		</div>
+
+
+		<!--register-->
+		<div class="newacount_div for_sign_up">
+			<div class="slpophd_new"><?php echo $this->lang->line('Create your account');?></div>
+			<div class="othesend_regstr">
+				<div class="ritpul">
+					<form autocomplete="off" method="post" id="register_user_form">
+						<!-- <div class="rowput has-feedback hide">
+							<span class="fa fa-user"></span> <input type="text"
+								class="validate_user_register form-control logpadding"
+								value="Customer" placeholder="Name" name="first_name"
+								required="" />
+						</div>
+						<div class="rowput has-feedback hide">
+							<span class="fa fa-phone"></span> <input type="phone"
+								class="form-control logpadding" placeholder="Mobile" value=""
+								name="phone" />
+						</div> -->
+						<div class="rowput has-feedback">
+							<span class="fa fa-user"></span> 
+							<input type="text" name="first_name" placeholder="<?php echo $this->lang->line('First Name');?>" class="form-control logpadding validate_user_register alpha_only" maxlength="15" required="" style="text-transform: capitalize !important;">
+						</div>
+						<div class="rowput has-feedback">
+							<span class="fa fa-user"></span> 
+							<input type="text" name="last_name" placeholder="<?php echo $this->lang->line('Last Name');?>" class="form-control logpadding validate_user_register alpha_only" required="" maxlength="15" style="text-transform: capitalize !important;">
+						</div>
+						<?php /* ?>
+						<div class="rowput has-feedback">
+						<div class="col-xs-12 genrmle nopad">
+							<select class="form-control loginmle" name="gender">
+								<option>Male</option>
+								<option>Female</option>
+							</select>
+						</div>						
+							<div class="col-xs-6 nopad">
+								<span class="fa fa-calendar"></span> 
+								<input type="text" name="date_of_birth" placeholder="DOB" class="form-control logpadding" required="" id="loginDtae" readonly="readonly">	
+							</div>							
+						</div>
+						<?php */ ?>
+						<div class="clearfix"></div>
+						<div class="rowput has-feedback">
+							<span class="fa fa-envelope"></span> <input type="email" name="email" 
+								class="validate_user_register form-control logpadding"
+								placeholder="<?php echo $this->lang->line('Email');?>" required="" />
+						</div>
+						<div class="rowput">
+					<span class="fa fa-mobile"></span> <input type="text"
+						name="phone" id="recover_phone"
+						class="logpadding form-control mobile" placeholder="<?php echo $this->lang->line('Enter Mobile Number');?>" />
+				</div>
+						<div class="rowput has-feedback">
+							<span class="fa fa-lock"></span> <input type="password"
+								class="validate_user_register form-control logpadding"
+								placeholder="<?php echo $this->lang->line('Password');?>" name="password" required="">
+						</div>
+
+						<div class="rowput has-feedback">
+							<span class="fa fa-users"></span> 
+							<input type="text" class="validate_user_register form-control logpadding" name="about_us" placeholder="<?echo $this->lang->line('How did you hear about us');?>" class="form-control logpadding" required="">
+						</div>
+
+						<?php /* ?>
+						<div class="rowput has-feedback">
+							<span class="fa fa-lock"></span> <input type="password"
+								class="validate_user_register form-control logpadding"
+								placeholder="Retype password" name="confirm_password"
+								required="" />
+						</div>
+						<?php */ ?>
+						<div class="clearfix"></div>
+						<div class="row_submit">
+						<div class="col-xs-12 nopad crtaccu hide">
+							<h5><?php echo $this->lang->line('Create Account');?></h5>
+						</div>
+						<div class="col-xs-12 padfive" >
+							<div class="agree_terms">
+								<div class="squaredThree squaredThree_niK_b">
+									<input type="checkbox" id="register_subscription"	class="airlinecheckbox" name="register_subscription"> <label for="register_subscription"></label>
+								</div>
+								<label class="lbllbl" for="register_subscription"><?php echo $this->lang->line('Yes! I want to receive the latest travel deals, offers and promotions.');?></label>									
+								<div class="squaredThree squaredThree_niK_b">
+									<input type="checkbox" id="register_tc"	class="airlinecheckbox validate_user_register" name="tc" required=""> <label for="register_tc" class="my_err_msg_label"></label>
+								</div>
+								<label class="lbllbl" for="register_tc">
+								    By using the services of  you have agreed with all the <a href="<?= base_url().'index.php/general/cms/9'?>" target="_blank"><?php echo $this->lang->line('Terms and Conditions');?></a>.</label>
+							</div> 
+							<div class="my_err_msg"></div>
+						</div>
+							<div class="col-xs-12 ">
+								<button type="submit" id="register_user_button"
+									class="submitlogin"><?php echo $this->lang->line('Register');?></button>
+							</div>
+						</div>
+						<div class="rowput alert alert-success hide"
+							id="register-status-wrapper"></div>
+						<div class="rowput alert alert-danger hide"
+							id="register-error-msg"></div>
+						<div class="clearfix"></div>
+						<div class="text_info hide">(<?php echo $this->lang->line('You will receive an e-mail containing the account verification link.');?>)</div>
+					</form>
+					<div class="open_sign_in_pdfives">
+					    <a class="open_sign_in padfive"><?php echo $this->lang->line('I already have an Account');?></a>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="actual_forgot for_forgot">
+			<div class="slpophd_new"><?php echo $this->lang->line('Forgot Password ?');?></div>
+			<div class="othesend_regstr">
+				<div class="rowput">
+					<span class="fa fa-envelope"></span> <input type="text"
+						name="forgot_pwd_email" id="recover_email"
+						class="logpadding form-control" placeholder="<?php echo $this->lang->line('Enter Email Address');?>" />
+				</div>
+				<div class="rowput">
+					<span class="fa fa-mobile"></span> <input type="text"
+						name="forgot_pwd_phone" id="recover_phone1"
+						class="logpadding form-control mobile" placeholder="<?php echo $this->lang->line('Enter Mobile Number');?>" />
+				</div>
+				<div class="clearfix"></div>
+				<div id="recover-title-wrapper" class="alert alert-success"	style="display: none; color: red;">
+					<p>
+						<!-- <i class="fa fa-warning"></i> --> <span id="recover-title" style="color: red;"></span>
+					</p>
+				</div>
+				<div class="clearfix"></div>
+				<button class="submitlogin" id="reset-password-trigger"><?php echo $this->lang->line('SUBMIT');?></button>
+				<div class="clearfix"></div>
+					<div class="open_sign_in_pdfives">
+				<a class="open_sign_in"><?php echo $this->lang->line('I already have an Account');?></a>
+			</div>
+			</div>
+		</div>
+	</div>
+</div>
+<!-- New Forgot Password Modal -->
+<div id="forgotpaswrdpop" class="altpopup">
+	<div class="comn_close_pop fa fa-times closepopup"></div>
+	<div class="insideforgot">
+		<div class="slpophd"><?php echo $this->lang->line('Forgot Password ?');?></div>
+		<div class="othesend">
+			<div class="rowput">
+				<span class="fa fa-envelope"></span> <input type="text"
+					name="forgot_pwd_email" id="recover_email"
+					class="logpadding form-control" placeholder="<?php echo $this->lang->line('Enter Email Address');?>" />
+			</div>
+			<div class="rowput">
+				<span class="fa fa-mobile"></span> <input type="text"
+					name="forgot_pwd_phone" id="recover_phone"
+					class="logpadding form-control mobile" placeholder="<?php echo $this->lang->line('Enter Mobile Number');?>" />
+			</div>
+			<div class="clearfix"></div>
+			<div id="recover-title-wrapper" class="alert alert-success"
+				style="display: none">
+				<p>
+					<i class="fa fa-warning"></i> <span id="recover-title"></span>
+				</p>
+			</div>
+			<div class="centerdprcd">
+				<button class="bookcont" id="reset-password-trigger"><?php echo $this->lang->line('SUBMIT');?></button>
+			</div>
+		</div>
+	</div>
+</div>
+<?php }
+//Js_Loader::$js[] = array('src' => $GLOBALS['CI']->template->template_js_dir('page_resource/login.js'), 'defer' => 'defer');
+?>
+<script>
+  const togglePassword1 = document.querySelector('#eye_login');
+  const password1 = document.querySelector('#password_login');
+ 
+  togglePassword1.addEventListener('click', function (e) {
+    const type = password1.getAttribute('type') === 'password' ? 'text' : 'password';
+    password1.setAttribute('type', type);
+    this.classList.toggle('fa-eye');
+});
+
+</script>
+<script type="text/javascript">
+	$(function() {
+		$("#register_user_button").click(function(){			
+			$(".err_msg").hide();
+			var please_select = $('#please_select').val();
+			if($("#register_tc").prop('checked') == false){
+				$('.my_err_msg').html('<p class="text-danger err_msg">'+please_select+'</p>');
+				$(".my_err_msg_label").css({"border": "1px solid #bf7070"});
+				// $('.my_err_msg').html('', 500);
+				$('.my_err_msg p').addClass('hide', 5000).delay( 8000 );
+				return false;
+			} 
+			$("#recover_phone"). val("");
+		});
+	});
+</script>
+
+<script type="text/javascript">
+	$(document).ready(function(){
+		$('.open_register').click(function(){
+			$('.mysign').addClass('max_wdth');
+			$('.for_sign_in').fadeOut(500,function(){
+				$('.for_sign_up').fadeIn(500)
+			})
+		});
+		$('.open_sign_in').click(function(){
+			$('.mysign').removeClass('max_wdth');
+			$('.for_sign_up, .for_forgot').fadeOut(500,function(){
+				$('.for_sign_in').fadeIn(500)
+			})
+		});
+		$('.forgot_pasword').click(function(){
+			$('.mysign').removeClass('max_wdth');
+			$('.for_sign_in').fadeOut(500,function(){
+				$('.for_forgot').fadeIn(500)
+			})
+		});
+		$('#login_submit').on('click',function(e){
+			e.preventDefault();
+			
+			var login_error = $('#login_error').val();
+			var wait_error = $('#wait_error').val();
+
+			var _username=$('.em').val();
+			var _password=$('.ps').val();
+			if(_username==''||_password==''){
+				$('#login-status-wrapper').text(login_error).show()
+			}else{
+				$('.data-utility-loader',$('#')).show();
+				$('#login-status-wrapper').text(wait_error).show();
+				$.ajax({
+			        type: "POST",
+			        url: app_base_url+"index.php/auth/login/",
+			        data: {username:_username,password:_password}, // serializes the form's elements.
+			        dataType:"JSON",
+			        success: function(response)
+			        {
+			        	console.log(response);
+			          if(response.status){
+						$('#myModal_1').hide();
+						$(".my_account_dropdown").hide();
+						window.location.reload()
+						}else{
+							$('#login-status-wrapper').text(response.data).show()
+						}
+						$('.data-utility-loader',$('#myModal_1')).hide()
+				      }
+			    });
+
+
+				// $.post(app_base_url+"index.php/auth/login/",{username:_username,password:_password},function(response){
+				// 	response = JSON.parse(response);
+				// 	if(response.status){
+				// 		$('#myModal_1').hide();
+				// 		$(".my_account_dropdown").hide();
+				// 		window.location.reload()
+				// 	}else{
+				// 		$('#login-status-wrapper').text(response.data).show()
+				// 	}
+				// 	$('.data-utility-loader',$('#myModal_1')).hide()
+				// })
+			}
+		});
+
+		$('.register_user').bind('click',function(e){
+			e.preventDefault();
+			$('#register_user_div').provabPopup({
+				modalClose:true,
+				zIndex:10000005,
+				closeClass:'closepopup',
+			})
+		});
+		$('.frgotpaswrd').bind('click',function(e){
+			e.preventDefault();
+			$('#forgotpaswrdpop').provabPopup({
+				modalClose:true,
+				zIndex:10000005,
+				closeClass:'closepopup',
+			})
+		});
+		
+		$('body').on('click', '#reset-password-trigger', function(e) {
+			e.preventDefault();
+			$('#recover-title-wrapper').hide();
+			$('.data-utility-loader',$('#myModal_2')).show();
+			$.post(app_base_url+"index.php/auth/forgot_password/",{email:$('#recover_email').val(),'phone':$('#recover_phone1').val()},function(response){
+				if(response.status){
+					$('#recover-title-wrapper').removeClass('alert-danger').addClass('alert-success');
+					$('#recover_email').val('');
+					$("#recover_phone"). val("");
+					$('#recover_phone').val('');
+				}else{
+					$('#recover-title-wrapper').removeClass('alert-success').addClass('alert-danger')
+				}
+				$('#recover-title').text(response.data);
+				$('#recover-title-wrapper').show();
+				$('.data-utility-loader',$('#myModal_2')).hide()
+			})
+		});
+		$('form#register_user_form #register_user_button').click(function(e){
+			if($('#register-error-msg').hasClass('hide')==false){
+				$('#register-error-msg').addClass('hide')
+			}
+			if($('#register-status-wrapper').hasClass('hide')==false){
+				$('#register-status-wrapper').addClass('hide')
+			}
+			e.preventDefault();
+			var _status=true;
+			var _focus='';
+			$('form#register_user_form .validate_user_register').each(function(){
+				if(this.value==''){
+					$(this).addClass('invalid-ip');
+					if(_status==true){
+						_status=false;
+						_focus=this
+					}
+				}else if($(this).hasClass('invalid-ip')){
+					$(this).removeClass('invalid-ip')
+				}
+			});
+			if($('#register_tc').prop('checked')==false){
+				_status=false;
+				$('#register_tc').addClass('invalid-ip')
+			}else{
+				$('#register_tc').removeClass('invalid-ip')
+			}if(_status==false){
+				$(_focus).focus()
+			}else{
+				$.post(app_base_url+'index.php/auth/register_on_light_box',$('form#register_user_form').serialize(),function(response){console.log($("register_user_form").attr("name"));
+					var status=response.status;
+					var data=response.data;
+					if(status==true){
+						$('#register-status-wrapper').empty().html(data);
+						$('#register-status-wrapper').removeClass('hide');$('#register-status-wrapper').addClass('hide', 5000); 
+						$('#register_tc,#register_subscription').prop('checked',false);
+						$('input[name="first_name"],input[name="last_name"],input[name="date_of_birth"],input[name="email"], input[name="password"], input[name="confirm_password"], input[name="about_us"]','form#register_user_form').val('')
+					}else{
+						$('#register-error-msg').empty().html(data);
+						$('#register-error-msg').removeClass('hide');
+						$('#register-error-msg').addClass('hide', 5000)
+					}
+				})
+			}
+		});
+		$('.user_logout_button').click(function(e){
+			e.preventDefault();
+			user_signout()
+		});
+		function user_signout(){
+
+			var auth2=gapi.auth2.getAuthInstance();
+			// console.log(auth2);
+			// auth2.signOut().then(function(){
+
+			// });
+			if(typeof(FB)!='undefined'){
+				FB.logout(function(r){})
+			}
+			$.get(app_base_url+'index.php/auth/ajax_logout',function(response){
+				location.reload()
+			});
+		}
+	});
+$(document).ready(function(){
+	$(window).scroll(function(){
+		var yPos=($(window).scrollTop());
+		if(yPos>115)
+		{
+			$('.sidebuki1').addClass('fixed');
+			$('.sidebuki1').addClass('set_up')
+	    }
+		else{
+		$('.sidebuki1').removeClass('fixed');
+		$('.sidebuki1').removeClass('set_up')
+	        }
+	    });
+
+	$('.inside_alert').addClass('show');
+	$('.close_alert').click(function(){
+		$(this).parent('.alert_box').parent('.inside_alert').removeClass('show')
+	})
+
+});
+</script>
+
+
+<script type="text/javascript">
+$(document).ready(function(){
+	$('#submenu_show').click(function(){
+		$('.for_sign_in').show();
+		$('.for_sign_up').hide();
+		$('.for_forgot').hide();
+		$('.mysign').removeClass('max_wdth');
+	});	
+	$('.fadeandscaleregbooking_open').click(function(){
+		$('#mylogin').modal('show');
+		$('.for_sign_in').fadeOut(200,function(){$('.for_sign_up').fadeIn(200)});
+		$('.for_forgot').fadeOut(200);
+		$('.mysign').addClass('max_wdth');
+	});
+	$('.forgtpsw').click(function(){
+		$('#mylogin').modal('show');
+		$('.for_sign_in').fadeOut(200,function(){$('.for_forgot').fadeIn(200)});
+		$('.for_sign_up').fadeOut(200);
+		$('.mysign').removeClass('max_wdth');
+	});
+
+	/*$( "#loginDtae" ).datepicker({
+		changeMonth: true,
+		changeYear: true
+	});*/
+	$('#loginDtae').datepicker({
+		yearRange: "-100:-0",
+		changeYear: true,
+		changeMonth: true,
+		numberOfMonths: 1,
+		dateFormat: 'dd-mm-yy',
+		minDate: '-100Y',
+		maxDate: '-18Y',
+	});
+});
+</script>
+<script>
+	// $(document).ready(function(){
+	// $('#registers_form').click(function(){
+	// 	$('.for_sign_in').hide();
+	// 	$('.for_sign_up').show();
+	// 	$('.for_forgot').hide();
+	// 	$('.mysign').addClass('max_wdth');
+	// });
+	// $('#submenu_show').click(function(){
+	// 	$('.for_sign_in').show();
+	// 	$('.for_sign_up').hide();
+	// 	$('.for_forgot').hide();
+	// 	$('.mysign').removeClass('max_wdth');
+	// });
+	// });	
+</script>
+
+
+
+
+
+
+
+

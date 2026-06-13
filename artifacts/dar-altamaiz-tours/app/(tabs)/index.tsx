@@ -48,34 +48,33 @@ const INJECTED_JS = `
   }, true);
 
   // Auto-open login popup when the app's Login button was pressed.
-  // The site uses Bootstrap + jQuery; the login modal id is #myModal_new_emp.
+  // The site uses Bootstrap 3 + jQuery. Modal id: #myModal_new_emp.
+  // Login panel: .for_sign_in  |  Register panel: .for_sign_up
   // The param __app=login is appended by the app; removed here to keep the URL clean.
   if (window.location.search.indexOf('__app=login') !== -1) {
     history.replaceState(null, '', window.location.pathname + window.location.hash);
-    var _dtAttempts = 0;
-    function _dtOpenLoginModal() {
-      _dtAttempts++;
-      // Primary: use Bootstrap jQuery API directly — most reliable
-      if (typeof $ !== 'undefined' && $ && $.fn && $.fn.modal) {
-        $('#myModal_new_emp').modal('show');
+    var _dtA = 0;
+    function _dtLogin() {
+      _dtA++;
+      if (typeof $ === 'undefined' || !$.fn || !$.fn.modal) {
+        if (_dtA < 15) { setTimeout(_dtLogin, 400); }
         return;
       }
-      // Fallback: click the element that has data-target="#myModal_new_emp"
-      var btn = document.querySelector('[data-target="#myModal_new_emp"]');
-      if (btn) {
-        btn.click();
-        return;
-      }
-      if (_dtAttempts < 10) { setTimeout(_dtOpenLoginModal, 400); }
+      // Open the modal
+      $('#myModal_new_emp').modal('show');
+      // Switch to the login panel — exact logic from the site's own jQuery
+      $('.for_sign_up, .for_forgot').hide();
+      $('.for_sign_in').show();
+      $('.mysign').removeClass('max_wdth');
     }
-    setTimeout(_dtOpenLoginModal, 800);
+    setTimeout(_dtLogin, 1500);
   }
 
   true;
 })();
 `;
 
-const LOGIN_HOME_URL = "https://dt-tours.com/index.php/auth/register?__app=login";
+const LOGIN_HOME_URL = "https://dt-tours.com/?__app=login";
 const WHATSAPP_URL = "https://wa.me/96590087797";
 
 const BG_IMAGES = [
