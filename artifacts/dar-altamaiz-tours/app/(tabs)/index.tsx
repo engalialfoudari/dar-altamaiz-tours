@@ -48,39 +48,27 @@ const INJECTED_JS = `
   }, true);
 
   // Auto-open login popup when the app's Login button was pressed.
+  // Navigates to /auth/register, then clicks "Sign In now" to trigger the login popup.
   // The param __app=login is appended by the app; removed here to keep the URL clean.
   if (window.location.search.indexOf('__app=login') !== -1) {
     history.replaceState(null, '', window.location.pathname + window.location.hash);
     setTimeout(function() {
-      function dtClickLogin() {
-        var all = Array.prototype.slice.call(document.querySelectorAll('a, button, [role="button"]'));
-        for (var i = 0; i < all.length; i++) {
-          var txt = (all[i].textContent || '').trim().toUpperCase();
-          if ((txt === 'LOGIN' || txt === 'LOG IN') && all[i].offsetParent !== null) {
-            all[i].click();
-            return;
-          }
+      var all = Array.prototype.slice.call(document.querySelectorAll('a, button, [role="button"]'));
+      for (var i = 0; i < all.length; i++) {
+        var txt = (all[i].textContent || '').trim();
+        if (txt === 'Sign In now' && all[i].offsetParent !== null) {
+          all[i].click();
+          return;
         }
       }
-      var menuBtn = document.querySelector('.navbar-toggler') ||
-                    document.querySelector('[data-bs-toggle="collapse"]') ||
-                    document.querySelector('[data-toggle="collapse"]') ||
-                    document.querySelector('.hamburger') ||
-                    document.querySelector('[aria-label="Toggle navigation"]');
-      if (menuBtn && menuBtn.offsetParent !== null) {
-        menuBtn.click();
-        setTimeout(dtClickLogin, 700);
-      } else {
-        dtClickLogin();
-      }
-    }, 1200);
+    }, 1000);
   }
 
   true;
 })();
 `;
 
-const LOGIN_HOME_URL = "https://dt-tours.com/?__app=login";
+const LOGIN_HOME_URL = "https://dt-tours.com/index.php/auth/register?__app=login";
 const WHATSAPP_URL = "https://wa.me/96590087797";
 
 const BG_IMAGES = [
