@@ -1,10 +1,15 @@
 ---
 name: Gold Baseline — Dar AlTamaiz Tours
-description: User-confirmed working state of the app. Restore to this point if anything breaks.
+description: User-confirmed working state. Restore here if anything breaks.
 ---
 
-## Commit
-`3e41bb28158243734e7241b7d12a731c8b5dcd87` — "Improve login popup functionality by using the website's exact JavaScript code"
+## Latest Gold Point
+`772eea008097c7ab45c9cf5810b8d01469114129` — "Make email submission more robust by handling hotels data reliably"
+**Confirmed working: June 13, 2026**
+
+## Previous Gold Point
+`3e41bb28158243734e7241b7d12a731c8b5dcd87` — "Improve login popup functionality using the website's exact JavaScript code"
+**Confirmed working: June 12, 2026**
 
 ## What is working at this point
 
@@ -27,6 +32,13 @@ description: User-confirmed working state of the app. Restore to this point if a
   ```
 - Site: Bootstrap 3 + jQuery, server-rendered PHP (CodeIgniter). Modal id: `#myModal_new_emp`
 
+### Special Requests (email)
+- Endpoint: `POST /api/requests/submit`
+- SMTP: Bluehost — all 5 env vars confirmed set (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_TO)
+- End-to-end test passed: email delivered with messageId confirmed
+- `hotels` input now safely normalised to array before `.map()` (bug fix in this gold point)
+- ⚠️ API URL is dev (`sisko.replit.dev`) — works only while workspace is running. Deploy API server for 24/7 reliability.
+
 ### WebShell
 - Bottom tab bar: Home, Tours, My Booking, Contact, Special Requests
 - Custom mobile Chrome user agent
@@ -35,18 +47,22 @@ description: User-confirmed working state of the app. Restore to this point if a
 - Offline detection with toast + retry
 - Skeleton loader on first page load
 
-### Builds confirmed
-- APK (preview profile): `9a10183a-29f8-48f6-986f-43ab6dbfe4d8`
-- AAB (production profile): `f1a08e9e-6dc7-4e5c-a3f1-55676cd2e4f8`
+### Builds at this gold point
+- APK (preview): `443708cc-1e0d-415d-a565-530e7be2a56f`
+- AAB (production): `29d1eda8-66c4-47b8-ab1a-5724c49c88ca`
 
 ## Key files
-- `artifacts/dar-altamaiz-tours/app/(tabs)/index.tsx` — main screen (1008 lines at this point)
+- `artifacts/dar-altamaiz-tours/app/(tabs)/index.tsx` — main screen
 - `artifacts/dar-altamaiz-tours/eas.json` — preview=APK, production=AAB
+- `artifacts/dar-altamaiz-tours/components/SpecialRequestsScreen.tsx` — email form
+- `artifacts/api-server/src/routes/requests.ts` — email API route
 
 ## How to restore
 ```bash
-git --no-optional-locks checkout 3e41bb28158243734e7241b7d12a731c8b5dcd87 -- "artifacts/dar-altamaiz-tours/app/(tabs)/index.tsx"
+git --no-optional-locks checkout 772eea008097c7ab45c9cf5810b8d01469114129 -- \
+  "artifacts/dar-altamaiz-tours/app/(tabs)/index.tsx" \
+  "artifacts/api-server/src/routes/requests.ts"
 ```
 Then run typecheck and build.
 
-**Why:** User explicitly confirmed "everything is working fine" at this point.
+**Why:** User explicitly confirmed "everything is working fine" at both gold points.
