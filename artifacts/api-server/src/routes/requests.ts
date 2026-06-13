@@ -65,9 +65,14 @@ router.post("/requests/submit", async (req, res) => {
     return;
   }
 
+  const hotelsArr: Array<{ name: string; city: string } | string> = Array.isArray(hotels)
+    ? hotels
+    : hotels
+    ? [hotels as string]
+    : [];
   const hotelsHtml =
-    (hotels ?? []).length > 0
-      ? hotels
+    hotelsArr.length > 0
+      ? hotelsArr
           .map((h) =>
             typeof h === "string" ? `<li>${h}</li>` : `<li>${h.name} — ${h.city}</li>`,
           )
