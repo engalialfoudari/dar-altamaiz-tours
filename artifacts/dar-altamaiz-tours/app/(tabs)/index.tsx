@@ -48,25 +48,27 @@ const INJECTED_JS = `
   }, true);
 
   // Auto-open login popup when the app's Login button was pressed.
-  // Navigates to /auth/register, then clicks "Sign In now" to trigger the login popup.
+  // The site uses Bootstrap + jQuery; the login modal id is #myModal_new_emp.
   // The param __app=login is appended by the app; removed here to keep the URL clean.
   if (window.location.search.indexOf('__app=login') !== -1) {
     history.replaceState(null, '', window.location.pathname + window.location.hash);
     var _dtAttempts = 0;
-    function _dtTrySignIn() {
+    function _dtOpenLoginModal() {
       _dtAttempts++;
-      var all = document.querySelectorAll('a, button, [role="button"]');
-      for (var i = 0; i < all.length; i++) {
-        var el = all[i];
-        var txt = ((el.innerText || el.textContent || '')).replace(/\\s+/g, ' ').trim().toLowerCase();
-        if (txt.indexOf('sign in') !== -1) {
-          el.click();
-          return;
-        }
+      // Primary: use Bootstrap jQuery API directly — most reliable
+      if (typeof $ !== 'undefined' && $ && $.fn && $.fn.modal) {
+        $('#myModal_new_emp').modal('show');
+        return;
       }
-      if (_dtAttempts < 8) { setTimeout(_dtTrySignIn, 500); }
+      // Fallback: click the element that has data-target="#myModal_new_emp"
+      var btn = document.querySelector('[data-target="#myModal_new_emp"]');
+      if (btn) {
+        btn.click();
+        return;
+      }
+      if (_dtAttempts < 10) { setTimeout(_dtOpenLoginModal, 400); }
     }
-    setTimeout(_dtTrySignIn, 800);
+    setTimeout(_dtOpenLoginModal, 800);
   }
 
   true;
