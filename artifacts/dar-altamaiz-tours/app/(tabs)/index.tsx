@@ -52,16 +52,21 @@ const INJECTED_JS = `
   // The param __app=login is appended by the app; removed here to keep the URL clean.
   if (window.location.search.indexOf('__app=login') !== -1) {
     history.replaceState(null, '', window.location.pathname + window.location.hash);
-    setTimeout(function() {
-      var all = Array.prototype.slice.call(document.querySelectorAll('a, button, [role="button"]'));
+    var _dtAttempts = 0;
+    function _dtTrySignIn() {
+      _dtAttempts++;
+      var all = document.querySelectorAll('a, button, [role="button"]');
       for (var i = 0; i < all.length; i++) {
-        var txt = (all[i].textContent || '').trim();
-        if (txt === 'Sign In now' && all[i].offsetParent !== null) {
-          all[i].click();
+        var el = all[i];
+        var txt = ((el.innerText || el.textContent || '')).replace(/\\s+/g, ' ').trim().toLowerCase();
+        if (txt.indexOf('sign in') !== -1) {
+          el.click();
           return;
         }
       }
-    }, 1000);
+      if (_dtAttempts < 8) { setTimeout(_dtTrySignIn, 500); }
+    }
+    setTimeout(_dtTrySignIn, 800);
   }
 
   true;
