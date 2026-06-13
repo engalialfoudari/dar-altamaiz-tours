@@ -1,9 +1,27 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>APP_NAME_PLACEHOLDER</title>
+    <title>Dar AlTamaiz Tours — Curated Tours &amp; Travel Experiences</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Dar AlTamaiz Tours (D.T. Tours) offers premium guided tours and curated travel packages. Download our mobile app on iOS or Android to discover and book unforgettable journeys." />
+    <link rel="canonical" href="BASE_URL_PLACEHOLDER/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Dar AlTamaiz Tours" />
+    <meta property="og:title" content="Dar AlTamaiz Tours — Curated Tours &amp; Travel Experiences" />
+    <meta property="og:description" content="Discover and book premium guided tours and travel packages with Dar AlTamaiz Tours. Available on iOS and Android." />
+    <meta property="og:url" content="BASE_URL_PLACEHOLDER/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://dt-tours.com/images/og-cover.jpg" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Dar AlTamaiz Tours — Curated Tours &amp; Travel Experiences" />
+    <meta name="twitter:description" content="Discover and book premium guided tours and travel packages with Dar AlTamaiz Tours. Available on iOS and Android." />
+    <meta name="twitter:image" content="https://dt-tours.com/images/og-cover.jpg" />
+
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='180' height='180' rx='36' fill='%23FF3C00'/%3E%3C/svg%3E" />
     <style>
       * {
@@ -59,6 +77,37 @@
       }
       .content {
         display: block;
+      }
+
+      .about-section {
+        margin-bottom: 32px;
+        padding: 20px 24px;
+        border: 1px solid #e8e8e8;
+        border-radius: 12px;
+        background: #f9f9f9;
+        text-align: left;
+      }
+      .about-text {
+        font-size: 15px;
+        color: #555;
+        margin: 0 0 14px;
+        line-height: 1.6;
+      }
+      .about-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .about-link {
+        font-size: 14px;
+        font-weight: 500;
+        color: #111;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        transition: color 0.15s;
+      }
+      .about-link:hover {
+        color: #555;
       }
 
       .steps-container {
@@ -326,6 +375,19 @@
         .open-button:hover {
           background: #e0e0e0;
         }
+        .about-section {
+          background: #1a1a1a;
+          border-color: #333;
+        }
+        .about-text {
+          color: #888;
+        }
+        .about-link {
+          color: #e0e0e0;
+        }
+        .about-link:hover {
+          color: #aaa;
+        }
       }
     </style>
   </head>
@@ -337,8 +399,21 @@
       </div>
 
       <div class="content" id="content">
-        <h1>APP_NAME_PLACEHOLDER</h1>
-        <p class="subtitle">Preview this app on your phone</p>
+        <h1>Dar AlTamaiz Tours</h1>
+        <p class="subtitle">Premium guided tours &amp; curated travel experiences — preview our mobile app below</p>
+
+        <div class="about-section">
+          <p class="about-text">
+            Dar AlTamaiz Tours (D.T. Tours) connects travellers with high-quality guided tours,
+            travel packages, and unforgettable experiences. Browse destinations and book directly
+            through our website or mobile app.
+          </p>
+          <div class="about-links">
+            <a href="https://dt-tours.com/" class="about-link">Visit our website</a>
+            <a href="https://dt-tours.com/index.php/tours/search/" class="about-link">Browse tours</a>
+            <a href="https://dt-tours.com/index.php/contact/" class="about-link">Contact us</a>
+          </div>
+        </div>
 
         <div class="steps-container">
           <div class="step">
