@@ -107,12 +107,82 @@ function serveStaticFile(urlPath, res) {
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
+function getCanonicalBaseUrl(req) {
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers["host"];
+  return `${proto}://${host}`;
+}
+
+function serveRobotsTxt(req, res) {
+  const baseUrl = getCanonicalBaseUrl(req);
+  const sitemapUrl = `${baseUrl}${basePath}/sitemap.xml`;
+  const body = [
+    "User-agent: *",
+    "Allow: /",
+    "",
+    `Sitemap: ${sitemapUrl}`,
+  ].join("\n");
+  res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+  res.end(body);
+}
+
+function serveSitemapXml(req, res) {
+  const baseUrl = getCanonicalBaseUrl(req);
+  const landingUrl = `${baseUrl}${basePath}/`;
+  const now = new Date().toISOString().split("T")[0];
+  const body = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    "  <url>",
+    `    <loc>${landingUrl}</loc>`,
+    `    <lastmod>${now}</lastmod>`,
+    "    <changefreq>monthly</changefreq>",
+    "    <priority>1.0</priority>",
+    "  </url>",
+    "</urlset>",
+  ].join("\n");
+  res.writeHead(200, { "content-type": "application/xml; charset=utf-8" });
+  res.end(body);
+}
+
+function serveLlmsTxt(req, res) {
+  const baseUrl = getCanonicalBaseUrl(req);
+  const landingUrl = `${baseUrl}${basePath}/`;
+  const body = [
+    "# Dar AlTamaiz Tours",
+    "",
+    "> A premium mobile travel app for booking curated tours and travel experiences.",
+    "",
+    "Dar AlTamaiz Tours (D.T. Tours) is a mobile application available on iOS and Android",
+    "that lets travellers discover and book high-quality guided tours and travel packages.",
+    "The public landing page provides deep-links to open the app directly in Expo Go for preview.",
+    "",
+    "## Public pages",
+    "",
+    `- [Landing page](${landingUrl}): App preview and download instructions.`,
+  ].join("\n");
+  res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+  res.end(body);
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
   let pathname = url.pathname;
 
   if (basePath && pathname.startsWith(basePath)) {
     pathname = pathname.slice(basePath.length) || "/";
+  }
+
+  if (pathname === "/robots.txt") {
+    return serveRobotsTxt(req, res);
+  }
+
+  if (pathname === "/sitemap.xml") {
+    return serveSitemapXml(req, res);
+  }
+
+  if (pathname === "/llms.txt") {
+    return serveLlmsTxt(req, res);
   }
 
   if (pathname === "/" || pathname === "/manifest") {
