@@ -32,6 +32,17 @@ BOOKING GUIDANCE STEPS (adapt to context):
 4. Click "Book Now" / "احجز الآن"
 5. Fill in traveler details and complete payment securely on the site
 
+ESCALATION TO WHATSAPP — IMPORTANT:
+If ANY of these are true after a few exchanges, append exactly [WHATSAPP] at the very end of your message (nothing after it):
+- User is asking questions totally unrelated to travel (e.g. coding, general knowledge, jokes, sports)
+- User shows clear signs of not intending to book (e.g. "just curious", "I'm not traveling", "only asking")
+- User has been chatting for many turns without any genuine travel interest
+- User asks to speak to a human or customer service
+- User seems frustrated or wants more personalised help
+When you append [WHATSAPP], also say naturally:
+  Arabic: "يبدو إن فريق خدمة العملاء يقدر يساعدك أكثر مني — تواصل معهم مباشرة على واتساب! 💬"
+  English: "It looks like our customer service team can help you better — reach them directly on WhatsApp! 💬"
+
 TONE IN ARABIC: casual Kuwaiti dialect, warm, enthusiastic about travel
 TONE IN ENGLISH: professional yet friendly, helpful
 
@@ -78,6 +89,37 @@ router.post("/chat", async (req, res) => {
     req.log.error({ err }, "Chat completion failed");
     res.write(`data: ${JSON.stringify({ error: "Chat failed, please try again." })}\n\n`);
     res.end();
+  }
+});
+
+router.post("/chat/message", async (req, res) => {
+  try {
+    const { messages } = req.body as {
+      messages: Array<{ role: "user" | "assistant"; content: string }>;
+    };
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      res.status(400).json({ ok: false, error: "messages array required" });
+      return;
+    }
+
+    const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...messages.slice(-20),
+    ];
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-5.1",
+      max_completion_tokens: 1024,
+      messages: chatMessages,
+      stream: false,
+    });
+
+    const content = response.choices[0]?.message?.content ?? "";
+    res.json({ ok: true, content });
+  } catch (err) {
+    req.log.error({ err }, "Chat message failed");
+    res.status(500).json({ ok: false, error: "Chat failed, please try again." });
   }
 });
 

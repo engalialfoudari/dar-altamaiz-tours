@@ -19,6 +19,7 @@ import Svg, { Path } from "react-native-svg";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
+import { ChatbotScreen, KuwaitiManIcon } from "@/components/ChatbotScreen";
 import { InfoModal } from "@/components/InfoModal";
 import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import colors from "@/constants/colors";
@@ -632,6 +633,7 @@ export default function HomeScreen() {
   const [externalNav, setExternalNav] = useState<{ url: string; seq: number } | null>(null);
   const navSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web";
 
@@ -714,6 +716,22 @@ export default function HomeScreen() {
       {/* Offline banner — floats over everything when connection drops */}
       {isOffline && <OfflineBanner />}
 
+      {/* Chatbot FAB — floats above the tab bar, visible once shell is active */}
+      {phase === "shell" && Platform.OS !== "web" && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.chatbotFab,
+            { bottom: insets.bottom + 72 },
+            pressed && { opacity: 0.85, transform: [{ scale: 0.93 }] },
+          ]}
+          onPress={() => setShowChatbot(true)}
+          accessibilityLabel="Open Tamaiz AI travel advisor"
+        >
+          <KuwaitiManIcon size={34} />
+        </Pressable>
+      )}
+
+      <ChatbotScreen visible={showChatbot} onClose={() => setShowChatbot(false)} />
     </View>
   );
 }
@@ -1006,6 +1024,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
     zIndex: 1000,
+  },
+  chatbotFab: {
+    position: "absolute",
+    right: 16,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#000000",
+    borderWidth: 2.5,
+    borderColor: gold,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    zIndex: 1001,
   },
   offlineIcon: {
     fontSize: 52,
