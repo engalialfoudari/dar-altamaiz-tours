@@ -41,19 +41,49 @@ const STORAGE_KEY = "dtours_chat_v1";
 const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 const BOT_NAME = "D.T. Tours Ai";
 
-function buildFlightRedirectUrl(token: string, apiBase: string): string {
-  const parts = token.split("|");
-  const [fromId, fromLabel, toId, toLabel, dep, ret, adults] = parts;
-  const params = new URLSearchParams({
-    from: fromLabel ?? "",
-    from_id: fromId ?? "",
-    to: toLabel ?? "",
-    to_id: toId ?? "",
-    dep: dep ?? "",
-    ret: ret ?? "",
-    adults: adults ?? "1",
-  });
-  return `${apiBase}/flight-redirect?${params.toString()}`;
+const DT_BASE = "https://dt-tours.com";
+
+const FLIGHT_CARRIER_NAMES: Record<string, string> = {
+  KU: "Kuwait Airways", J9: "Jazeera Airways", FZ: "flydubai",
+  G9: "Air Arabia", EK: "Emirates", EY: "Etihad Airways",
+  QR: "Qatar Airways", GF: "Gulf Air", WY: "Oman Air",
+  SV: "Saudia", XY: "flynas", TK: "Turkish Airlines",
+  PC: "Pegasus", W6: "Wizz Air", AI: "Air India",
+  IX: "Air India Express", "6E": "IndiGo", PK: "PIA",
+  UL: "SriLankan Airlines", BG: "Biman Bangladesh",
+};
+
+function parseFlightCards(html: string, from: string, to: string, depDate: string, searchId: string): ScrapedFlight[] {
+  const results: ScrapedFlight[] = [];
+  const bookUrl = `${DT_BASE}/index.php/flight/search/${searchId}`;
+  const boundary = 'class="rowresult r-r-i';
+  const positions: number[] = [];
+  let i = 0;
+  while ((i = html.indexOf(boundary, i)) !== -1) { positions.push(i); i += boundary.length; }
+  if (positions.length === 0) return results;
+  for (let n = 0; n < positions.length; n++) {
+    const card = html.slice(positions[n], n + 1 < positions.length ? positions[n + 1] : html.length);
+    const codeM = card.match(/data-code="([A-Z0-9]{2})"/);
+    const code = codeM?.[1] ?? "";
+    const nameM = card.match(/<span class="a-n"[^>]*>\s*([^<]+)<\/span>/);
+    const carrier = nameM?.[1]?.trim() ?? (FLIGHT_CARRIER_NAMES[code] ?? code);
+    const depM = card.match(/fltime dep_dt[^"]*"[^>]*>(\d{1,2}:\d{2})</);
+    const arrM = card.match(/arr_dt[^"]*"[^>]*>(\d{1,2}:\d{2})</);
+    const dep_ = depM?.[1] ?? "";
+    const arr_ = arrM?.[1] ?? "";
+    const priceM = card.match(/data-price="([\d.]+)"/);
+    const price = priceM ? parseFloat(priceM[1]).toFixed(2) : "";
+    const durM = card.match(/class="[^"]*(?:total_dur|durtime)[^"]*"[^>]*>([^<]+)</);
+    const duration = durM ? durM[1].trim() : "";
+    const isNonStop = /non[\s-]?stop|0\s*stop/i.test(card);
+    const stopsM = card.match(/(\d+)\s*(?:stop|layover)/i);
+    const stops = isNonStop ? 0 : stopsM ? parseInt(stopsM[1], 10) : 0;
+    if ((dep_ || arr_) && (price || carrier)) {
+      results.push({ carrier: carrier || "Airline", departure: dep_, arrival: arr_,
+        depDate, origin: from, destination: to, stops, duration, price, currency: "KWD", bookUrl });
+    }
+  }
+  return results;
 }
 
 type Language = "ar" | "en";
@@ -244,32 +274,82 @@ function FlightInlineSearch({
     if (hasFetched.current) return;
     hasFetched.current = true;
 
-    (async () => {
+    void (async () => {
       try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 90_000);
-        const res = await fetch(`${apiBase}/flight-scrape`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: ctrl.signal,
-          body: JSON.stringify({
-            from: fromId,
-            to: toId,
-            fromLabel,
-            toLabel,
-            depDate: dep,
-            retDate: ret || undefined,
-            adults,
-          }),
+        const [fromData, toData] = await Promise.all([
+          fetch(`${DT_BASE}/index.php/ajax/get_airport_code_list?term=${encodeURIComponent(fromId)}&type=international`, {
+            headers: { "X-Requested-With": "XMLHttpRequest", "Referer": `${DT_BASE}/` },
+          }).then((r) => r.json()).catch(() => []),
+          fetch(`${DT_BASE}/index.php/ajax/get_airport_code_list?term=${encodeURIComponent(toId)}&type=international`, {
+            headers: { "X-Requested-With": "XMLHttpRequest", "Referer": `${DT_BASE}/` },
+          }).then((r) => r.json()).catch(() => []),
+        ]);
+
+        const fromLoc = (fromData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
+        const toLoc = (toData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
+
+        const depDDMMYYYY = dep ? dep.split("-").reverse().join("/") : "";
+        const retDDMMYYYY = ret ? ret.split("-").reverse().join("/") : "";
+
+        const formBody = new URLSearchParams({
+          trip_type: ret ? "circle" : "oneway",
+          sector_type: "international",
+          from_label: fromLoc?.label ?? fromLabel,
+          from: fromLoc?.code ?? fromId,
+          from_loc_id: fromLoc?.id ?? fromId,
+          from_loc_type: fromLoc?.category ?? "All_data",
+          to_label: toLoc?.label ?? toLabel,
+          to: toLoc?.code ?? toId,
+          to_loc_id: toLoc?.id ?? toId,
+          to_loc_type: toLoc?.category ?? "All_data",
+          depature: depDDMMYYYY,
+          return: retDDMMYYYY,
+          adult: String(adults),
+          child: "0",
+          infant: "0",
+          v_class: "Economy",
+          search_flight: "Search",
         });
-        clearTimeout(tid);
-        const data = (await res.json()) as { ok: boolean; flights?: ScrapedFlight[]; error?: string };
-        if (data.ok && data.flights && data.flights.length > 0) {
-          setFlights(data.flights.slice(0, 5));
-          setStatus("done");
-        } else {
-          setStatus("fallback");
+
+        const searchRes = await fetch(`${DT_BASE}/index.php/general/pre_flight_search`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": `${DT_BASE}/`,
+          },
+          body: formBody.toString(),
+        });
+
+        const finalUrl = searchRes.url;
+        const searchId = finalUrl.match(/\/flight\/search\/(\d+)/)?.[1];
+        if (!searchId) { setStatus("fallback"); return; }
+
+        const TIMEOUT = 120_000;
+        const start = Date.now();
+
+        while (Date.now() - start < TIMEOUT) {
+          await new Promise((r) => setTimeout(r, 3_000));
+          try {
+            const listRes = await fetch(
+              `${DT_BASE}/index.php/ajax/flight_list?booking_source=PTBSID0000000016&search_id=${searchId}&op=load`,
+              { headers: { "X-Requested-With": "XMLHttpRequest", "Referer": `${DT_BASE}/index.php/flight/search/${searchId}` } }
+            );
+            const data = await listRes.json() as { status: number; data: Record<string, Record<string, string>> | [] };
+            if (data.status === 1 && !Array.isArray(data.data)) {
+              const colX = data.data?.col_x;
+              if (colX && typeof colX === "object") {
+                const html = Object.values(colX).join("");
+                const parsed = parseFlightCards(html, fromId, toId, dep, searchId);
+                if (parsed.length > 0) {
+                  setFlights(parsed.slice(0, 5));
+                  setStatus("done");
+                  return;
+                }
+              }
+            }
+          } catch { /* keep polling */ }
         }
+        setStatus("fallback");
       } catch {
         setStatus("fallback");
       }
@@ -277,7 +357,7 @@ function FlightInlineSearch({
   }, []);
 
   const openWebsite = () =>
-    Linking.openURL(buildFlightRedirectUrl(token, apiBase)).catch(() => {});
+    Linking.openURL(`${DT_BASE}/`).catch(() => {});
 
   if (status === "loading") {
     return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="flight" />;

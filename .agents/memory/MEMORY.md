@@ -2,3 +2,4 @@
 - [DTTours Scraper](dtours-scraper.md) — how to extract packages from dt-tours.com (CSS selectors, URL patterns)
 - [Travelport Integration](travelport-integration.md) — live flight search status, credential invisible-char fix, blocking endpoint issue
 - [Chromium in Replit (puppeteer)](chromium-replit-setup.md) — skip auto-download, use nix system Chromium; exact dt-tours.com form field IDs for direct JS injection
+- [Flight Search IP Restriction](flight-search-ip.md) — dt-tours.com GDS only processes searches from Kuwait/Middle East IPs; Replit (US) always gets empty results
