@@ -141,6 +141,279 @@ function TypingDots() {
   );
 }
 
+interface FlightSegmentData {
+  carrier: string;
+  flightNumber: string;
+  origin: string;
+  destination: string;
+  departureTime: string;
+  arrivalTime: string;
+  duration: string;
+}
+
+interface FlightOptionData {
+  key: string;
+  totalPrice: string;
+  currency: string;
+  segments: FlightSegmentData[];
+  stops: number;
+  totalDuration: string;
+  bookingCode: string;
+}
+
+function FlightInlineSearch({
+  token,
+  apiBase,
+  isAr,
+}: {
+  token: string;
+  apiBase: string;
+  isAr: boolean;
+}) {
+  const parts = token.split("|");
+  const [fromId, fromLabel, toId, toLabel, dep, ret, adultsStr] = parts;
+  const adults = parseInt(adultsStr ?? "1") || 1;
+
+  const [status, setStatus] = React.useState<"idle" | "loading" | "done" | "fallback">("idle");
+  const [flights, setFlights] = React.useState<FlightOptionData[]>([]);
+  const [searchError, setSearchError] = React.useState<string | null>(null);
+  const hasFetched = useRef(false);
+
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    (async () => {
+      try {
+        const statusRes = await fetch(`${apiBase}/flight-search/status`);
+        const statusData = (await statusRes.json()) as { configured: boolean };
+        if (!statusData.configured) {
+          setStatus("fallback");
+          return;
+        }
+        setStatus("loading");
+        const res = await fetch(`${apiBase}/flight-search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ from: fromId, to: toId, depDate: dep, retDate: ret || undefined, adults }),
+        });
+        const data = (await res.json()) as { ok: boolean; flights?: FlightOptionData[]; error?: string };
+        if (data.ok && data.flights && data.flights.length > 0) {
+          setFlights(data.flights.slice(0, 5));
+          setStatus("done");
+        } else {
+          setSearchError(data.error ?? null);
+          setStatus("fallback");
+        }
+      } catch {
+        setStatus("fallback");
+      }
+    })();
+  }, []);
+
+  const openWebsite = () =>
+    Linking.openURL(buildFlightRedirectUrl(token, apiBase)).catch(() => {});
+
+  if (status === "idle") return null;
+
+  if (status === "loading") {
+    return (
+      <View style={flightStyles.card}>
+        <View style={flightStyles.loadingRow}>
+          <ActivityIndicator size="small" color={GOLD} />
+          <Text style={flightStyles.loadingText}>
+            {isAr ? "جارٍ البحث عن أفضل الأسعار..." : "Searching live fares..."}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (status === "fallback") {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.flightCta, pressed && { opacity: 0.8 }]}
+        onPress={openWebsite}
+      >
+        <Text style={styles.flightCtaText}>
+          {isAr ? "✈️ ابحث عن رحلتك الآن" : "✈️ Search My Flight Now"}
+        </Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={flightStyles.resultsWrap}>
+      <Text style={flightStyles.resultsHeader}>
+        {isAr
+          ? `✈️ ${fromLabel} ← ${toLabel}`
+          : `✈️ ${fromLabel} → ${toLabel}`}
+      </Text>
+      {flights.map((f) => {
+        const seg = f.segments[0];
+        const lastSeg = f.segments[f.segments.length - 1];
+        const carrier = f.bookingCode || seg?.carrier || "—";
+        return (
+          <Pressable
+            key={f.key}
+            style={({ pressed }) => [flightStyles.flightRow, pressed && { opacity: 0.85 }]}
+            onPress={openWebsite}
+          >
+            <View style={flightStyles.flightLeft}>
+              <Text style={flightStyles.flightCarrier}>{carrier}</Text>
+              {f.stops > 0 && (
+                <Text style={flightStyles.flightStops}>
+                  {isAr ? `${f.stops} توقف` : `${f.stops} stop${f.stops > 1 ? "s" : ""}`}
+                </Text>
+              )}
+              {f.stops === 0 && (
+                <Text style={flightStyles.flightDirect}>{isAr ? "مباشر" : "Direct"}</Text>
+              )}
+            </View>
+            <View style={flightStyles.flightMid}>
+              <Text style={flightStyles.flightTime}>{seg?.departureTime ?? "—"}</Text>
+              <Text style={flightStyles.flightArrow}>→</Text>
+              <Text style={flightStyles.flightTime}>{lastSeg?.arrivalTime ?? "—"}</Text>
+            </View>
+            <View style={flightStyles.flightRight}>
+              <Text style={flightStyles.flightPrice}>
+                {f.currency} {f.totalPrice}
+              </Text>
+              <Text style={flightStyles.flightBook}>
+                {isAr ? "احجز" : "Book"}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+      <Pressable
+        style={({ pressed }) => [flightStyles.moreBtn, pressed && { opacity: 0.8 }]}
+        onPress={openWebsite}
+      >
+        <Text style={flightStyles.moreBtnText}>
+          {isAr ? "عرض جميع الرحلات على الموقع →" : "View all flights on website →"}
+        </Text>
+      </Pressable>
+      {searchError && (
+        <Text style={flightStyles.errorNote}>{searchError}</Text>
+      )}
+    </View>
+  );
+}
+
+const flightStyles = StyleSheet.create({
+  card: {
+    marginTop: 8,
+    backgroundColor: "rgba(10,22,40,0.9)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.25)",
+    padding: 14,
+  },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  loadingText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  resultsWrap: {
+    marginTop: 8,
+    gap: 6,
+  },
+  resultsHeader: {
+    color: GOLD,
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
+  flightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,31,91,0.35)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.18)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  flightLeft: {
+    width: 50,
+    gap: 2,
+  },
+  flightCarrier: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  flightStops: {
+    color: "rgba(255,120,80,0.9)",
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+  },
+  flightDirect: {
+    color: "rgba(80,200,120,0.9)",
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+  },
+  flightMid: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  flightTime: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  flightArrow: {
+    color: "rgba(212,175,55,0.6)",
+    fontSize: 12,
+  },
+  flightRight: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  flightPrice: {
+    color: GOLD,
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  flightBook: {
+    color: "rgba(212,175,55,0.6)",
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+  },
+  moreBtn: {
+    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(212,175,55,0.08)",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.2)",
+    alignItems: "center",
+  },
+  moreBtnText: {
+    color: GOLD,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  errorNote: {
+    color: "rgba(255,255,255,0.3)",
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+});
+
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -636,21 +909,11 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                         </Text>
                       </View>
                       {msg.flightToken && (
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.flightCta,
-                            pressed && { opacity: 0.8 },
-                          ]}
-                          onPress={() =>
-                            Linking.openURL(
-                              buildFlightRedirectUrl(msg.flightToken!, API_BASE)
-                            ).catch(() => {})
-                          }
-                        >
-                          <Text style={styles.flightCtaText}>
-                            {isAr ? "✈️ ابحث عن رحلتك الآن" : "✈️ Search My Flight Now"}
-                          </Text>
-                        </Pressable>
+                        <FlightInlineSearch
+                          token={msg.flightToken}
+                          apiBase={API_BASE}
+                          isAr={isAr}
+                        />
                       )}
                       {msg.showHotel && !msg.flightToken && (
                         <Pressable
