@@ -184,8 +184,13 @@ async function scrapeDtToursHotels(params: {
             const text = (row as HTMLElement).innerText ?? "";
             if (text.length < 5) return;
             const priceMatches = [...text.matchAll(priceRe)];
-            const price = priceMatches[0]?.[1] ?? priceMatches[0]?.[2] ?? "";
+            const netPriceStr = priceMatches[0]?.[1] ?? priceMatches[0]?.[2] ?? "";
             const currency = priceMatches[0]?.[0]?.match(/[A-Z]{3}/)?.[0] ?? "KWD";
+            // Add 15% agency markup to net hotel prices before displaying
+            const netNum = parseFloat(netPriceStr.replace(/,/g, ""));
+            const price = netPriceStr && !isNaN(netNum)
+              ? String(Math.ceil(netNum * 1.15 * 100) / 100)
+              : netPriceStr;
             const nameEl = row.querySelector("h2, h3, h4, .hotel-name, .property-name, [class*='name']");
             const name = (nameEl as HTMLElement)?.innerText?.trim() ?? "";
             const starsEl = row.querySelector("[class*='star'], .rating, [data-star]");

@@ -146,8 +146,9 @@ function TypingDots() {
 
 interface ScrapedFlight {
   carrier: string;
-  departure: string;
-  arrival: string;
+  departure: string;   // HH:MM
+  arrival: string;     // HH:MM
+  depDate: string;     // YYYY-MM-DD
   origin: string;
   destination: string;
   stops: number;
@@ -186,12 +187,12 @@ function SearchLoadingCard({
 }) {
   const messages = {
     flight: {
-      ar: "جاري البحث لك عن أفضل الأسعار، الرجاء الانتظار قليلاً... ✈️",
-      en: "Searching for the best fares, please wait... ✈️",
+      ar: "جاري البحث عن أفضل سعر لك... ✈️",
+      en: "Searching the best price for you... ✈️",
     },
     hotel: {
-      ar: "جاري البحث عن أفضل الفنادق المتاحة، لحظة من فضلك... 🏨",
-      en: "Searching for the best available hotels, please wait... 🏨",
+      ar: "جاري البحث عن أفضل الفنادق المتاحة لك... 🏨",
+      en: "Searching the best available hotels for you... 🏨",
     },
     offers: {
       ar: "جاري تحميل أحدث العروض والصفقات... 🎯",
@@ -295,19 +296,23 @@ function FlightInlineSearch({
     );
   }
 
+  const fmtDate = (iso: string) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString(isAr ? "ar-KW" : "en-GB", { day: "numeric", month: "short" });
+  };
+
   return (
     <View style={flightStyles.resultsWrap}>
       <Text style={flightStyles.resultsHeader}>
         {isAr ? `✈️ ${fromLabel} ← ${toLabel}` : `✈️ ${fromLabel} → ${toLabel}`}
       </Text>
       {flights.map((f, idx) => (
-        <Pressable
-          key={idx}
-          style={({ pressed }) => [flightStyles.flightRow, pressed && { opacity: 0.85 }]}
-          onPress={() => Linking.openURL(f.bookUrl || "https://dt-tours.com").catch(() => {})}
-        >
+        <View key={idx} style={flightStyles.flightRow}>
+          {/* Airline + stops */}
           <View style={flightStyles.flightLeft}>
-            <Text style={flightStyles.flightCarrier}>{f.carrier || "—"}</Text>
+            <Text style={flightStyles.flightCarrier} numberOfLines={2}>{f.carrier || "—"}</Text>
             {f.stops > 0 ? (
               <Text style={flightStyles.flightStops}>
                 {isAr ? `${f.stops} توقف` : `${f.stops} stop${f.stops > 1 ? "s" : ""}`}
@@ -316,25 +321,43 @@ function FlightInlineSearch({
               <Text style={flightStyles.flightDirect}>{isAr ? "مباشر" : "Direct"}</Text>
             )}
           </View>
-          <View style={flightStyles.flightMid}>
-            <Text style={flightStyles.flightTime}>{f.departure || "—"}</Text>
-            <Text style={flightStyles.flightArrow}>→</Text>
-            <Text style={flightStyles.flightTime}>{f.arrival || "—"}</Text>
+          {/* Times + date */}
+          <View style={[flightStyles.flightMid, { flexDirection: "column", alignItems: "center", gap: 2 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Text style={flightStyles.flightTime}>{f.departure || "—"}</Text>
+              <Text style={flightStyles.flightArrow}>→</Text>
+              <Text style={flightStyles.flightTime}>{f.arrival || "—"}</Text>
+            </View>
+            {(f.depDate || dep) ? (
+              <Text style={flightStyles.flightDateLabel}>
+                {fmtDate(f.depDate || dep)}{f.duration ? `  ·  ${f.duration}` : ""}
+              </Text>
+            ) : null}
           </View>
+          {/* Price */}
           <View style={flightStyles.flightRight}>
             <Text style={flightStyles.flightPrice}>
               {f.currency} {f.price}
             </Text>
-            <Text style={flightStyles.flightBook}>{isAr ? "احجز" : "Book"}</Text>
           </View>
-        </Pressable>
+        </View>
       ))}
+
+      {/* Booking guidance */}
+      <View style={flightStyles.bookingInfo}>
+        <Text style={flightStyles.bookingInfoText}>
+          {isAr
+            ? "للحجز: تطبيقنا، موقعنا dt-tours.com، أو تواصل مع خدمة العملاء 💬"
+            : "To book: our mobile app, dt-tours.com, or contact our customer service 💬"}
+        </Text>
+      </View>
+
       <Pressable
         style={({ pressed }) => [flightStyles.moreBtn, pressed && { opacity: 0.8 }]}
         onPress={openWebsite}
       >
         <Text style={flightStyles.moreBtnText}>
-          {isAr ? "عرض جميع الرحلات على الموقع →" : "View all flights on website →"}
+          {isAr ? "عرض المزيد على الموقع →" : "View more on website →"}
         </Text>
       </Pressable>
     </View>
@@ -674,6 +697,28 @@ const flightStyles = StyleSheet.create({
     color: GOLD,
     fontSize: 11,
     fontFamily: "Inter_700Bold",
+  },
+  flightDateLabel: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 9.5,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  bookingInfo: {
+    marginTop: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(212,175,55,0.05)",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.15)",
+  },
+  bookingInfoText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10.5,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 16,
   },
   errorNote: {
     color: "rgba(255,255,255,0.3)",
