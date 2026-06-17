@@ -279,7 +279,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
           style={[
             styles.sheet,
             {
-              maxHeight: sheetMaxHeight,
+              height: sheetMaxHeight,
               marginBottom: sheetMarginBottom,
               paddingBottom: insets.bottom,
               transform: [{ translateY: slideAnim }],
