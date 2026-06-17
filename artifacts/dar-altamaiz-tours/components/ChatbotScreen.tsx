@@ -133,10 +133,11 @@ export function ChatbotScreen({ visible, onClose }: Props) {
   const headerTitle = isAr ? "أحمد - دار التميز تورز" : "Ahmed - D.T. Tours";
   const headerSub = isAr ? "مُساعدك الشخصي للسياحة" : "Your Personal Travel Assistant";
 
-  const sheetHeight =
+  const sheetMaxHeight =
     kbHeight > 0
       ? screenHeight - kbHeight - insets.top - 8
       : screenHeight * 0.9;
+  const sheetMarginBottom = Platform.OS === "android" ? kbHeight : 0;
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -278,7 +279,8 @@ export function ChatbotScreen({ visible, onClose }: Props) {
           style={[
             styles.sheet,
             {
-              height: sheetHeight,
+              maxHeight: sheetMaxHeight,
+              marginBottom: sheetMarginBottom,
               paddingBottom: insets.bottom,
               transform: [{ translateY: slideAnim }],
             },
