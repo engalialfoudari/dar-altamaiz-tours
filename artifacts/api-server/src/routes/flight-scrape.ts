@@ -264,7 +264,7 @@ async function searchFlightsPuppeteer(params: {
       }, opts),
     ]);
 
-    const TIMEOUT_MS = 180_000;
+    const TIMEOUT_MS = 75_000;
     const start = Date.now();
 
     while (Date.now() - start < TIMEOUT_MS) {

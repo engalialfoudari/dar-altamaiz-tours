@@ -281,7 +281,8 @@ router.post("/hotel-search", async (req, res) => {
     const starsNum = Number(stars);
     if (starsNum > 0) {
       const filtered = hotels.filter((h) => h.stars === starsNum);
-      if (filtered.length > 0) hotels = filtered;
+      const rest = hotels.filter((h) => h.stars !== starsNum);
+      if (filtered.length > 0) hotels = [...filtered, ...rest];
     }
     res.json({ ok: true, hotels, count: hotels.length });
   } catch (err: unknown) {

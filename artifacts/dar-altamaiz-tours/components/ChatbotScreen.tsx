@@ -254,10 +254,12 @@ function FlightInlineSearch({
   token,
   apiBase,
   isAr,
+  openInApp,
 }: {
   token: string;
   apiBase: string;
   isAr: boolean;
+  openInApp: (url: string) => void;
 }) {
   const parts = token.split("|");
   const [fromId, fromLabel, toId, toLabel, dep, ret, adultsStr] = parts;
@@ -279,85 +281,56 @@ function FlightInlineSearch({
 
     void (async () => {
       try {
-        // Step 1 — airport lookups to get internal IDs
-        const [fromData, toData] = await Promise.all([
-          fetch(`${DT_BASE}/index.php/ajax/get_airport_code_list?term=${encodeURIComponent(fromId)}&type=international`, {
-            headers: { "X-Requested-With": "XMLHttpRequest", "Referer": `${DT_BASE}/` },
-          }).then((r) => r.json()).catch(() => []),
-          fetch(`${DT_BASE}/index.php/ajax/get_airport_code_list?term=${encodeURIComponent(toId)}&type=international`, {
-            headers: { "X-Requested-With": "XMLHttpRequest", "Referer": `${DT_BASE}/` },
-          }).then((r) => r.json()).catch(() => []),
-        ]);
-
-        const fromLoc = (fromData as Array<{ id: string; code: string; label: string; category: string }>)
-          .find((a) => a.code === fromId && a.category === "All_data") ??
-          (fromData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
-        const toLoc = (toData as Array<{ id: string; code: string; label: string; category: string }>)
-          .find((a) => a.code === toId && a.category === "All_data") ??
-          (toData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
-
-        // Step 2 — server initiates the search and returns the search_id from Location header
-        // (Android's OkHttp doesn't expose response.url after redirects, and the page HTML
-        //  doesn't embed the search_id — so the server reads the 302 Location header instead)
+        // Puppeteer-based scrape: server launches headless Chromium, fills the
+        // dt-tours.com flight form, and extracts results from the rendered DOM.
         const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 25_000);
-        const prepRes = await fetch(`${apiBase}/flight-prepare`, {
+        const tid = setTimeout(() => ctrl.abort(), 90_000);
+        const res = await fetch(`${apiBase}/flight-scrape`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: ctrl.signal,
           body: JSON.stringify({
-            from: fromLoc?.code ?? fromId,
-            fromLabel: fromLoc?.label ?? fromLabel,
-            fromLocId: fromLoc?.id ?? fromId,
-            fromLocType: fromLoc?.category ?? "All_data",
-            to: toLoc?.code ?? toId,
-            toLabel: toLoc?.label ?? toLabel,
-            toLocId: toLoc?.id ?? toId,
-            toLocType: toLoc?.category ?? "All_data",
-            dep,
-            ret,
+            from: fromId, to: toId,
+            fromLabel: fromLabel ?? fromId,
+            toLabel: toLabel ?? toId,
+            depDate: dep, retDate: ret || undefined,
             adults,
           }),
         });
         clearTimeout(tid);
-        const prepData = (await prepRes.json()) as { ok: boolean; searchId?: string };
-        if (!prepData.ok || !prepData.searchId) { setStatus("fallback"); return; }
-        const searchId = prepData.searchId;
-
-        const TIMEOUT = 120_000;
-        const start = Date.now();
-
-        while (Date.now() - start < TIMEOUT) {
-          await new Promise((r) => setTimeout(r, 3_000));
-          try {
-            const listRes = await fetch(
-              `${DT_BASE}/index.php/ajax/flight_list?booking_source=PTBSID0000000016&search_id=${searchId}&op=load`,
-              { headers: { "X-Requested-With": "XMLHttpRequest", "Referer": `${DT_BASE}/index.php/flight/search/${searchId}` } }
-            );
-            const data = await listRes.json() as { status: number; data: Record<string, Record<string, string>> | [] };
-            if (data.status === 1 && !Array.isArray(data.data)) {
-              const colX = data.data?.col_x;
-              if (colX && typeof colX === "object") {
-                const html = Object.values(colX).join("");
-                const parsed = parseFlightCards(html, fromId, toId, dep, searchId);
-                if (parsed.length > 0) {
-                  setFlights(parsed.slice(0, 5));
-                  setStatus("done");
-                  return;
-                }
-              }
-            }
-          } catch { /* keep polling */ }
+        const data = await res.json() as { ok: boolean; flights?: ScrapedFlight[]; count?: number };
+        if (data.ok && data.flights && data.flights.length > 0) {
+          setFlights(data.flights.slice(0, 5));
+          setStatus("done");
+        } else {
+          setStatus("fallback");
         }
-        setStatus("fallback");
       } catch {
+        // Timeout or network error — fall back to in-app browser on device
         setStatus("fallback");
       }
     })();
   }, []);
 
-  const openWebsite = () =>
-    Linking.openURL(`${DT_BASE}/`).catch(() => {});
+  const openFlightSearch = () => {
+    const AIRPORT_IDS: Record<string, string> = {
+      KWI: "3945", DXB: "1921", AUH: "3976", SHJ: "3977",
+      IST: "3533", SAW: "3938", TBS: "4030", GYD: "4014",
+      DOH: "3928", BAH: "3907", RUH: "3956", JED: "3940",
+      MED: "3960", LHR: "3543", CDG: "3518", BKK: "3899",
+      KUL: "3949", CMB: "3916", SIN: "3961", AMM: "3896",
+      CAI: "3911", HRG: "3934", SSH: "3963", CMN: "3917",
+    };
+    const params = new URLSearchParams({
+      from: fromId, fromLabel: fromLabel ?? fromId,
+      fromLocId: AIRPORT_IDS[fromId] ?? fromId,
+      to: toId, toLabel: toLabel ?? toId,
+      toLocId: AIRPORT_IDS[toId] ?? toId,
+      dep: dep ?? "", ret: ret ?? "",
+      adults: String(adultsStr ?? "1"),
+    });
+    openInApp(`${apiBase}/flight-launch?${params.toString()}`);
+  };
 
   if (status === "loading") {
     return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="flight" />;
@@ -367,7 +340,7 @@ function FlightInlineSearch({
     return (
       <Pressable
         style={({ pressed }) => [styles.flightCta, pressed && { opacity: 0.8 }]}
-        onPress={openWebsite}
+        onPress={openFlightSearch}
       >
         <Text style={styles.flightCtaText}>
           {isAr ? "✈️ ابحث عن رحلتك الآن" : "✈️ Search My Flight Now"}
@@ -434,7 +407,7 @@ function FlightInlineSearch({
 
       <Pressable
         style={({ pressed }) => [flightStyles.moreBtn, pressed && { opacity: 0.8 }]}
-        onPress={openWebsite}
+        onPress={openFlightSearch}
       >
         <Text style={flightStyles.moreBtnText}>
           {isAr ? "عرض المزيد على الموقع →" : "View more on website →"}
@@ -1409,6 +1382,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                           token={msg.flightToken}
                           apiBase={API_BASE}
                           isAr={isAr}
+                          openInApp={openInApp}
                         />
                       )}
                       {msg.showHotel && !msg.flightToken && (
