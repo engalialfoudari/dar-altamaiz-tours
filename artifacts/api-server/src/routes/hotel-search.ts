@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getBrowser } from "../lib/browser";
+import { getBrowser, applyStealthOverrides, humanDelay } from "../lib/browser";
 import { getHotelCredentials as getRawHotelCredentials } from "../lib/credentials";
 
 function getHotelCredentials() {
@@ -38,7 +38,6 @@ async function tryHotelApi(params: {
 }): Promise<HotelOption[] | null> {
   const { username, password } = getHotelCredentials();
   if (!username || !password) return null;
-
   try {
     const res = await fetch("https://dt-tours.com/index.php/api/hotel/search", {
       method: "POST",
@@ -46,22 +45,14 @@ async function tryHotelApi(params: {
         "Content-Type": "application/json",
         Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
       },
-      body: JSON.stringify({
-        city: params.city,
-        checkin: params.checkin,
-        checkout: params.checkout,
-        rooms: params.rooms,
-        adults: params.adults,
-      }),
+      body: JSON.stringify({ city: params.city, checkin: params.checkin, checkout: params.checkout, rooms: params.rooms, adults: params.adults }),
       signal: AbortSignal.timeout(8_000),
     });
     if (res.ok) {
       const data = (await res.json()) as { hotels?: HotelOption[] };
       if (data.hotels && data.hotels.length > 0) return data.hotels;
     }
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
   return null;
 }
 
@@ -76,26 +67,25 @@ async function scrapeDtToursHotels(params: {
   const page = await browser.newPage();
 
   try {
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
-    await page.setViewport({ width: 1280, height: 900 });
+    await applyStealthOverrides(page);
 
     await page.goto("https://dt-tours.com/", {
-      waitUntil: "domcontentloaded",
-      timeout: 25_000,
+      waitUntil: "networkidle2",
+      timeout: 30_000,
     });
 
-    await page.waitForSelector("#hotel_search", { timeout: 10_000 });
-
-    const checkinFmt = fmtDateDMY(params.checkin);
-    const checkoutFmt = fmtDateDMY(params.checkout);
+    await page.waitForSelector("#hotel_search", { timeout: 12_000 });
+    await humanDelay(600, 1200);
 
     await page.evaluate(
       (city: string, checkin: string, checkout: string, rooms: number) => {
         const setVal = (id: string, val: string) => {
           const el = document.getElementById(id) as HTMLInputElement | null;
-          if (el) el.value = val;
+          if (el) {
+            el.value = val;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+          }
         };
 
         setVal("hotel_destination_search_name", city);
@@ -105,33 +95,32 @@ async function scrapeDtToursHotels(params: {
         if (ci) {
           ci.removeAttribute("readonly");
           ci.value = checkin;
+          ci.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
         const co = document.getElementById("hotel_checkout") as HTMLInputElement | null;
         if (co) {
           co.removeAttribute("readonly");
           co.value = checkout;
+          co.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
-        const roomSels = ["select[name='rooms']", "input[name='rooms']", "#rooms", ".rooms_count"];
+        const roomSels = ["select[name='rooms']", "input[name='rooms']", "#rooms"];
         for (const sel of roomSels) {
           const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
-          if (el) {
-            el.value = String(rooms);
-            break;
-          }
+          if (el) { el.value = String(rooms); break; }
         }
       },
       params.city,
-      checkinFmt,
-      checkoutFmt,
+      fmtDateDMY(params.checkin),
+      fmtDateDMY(params.checkout),
       params.rooms
     );
 
-    await new Promise((r) => setTimeout(r, 300));
+    await humanDelay(500, 900);
 
     const [navResult] = await Promise.allSettled([
-      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 38_000 }),
+      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 40_000 }),
       page.evaluate(() => {
         const form = document.getElementById("hotel_search") as HTMLFormElement | null;
         if (form) form.submit();
@@ -142,14 +131,16 @@ async function scrapeDtToursHotels(params: {
       throw new Error(`Navigation failed: ${String(navResult.reason)}`);
     }
 
+    await humanDelay(2_000, 3_500);
+
     await page
       .waitForSelector(
         ".hotel-result, .hotel_result, .hotel-card, .property-card, [class*='hotel-item'], [class*='hotel_list'], [class*='property']",
-        { timeout: 25_000 }
+        { timeout: 28_000 }
       )
       .catch(() => {});
 
-    await new Promise((r) => setTimeout(r, 3_000));
+    await humanDelay(3_000, 5_000);
 
     const finalUrl = page.url();
     return await page.evaluate(
@@ -173,22 +164,16 @@ async function scrapeDtToursHotels(params: {
           rows.forEach((row) => {
             const text = (row as HTMLElement).innerText ?? "";
             if (text.length < 5) return;
-
             const priceMatches = [...text.matchAll(priceRe)];
             const price = priceMatches[0]?.[1] ?? priceMatches[0]?.[2] ?? "";
             const currency = priceMatches[0]?.[0]?.match(/[A-Z]{3}/)?.[0] ?? "KWD";
-
             const nameEl = row.querySelector("h2, h3, h4, .hotel-name, .property-name, [class*='name']");
             const name = (nameEl as HTMLElement)?.innerText?.trim() ?? "";
-
             const starsEl = row.querySelector("[class*='star'], .rating, [data-star]");
-            const starsText = (starsEl as HTMLElement)?.innerText ?? "";
-            const starsMatch = starsText.match(/(\d)/);
+            const starsMatch = ((starsEl as HTMLElement)?.innerText ?? "").match(/(\d)/);
             const stars = starsMatch ? parseInt(starsMatch[1]) : 0;
-
             const thumbEl = row.querySelector("img");
             const thumbnail = (thumbEl as HTMLImageElement)?.src ?? "";
-
             if (name || price) {
               results.push({ name: name || "Hotel", stars, location: city, price, currency, bookUrl, thumbnail });
             }
@@ -196,9 +181,8 @@ async function scrapeDtToursHotels(params: {
         }
 
         if (results.length === 0) {
-          const allPrices = [...document.body.innerText.matchAll(priceRe)];
           const seen = new Set<string>();
-          for (const m of allPrices) {
+          for (const m of [...document.body.innerText.matchAll(priceRe)]) {
             const v = m[1] ?? m[2];
             if (v && !seen.has(v) && parseFloat(v.replace(/,/g, "")) > 5) {
               seen.add(v);
@@ -219,18 +203,8 @@ async function scrapeDtToursHotels(params: {
 }
 
 router.post("/hotel-search", async (req, res) => {
-  const {
-    city,
-    checkin,
-    checkout,
-    rooms = 1,
-    adults = 2,
-  } = req.body as {
-    city: string;
-    checkin: string;
-    checkout: string;
-    rooms?: number;
-    adults?: number;
+  const { city, checkin, checkout, rooms = 1, adults = 2 } = req.body as {
+    city: string; checkin: string; checkout: string; rooms?: number; adults?: number;
   };
 
   if (!city || !checkin || !checkout) {
@@ -244,20 +218,15 @@ router.post("/hotel-search", async (req, res) => {
       res.json({ ok: true, hotels: apiResult, source: "api" });
       return;
     }
-
     const hotels = await scrapeDtToursHotels({
-      city,
-      checkin,
-      checkout,
+      city, checkin, checkout,
       rooms: Math.max(1, Math.min(9, Number(rooms))),
       adults: Math.max(1, Math.min(9, Number(adults))),
     });
-
     res.json({ ok: true, hotels, count: hotels.length, source: "scrape" });
   } catch (err: unknown) {
     req.log.error({ err }, "Hotel search failed");
-    const msg = err instanceof Error ? err.message : "Hotel search failed";
-    res.status(502).json({ ok: false, error: msg });
+    res.status(502).json({ ok: false, error: err instanceof Error ? err.message : "Hotel search failed" });
   }
 });
 

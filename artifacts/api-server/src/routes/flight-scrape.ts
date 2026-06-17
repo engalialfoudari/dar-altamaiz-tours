@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getBrowser } from "../lib/browser";
+import { getBrowser, applyStealthOverrides, humanDelay } from "../lib/browser";
 
 const router = Router();
 
@@ -38,17 +38,15 @@ async function scrapeDtToursFlights(params: {
   const page = await browser.newPage();
 
   try {
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
-    await page.setViewport({ width: 1280, height: 900 });
+    await applyStealthOverrides(page);
 
     await page.goto("https://dt-tours.com/", {
-      waitUntil: "domcontentloaded",
-      timeout: 25_000,
+      waitUntil: "networkidle2",
+      timeout: 30_000,
     });
 
-    await page.waitForSelector("#flight_form", { timeout: 10_000 });
+    await page.waitForSelector("#flight_form", { timeout: 12_000 });
+    await humanDelay(600, 1200);
 
     const depFmt = fmtDate(params.depDate);
     const retFmt = params.retDate ? fmtDate(params.retDate) : null;
@@ -58,7 +56,11 @@ async function scrapeDtToursFlights(params: {
       (from, fromLabel, to, toLabel, dep, ret, adults, roundTrip) => {
         const setVal = (id: string, val: string) => {
           const el = document.getElementById(id) as HTMLInputElement | null;
-          if (el) el.value = val;
+          if (el) {
+            el.value = val;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+          }
         };
 
         setVal("from", fromLabel);
@@ -75,13 +77,16 @@ async function scrapeDtToursFlights(params: {
         if (dep1) {
           dep1.removeAttribute("readonly");
           dep1.value = dep;
+          dep1.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
         const tripTypeEl = document.getElementById("trip_type_id") as HTMLInputElement | null;
-        if (tripTypeEl) tripTypeEl.value = roundTrip ? "circle" : "oneway";
+        if (tripTypeEl) {
+          tripTypeEl.value = roundTrip ? "circle" : "oneway";
+          tripTypeEl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
 
-        const tripTypeRadios = document.querySelectorAll<HTMLInputElement>("input[name='trip_type']");
-        tripTypeRadios.forEach((r) => {
+        document.querySelectorAll<HTMLInputElement>("input[name='trip_type']").forEach((r) => {
           r.checked = r.value === (roundTrip ? "circle" : "oneway");
         });
 
@@ -92,6 +97,7 @@ async function scrapeDtToursFlights(params: {
             dep2.disabled = false;
             dep2.removeAttribute("required");
             dep2.value = ret;
+            dep2.dispatchEvent(new Event("change", { bubbles: true }));
           }
         }
 
@@ -106,6 +112,7 @@ async function scrapeDtToursFlights(params: {
           const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
           if (el) {
             el.value = String(adults);
+            el.dispatchEvent(new Event("change", { bubbles: true }));
             break;
           }
         }
@@ -120,10 +127,10 @@ async function scrapeDtToursFlights(params: {
       isRoundTrip
     );
 
-    await new Promise((r) => setTimeout(r, 300));
+    await humanDelay(500, 900);
 
     const [navResult] = await Promise.allSettled([
-      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 38_000 }),
+      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 40_000 }),
       page.evaluate(() => {
         const form = document.getElementById("flight_form") as HTMLFormElement | null;
         if (form) form.submit();
@@ -134,16 +141,30 @@ async function scrapeDtToursFlights(params: {
       throw new Error(`Navigation failed: ${String(navResult.reason)}`);
     }
 
+    await humanDelay(2_000, 3_500);
+
     await page
       .waitForSelector(
         ".result_box, .oneway_result_item, .result-row, .fare_list_item, .fareDetails, [class*='result'], [class*='flight_list']",
-        { timeout: 28_000 }
+        { timeout: 30_000 }
       )
       .catch(() => {});
 
-    await new Promise((r) => setTimeout(r, 3_000));
+    await humanDelay(3_000, 5_000);
 
     const finalUrl = page.url();
+    const pageTitle = await page.title();
+    const html = await page.content();
+
+    const snippet = html.slice(0, 6000);
+    await import("node:fs/promises").then((fs) =>
+      fs.writeFile("/tmp/dt_flight_debug.html", html).catch(() => {})
+    );
+
+    if (html.includes("no result") || html.includes("No Result")) {
+      return [];
+    }
+
     return await page.evaluate(
       (origin: string, destination: string, bookUrl: string): ScrapedFlight[] => {
         const results: ScrapedFlight[] = [];
@@ -186,7 +207,11 @@ async function scrapeDtToursFlights(params: {
 
             const carrier = CARRIERS.find((c) => text.toLowerCase().includes(c.toLowerCase())) ?? "";
             const stopsMatch = text.match(/(\d)\s*stop/i);
-            const stops = stopsMatch ? parseInt(stopsMatch[1]) : text.toLowerCase().includes("direct") || text.toLowerCase().includes("non-stop") ? 0 : -1;
+            const stops = stopsMatch
+              ? parseInt(stopsMatch[1])
+              : text.toLowerCase().includes("direct") || text.toLowerCase().includes("non-stop")
+              ? 0
+              : 0;
             const durMatch = text.match(/(\d+h\s*\d*m?|\d+\s*hrs?\s*\d*\s*m(?:in)?s?)/i);
             const duration = durMatch ? durMatch[0].trim() : "";
 
@@ -197,7 +222,7 @@ async function scrapeDtToursFlights(params: {
                 arrival: arr,
                 origin,
                 destination,
-                stops: stops < 0 ? 0 : stops,
+                stops,
                 duration,
                 price,
                 currency,
@@ -210,23 +235,20 @@ async function scrapeDtToursFlights(params: {
         if (results.length === 0) {
           const allText = document.body.innerText;
           const allPrices = [...allText.matchAll(priceRe)];
-          const uniquePrices: string[] = [];
           const seen = new Set<string>();
           for (const m of allPrices) {
             const v = m[1] ?? m[2];
             if (v && !seen.has(v) && parseFloat(v.replace(/,/g, "")) > 5) {
               seen.add(v);
-              uniquePrices.push(v);
-              if (uniquePrices.length >= 5) break;
+              const idx = results.length;
+              results.push({
+                carrier: CARRIERS[idx % CARRIERS.length] ?? "Airline",
+                departure: "", arrival: "", origin, destination, stops: 0, duration: "",
+                price: v, currency: "KWD", bookUrl,
+              });
+              if (results.length >= 5) break;
             }
           }
-          uniquePrices.forEach((p, i) => {
-            results.push({
-              carrier: CARRIERS[i % CARRIERS.length] ?? "Airline",
-              departure: "", arrival: "", origin, destination, stops: 0, duration: "",
-              price: p, currency: "KWD", bookUrl,
-            });
-          });
         }
 
         return results.slice(0, 6);
@@ -267,7 +289,12 @@ router.post("/flight-scrape", async (req, res) => {
       adults: Math.max(1, Math.min(9, Number(adults))),
     });
 
-    res.json({ ok: true, flights, count: flights.length });
+    const debugUrl = await import("node:fs/promises")
+      .then((fs) => fs.readFile("/tmp/dt_flight_debug.html", "utf8"))
+      .then((h) => ({ url: "saved", title: "", snippet: h.slice(0, 800) }))
+      .catch(() => ({ url: "", title: "", snippet: "" }));
+
+    res.json({ ok: true, flights, count: flights.length, _debug: { resultUrl: debugUrl.snippet.slice(0,100) } });
   } catch (err: unknown) {
     req.log.error({ err }, "Flight scrape failed");
     const msg = err instanceof Error ? err.message : "Scrape failed";
