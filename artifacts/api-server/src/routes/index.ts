@@ -7,6 +7,7 @@ import chatWidgetRouter from "./chat-widget";
 import searchRouter from "./search";
 import chatSummaryRouter from "./chat-summary";
 import flightRedirectRouter from "./flight-redirect";
+import flightSearchRouter from "./flight-search";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(chatWidgetRouter);
 router.use(searchRouter);
 router.use(chatSummaryRouter);
 router.use(flightRedirectRouter);
+router.use(flightSearchRouter);
 
 export default router;
