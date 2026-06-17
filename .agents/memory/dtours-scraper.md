@@ -27,3 +27,19 @@ The main site detail pages have static h1/h2 headings and h4.numm prices.
 ## Note on search filtering
 The site returns ALL packages regardless of destination keyword — the dest param
 seems to be a soft filter. GPT contextualises the results against the requested destination.
+
+## Flight search — cannot be scraped in real-time
+dt-tours.com flights use travelomatix's GDS backend (JavaScript-rendered results).
+The POST endpoint `pre_flight_search` accepts the form submission and returns a 
+200 OK page, but prices are loaded async via AJAX — never in the static HTML.
+
+**Solution: magic-link auto-submit endpoint**
+Our server hosts GET `/api/flight-redirect?from=Kuwait&from_id=KWI&to=Dubai&to_id=DXB&dep=YYYY-MM-DD&ret=YYYY-MM-DD&adults=1`
+Returns HTML that auto-submits a POST form to dt-tours.com after 400ms. 
+Date format must be DD/MM/YYYY (convert from ISO before inserting into form).
+
+The form field names (exact): trip_type, sector_type, from_label, from, from_loc_id,
+from_loc_type, to_label, to, to_loc_id, to_loc_type, depature (sic!), return, 
+v_class, adult, child, infant, search_flight.
+
+Note: "depature" is a typo in the travelomatix codebase — use it as-is.

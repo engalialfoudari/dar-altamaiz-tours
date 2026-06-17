@@ -33,10 +33,27 @@ const API_BASE =
 
 const WHATSAPP_SIGNAL = "[WHATSAPP]";
 const GOODBYE_SIGNAL = "[GOODBYE]";
+const HOTEL_SIGNAL = "[HOTEL]";
+const FLIGHT_SIGNAL_RE = /\[FLIGHT:([^\]]+)\]/;
 const ESCALATE_AFTER_MESSAGES = 8;
 const STORAGE_KEY = "dtours_chat_v1";
 const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 const BOT_NAME = "D.T. Tours Ai";
+
+function buildFlightRedirectUrl(token: string, apiBase: string): string {
+  const parts = token.split("|");
+  const [fromId, fromLabel, toId, toLabel, dep, ret, adults] = parts;
+  const params = new URLSearchParams({
+    from: fromLabel ?? "",
+    from_id: fromId ?? "",
+    to: toLabel ?? "",
+    to_id: toId ?? "",
+    dep: dep ?? "",
+    ret: ret ?? "",
+    adults: adults ?? "1",
+  });
+  return `${apiBase}/flight-redirect?${params.toString()}`;
+}
 
 type Language = "ar" | "en";
 type Role = "user" | "assistant";
@@ -46,6 +63,8 @@ interface Message {
   role: Role;
   content: string;
   showWhatsApp?: boolean;
+  flightToken?: string;
+  showHotel?: boolean;
 }
 
 interface SavedSession {
@@ -345,9 +364,14 @@ export function ChatbotScreen({ visible, onClose }: Props) {
 
       const hasEscalation = raw.includes(WHATSAPP_SIGNAL);
       const hasGoodbye = raw.includes(GOODBYE_SIGNAL);
+      const hasHotel = raw.includes(HOTEL_SIGNAL);
+      const flightMatch = FLIGHT_SIGNAL_RE.exec(raw);
+      const flightToken = flightMatch ? flightMatch[1] : undefined;
       const clean = raw
         .replace(WHATSAPP_SIGNAL, "")
         .replace(GOODBYE_SIGNAL, "")
+        .replace(HOTEL_SIGNAL, "")
+        .replace(FLIGHT_SIGNAL_RE, "")
         .trimEnd();
 
       const botMsg: Message = {
@@ -355,6 +379,8 @@ export function ChatbotScreen({ visible, onClose }: Props) {
         role: "assistant",
         content: clean,
         showWhatsApp: hasEscalation,
+        flightToken,
+        showHotel: hasHotel,
       };
       setMessages((prev) => [...prev, botMsg]);
 
@@ -609,6 +635,38 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                           {msg.content}
                         </Text>
                       </View>
+                      {msg.flightToken && (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.flightCta,
+                            pressed && { opacity: 0.8 },
+                          ]}
+                          onPress={() =>
+                            Linking.openURL(
+                              buildFlightRedirectUrl(msg.flightToken!, API_BASE)
+                            ).catch(() => {})
+                          }
+                        >
+                          <Text style={styles.flightCtaText}>
+                            {isAr ? "✈️ ابحث عن رحلتك الآن" : "✈️ Search My Flight Now"}
+                          </Text>
+                        </Pressable>
+                      )}
+                      {msg.showHotel && !msg.flightToken && (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.flightCta,
+                            pressed && { opacity: 0.8 },
+                          ]}
+                          onPress={() =>
+                            Linking.openURL("https://dt-tours.com").catch(() => {})
+                          }
+                        >
+                          <Text style={styles.flightCtaText}>
+                            {isAr ? "🏨 شوف الفنادق المتاحة" : "🏨 View Available Hotels"}
+                          </Text>
+                        </Pressable>
+                      )}
                       {msg.showWhatsApp && (
                         <Pressable
                           style={({ pressed }) => [
@@ -1089,6 +1147,24 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
     backgroundColor: NAVY,
+  },
+
+  flightCta: {
+    marginTop: 8,
+    backgroundColor: "#0A1628",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: "flex-start",
+    borderWidth: 1.5,
+    borderColor: "#D4AF37",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  flightCtaText: {
+    color: "#D4AF37",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
   },
 
   inlineCta: {
