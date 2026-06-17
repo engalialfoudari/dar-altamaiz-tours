@@ -15,6 +15,7 @@ import flightLaunchRouter from "./flight-launch";
 import hotelSearchRouter from "./hotel-search";
 import offersRouter from "./offers";
 import debugScrapeRouter from "./debug-scrape";
+import geoRouter from "./geo";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(flightLaunchRouter);
 router.use(hotelSearchRouter);
 router.use(offersRouter);
 router.use(debugScrapeRouter);
+router.use(geoRouter);
 
 export default router;
