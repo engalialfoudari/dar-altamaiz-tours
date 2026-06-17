@@ -167,8 +167,9 @@ async function scrapeDtToursHotels(params: {
         const priceRe = /(?:KWD|USD|AED|SAR|QAR|BHD)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
 
         const SELECTORS = [
-          ".hotel-result", ".hotel_result", ".hotel-card", ".property-card",
-          "[class*='hotel-item']", "[class*='hotel_list'] li", "[class*='property-item']",
+          ".hotel-card:not(.skeleton)",  // real cards, skip skeleton loaders
+          ".hotel-result:not(.skeleton)", ".hotel_result", ".hotel-card", ".property-card",
+          "[class*='hotel-item']:not(.skeleton)", "[class*='hotel_list'] li", "[class*='property-item']",
           ".result_box", "[data-hotel-id]", ".hotel-listing", ".hotel-row",
           "table.hotels tr:not(:first-child)", "#results > *", ".search-result",
         ];
@@ -191,14 +192,46 @@ async function scrapeDtToursHotels(params: {
             const price = netPriceStr && !isNaN(netNum)
               ? String(Math.ceil(netNum * 1.15 * 100) / 100)
               : netPriceStr;
-            const nameEl = row.querySelector("h2, h3, h4, .hotel-name, .property-name, [class*='name']");
-            const name = (nameEl as HTMLElement)?.innerText?.trim() ?? "";
-            const starsEl = row.querySelector("[class*='star'], .rating, [data-star]");
-            const starsMatch = ((starsEl as HTMLElement)?.innerText ?? "").match(/(\d)/);
-            const stars = starsMatch ? parseInt(starsMatch[1]) : 0;
+                // Regex to detect UI button/CTA text (not hotel names)
+            const NOT_NAME = /Select|Book|Room|Check Avail|View Deal|More Info|See Details|احجز|اختر/i;
+            // Try many selectors for the hotel name
+            const NAME_SELS = [
+              ".hotel-name", ".htl-name", ".hotel-title", ".property-name",
+              "[class*='hotel-name']", "[class*='hotel-title']", "[class*='htl-name']",
+              ".hotel-info a", ".hotel-details a", ".hotel-card-header a",
+              "[class*='hotel-info'] a", "[class*='hotel-details'] a",
+              "a[href*='hotel_id']", "a[href*='hotel/detail']", "a[href*='/hotel/']",
+              "h2", "h3", "h4", "h5",
+            ];
+            let name = "";
+            for (const sel of NAME_SELS) {
+              const el = row.querySelector(sel);
+              const t = (el as HTMLElement)?.innerText?.trim() ?? "";
+              if (t && t.length > 3 && t.length < 120 && !NOT_NAME.test(t)) { name = t; break; }
+            }
+            // Fallback: first non-price, non-button text line in the card
+            if (!name) {
+              const lines = ((row as HTMLElement).innerText ?? "")
+                .split(/[\n\r]+/)
+                .map((s) => s.trim())
+                .filter((s) => s.length > 4 && s.length < 120);
+              for (const line of lines) {
+                if (!NOT_NAME.test(line) &&
+                    !/\d+\.\d{2,3}|\bKWD\b|\bUSD\b|\bAED\b|Star|نجم|\bper night\b|\bليلة\b|[★☆]{2,}|^\d+\s*(Night|Star|نجم)|\bAvail|^Dubai$|^UAE$|^Abu Dhabi$/i.test(line)) {
+                  name = line;
+                  break;
+                }
+              }
+            }
+
+            const starsEl = row.querySelector("[class*='star'], .rating, [data-star], [class*='rating']");
+            const starsInner = (starsEl as HTMLElement)?.innerText ?? "";
+            const starsCountInText = (starsInner.match(/★/g) ?? []).length;
+            const starsNumMatch = starsInner.match(/(\d)/);
+            const stars = starsCountInText > 0 ? starsCountInText : starsNumMatch ? parseInt(starsNumMatch[1]) : 0;
             const thumbEl = row.querySelector("img");
             const thumbnail = (thumbEl as HTMLImageElement)?.src ?? "";
-            if (name || price) {
+            if (price) {
               results.push({ name: name || "Hotel", stars, location: city, price, currency, bookUrl, thumbnail });
             }
           });
@@ -212,12 +245,14 @@ async function scrapeDtToursHotels(params: {
             if (v && !seen.has(v) && parseFloat(v.replace(/,/g, "")) > 5) {
               seen.add(v);
               results.push({ name: "Hotel Option", stars: 4, location: city, price: v, currency: "KWD", bookUrl });
-              if (results.length >= 4) break;
+              if (results.length >= 8) break;
             }
           }
         }
 
-        return results.slice(0, 5);
+        // Sort cheap → expensive
+        results.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        return results.slice(0, 10);
       },
       params.city, finalUrl
     );
@@ -227,8 +262,8 @@ async function scrapeDtToursHotels(params: {
 }
 
 router.post("/hotel-search", async (req, res) => {
-  const { city, checkin, checkout, rooms = 1, adults = 2 } = req.body as {
-    city: string; checkin: string; checkout: string; rooms?: number; adults?: number;
+  const { city, checkin, checkout, rooms = 1, adults = 2, stars } = req.body as {
+    city: string; checkin: string; checkout: string; rooms?: number; adults?: number; stars?: number;
   };
 
   if (!city || !checkin || !checkout) {
@@ -237,11 +272,17 @@ router.post("/hotel-search", async (req, res) => {
   }
 
   try {
-    const hotels = await scrapeDtToursHotels({
+    let hotels = await scrapeDtToursHotels({
       city, checkin, checkout,
       rooms: Math.max(1, Math.min(9, Number(rooms))),
       adults: Math.max(1, Math.min(9, Number(adults))),
     });
+    // Filter by star category if requested
+    const starsNum = Number(stars);
+    if (starsNum > 0) {
+      const filtered = hotels.filter((h) => h.stars === starsNum);
+      if (filtered.length > 0) hotels = filtered;
+    }
     res.json({ ok: true, hotels, count: hotels.length });
   } catch (err: unknown) {
     req.log.error({ err }, "Hotel search failed");

@@ -21,6 +21,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
+import { WebView } from "react-native-webview";
 
 const GOLD = "#D4AF37";
 const BLACK = "#000000";
@@ -35,6 +36,7 @@ const WHATSAPP_SIGNAL = "[WHATSAPP]";
 const GOODBYE_SIGNAL = "[GOODBYE]";
 const HOTEL_SIGNAL = "[HOTEL]";
 const HOTEL_SIGNAL_RE = /\[HOTEL:([^\]]+)\]/;
+// token format: City|checkin|checkout|stars
 const OFFERS_SIGNAL = "[OFFERS]";
 const FLIGHT_SIGNAL_RE = /\[FLIGHT:([^\]]+)\]/;
 const ESCALATE_AFTER_MESSAGES = 8;
@@ -98,7 +100,7 @@ interface Message {
   flightToken?: string;
   showHotel?: boolean;
   showOffers?: boolean;
-  hotelParams?: { city: string; checkin: string; checkout: string };
+  hotelParams?: { city: string; checkin: string; checkout: string; stars?: number };
 }
 
 interface SavedSession {
@@ -277,6 +279,7 @@ function FlightInlineSearch({
 
     void (async () => {
       try {
+        // Step 1 — airport lookups to get internal IDs
         const [fromData, toData] = await Promise.all([
           fetch(`${DT_BASE}/index.php/ajax/get_airport_code_list?term=${encodeURIComponent(fromId)}&type=international`, {
             headers: { "X-Requested-With": "XMLHttpRequest", "Referer": `${DT_BASE}/` },
@@ -286,49 +289,40 @@ function FlightInlineSearch({
           }).then((r) => r.json()).catch(() => []),
         ]);
 
-        const fromLoc = (fromData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
-        const toLoc = (toData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
+        const fromLoc = (fromData as Array<{ id: string; code: string; label: string; category: string }>)
+          .find((a) => a.code === fromId && a.category === "All_data") ??
+          (fromData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
+        const toLoc = (toData as Array<{ id: string; code: string; label: string; category: string }>)
+          .find((a) => a.code === toId && a.category === "All_data") ??
+          (toData as Array<{ id: string; code: string; label: string; category: string }>)[0] ?? null;
 
-        const depDDMMYYYY = dep ? dep.split("-").reverse().join("/") : "";
-        const retDDMMYYYY = ret ? ret.split("-").reverse().join("/") : "";
-
-        const formBody = new URLSearchParams({
-          trip_type: ret ? "circle" : "oneway",
-          sector_type: "international",
-          from_label: fromLoc?.label ?? fromLabel,
-          from: fromLoc?.code ?? fromId,
-          from_loc_id: fromLoc?.id ?? fromId,
-          from_loc_type: fromLoc?.category ?? "All_data",
-          to_label: toLoc?.label ?? toLabel,
-          to: toLoc?.code ?? toId,
-          to_loc_id: toLoc?.id ?? toId,
-          to_loc_type: toLoc?.category ?? "All_data",
-          depature: depDDMMYYYY,
-          return: retDDMMYYYY,
-          adult: String(adults),
-          child: "0",
-          infant: "0",
-          v_class: "Economy",
-          search_flight: "Search",
-        });
-
-        const searchRes = await fetch(`${DT_BASE}/index.php/general/pre_flight_search`, {
+        // Step 2 — server initiates the search and returns the search_id from Location header
+        // (Android's OkHttp doesn't expose response.url after redirects, and the page HTML
+        //  doesn't embed the search_id — so the server reads the 302 Location header instead)
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 25_000);
+        const prepRes = await fetch(`${apiBase}/flight-prepare`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Referer": `${DT_BASE}/`,
-          },
-          body: formBody.toString(),
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            from: fromLoc?.code ?? fromId,
+            fromLabel: fromLoc?.label ?? fromLabel,
+            fromLocId: fromLoc?.id ?? fromId,
+            fromLocType: fromLoc?.category ?? "All_data",
+            to: toLoc?.code ?? toId,
+            toLabel: toLoc?.label ?? toLabel,
+            toLocId: toLoc?.id ?? toId,
+            toLocType: toLoc?.category ?? "All_data",
+            dep,
+            ret,
+            adults,
+          }),
         });
-
-        // response.url is empty on Android (OkHttp doesn't expose final redirect URL)
-        // So we also parse the HTML body which always contains the search_id
-        const responseText = await searchRes.text();
-        const searchId =
-          searchRes.url.match(/\/flight\/search\/(\d+)/)?.[1] ??
-          responseText.match(/\/flight\/search\/(\d+)/)?.[1] ??
-          responseText.match(/search_id["'\s:=]+(\d+)/i)?.[1];
-        if (!searchId) { setStatus("fallback"); return; }
+        clearTimeout(tid);
+        const prepData = (await prepRes.json()) as { ok: boolean; searchId?: string };
+        if (!prepData.ok || !prepData.searchId) { setStatus("fallback"); return; }
+        const searchId = prepData.searchId;
 
         const TIMEOUT = 120_000;
         const start = Date.now();
@@ -454,10 +448,12 @@ function HotelInlineSearch({
   apiBase,
   isAr,
   params,
+  openInApp,
 }: {
   apiBase: string;
   isAr: boolean;
-  params?: { city: string; checkin: string; checkout: string };
+  params?: { city: string; checkin: string; checkout: string; stars?: number };
+  openInApp: (url: string) => void;
 }) {
   const [status, setStatus] = React.useState<"loading" | "done" | "fallback">("loading");
   const [hotels, setHotels] = React.useState<HotelOptionData[]>([]);
@@ -475,25 +471,24 @@ function HotelInlineSearch({
 
     (async () => {
       try {
-        const body = params
-          ? { city: params.city, checkin: params.checkin, checkout: params.checkout }
-          : { city: "Dubai", checkin: "", checkout: "" };
-        if (!body.checkin) {
-          setStatus("fallback");
-          return;
-        }
+        if (!params?.checkin) { setStatus("fallback"); return; }
         const ctrl = new AbortController();
         const tid = setTimeout(() => ctrl.abort(), 90_000);
         const res = await fetch(`${apiBase}/hotel-search`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: ctrl.signal,
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            city: params.city,
+            checkin: params.checkin,
+            checkout: params.checkout,
+            stars: params.stars ?? 0,
+          }),
         });
         clearTimeout(tid);
         const data = (await res.json()) as { ok: boolean; hotels?: HotelOptionData[]; error?: string };
         if (data.ok && data.hotels && data.hotels.length > 0) {
-          setHotels(data.hotels.slice(0, 5));
+          setHotels(data.hotels.slice(0, 10));
           setStatus("done");
         } else {
           setStatus("fallback");
@@ -504,8 +499,7 @@ function HotelInlineSearch({
     })();
   }, []);
 
-  const openWebsite = () =>
-    Linking.openURL("https://dt-tours.com").catch(() => {});
+  const openWebsite = () => openInApp("https://dt-tours.com/index.php/hotel");
 
   if (status === "loading") {
     return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="hotel" />;
@@ -524,19 +518,23 @@ function HotelInlineSearch({
     );
   }
 
+  const starsLabel = params?.stars && params.stars > 0 ? ` ${params.stars}★` : "";
+
   return (
     <View style={flightStyles.resultsWrap}>
       <Text style={flightStyles.resultsHeader}>
-        {isAr ? `🏨 فنادق ${params?.city ?? ""}` : `🏨 Hotels in ${params?.city ?? ""}`}
+        {isAr
+          ? `🏨 فنادق${starsLabel} في ${params?.city ?? ""} (رخيص → غالي)`
+          : `🏨 Hotels${starsLabel} in ${params?.city ?? ""} (cheap → expensive)`}
       </Text>
       {hotels.map((h, idx) => (
         <Pressable
           key={idx}
           style={({ pressed }) => [flightStyles.flightRow, pressed && { opacity: 0.85 }]}
-          onPress={() => Linking.openURL(h.bookUrl || "https://dt-tours.com").catch(() => {})}
+          onPress={() => openInApp(h.bookUrl || "https://dt-tours.com")}
         >
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={flightStyles.flightCarrier} numberOfLines={1}>{h.name}</Text>
+            <Text style={flightStyles.flightCarrier} numberOfLines={2}>{h.name}</Text>
             <Text style={flightStyles.flightStops}>
               {"★".repeat(Math.min(h.stars, 5))} {h.location}
             </Text>
@@ -562,9 +560,11 @@ function HotelInlineSearch({
 function OffersDisplay({
   apiBase,
   isAr,
+  openInApp,
 }: {
   apiBase: string;
   isAr: boolean;
+  openInApp: (url: string) => void;
 }) {
   const [status, setStatus] = React.useState<"loading" | "done" | "empty">("loading");
   const [offers, setOffers] = React.useState<OfferCardData[]>([]);
@@ -588,7 +588,7 @@ function OffersDisplay({
         clearTimeout(tid);
         const data = (await res.json()) as { ok: boolean; offers?: OfferCardData[] };
         if (data.ok && data.offers && data.offers.length > 0) {
-          setOffers(data.offers.slice(0, 6));
+          setOffers(data.offers.slice(0, 8));
           setStatus("done");
         } else {
           setStatus("empty");
@@ -599,8 +599,6 @@ function OffersDisplay({
     })();
   }, []);
 
-  const openWebsite = () => Linking.openURL("https://dt-tours.com").catch(() => {});
-
   if (status === "loading") {
     return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="offers" />;
   }
@@ -609,7 +607,7 @@ function OffersDisplay({
     return (
       <Pressable
         style={({ pressed }) => [styles.flightCta, pressed && { opacity: 0.8 }]}
-        onPress={openWebsite}
+        onPress={() => openInApp("https://dt-tours.com")}
       >
         <Text style={styles.flightCtaText}>
           {isAr ? "🎯 شوف أحدث العروض على موقعنا" : "🎯 View latest offers on our website"}
@@ -627,7 +625,7 @@ function OffersDisplay({
         <Pressable
           key={idx}
           style={({ pressed }) => [flightStyles.offerRow, pressed && { opacity: 0.85 }]}
-          onPress={() => Linking.openURL(o.link).catch(() => {})}
+          onPress={() => openInApp(o.link || "https://dt-tours.com")}
         >
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={flightStyles.offerTitle} numberOfLines={2}>{o.title}</Text>
@@ -644,13 +642,85 @@ function OffersDisplay({
       ))}
       <Pressable
         style={({ pressed }) => [flightStyles.moreBtn, pressed && { opacity: 0.8 }]}
-        onPress={openWebsite}
+        onPress={() => openInApp("https://dt-tours.com/index.php/tours/search")}
       >
         <Text style={flightStyles.moreBtnText}>
-          {isAr ? "عرض جميع العروض على الموقع →" : "View all offers on website →"}
+          {isAr ? "عرض جميع العروض →" : "View all offers →"}
         </Text>
       </Pressable>
     </View>
+  );
+}
+
+function InAppBrowserModal({
+  url,
+  onClose,
+}: {
+  url: string;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [loading, setLoading] = React.useState(true);
+
+  return (
+    <Modal
+      visible
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View style={{ flex: 1, backgroundColor: BLACK }}>
+        {/* Header bar */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingTop: insets.top + 6,
+            paddingBottom: 10,
+            paddingHorizontal: 14,
+            backgroundColor: "#0A1628",
+            borderBottomWidth: 1,
+            borderBottomColor: "rgba(212,175,55,0.25)",
+            gap: 10,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{ color: GOLD, fontSize: 11, fontFamily: "Inter_400Regular" }}
+              numberOfLines={1}
+            >
+              {url.replace(/^https?:\/\//, "")}
+            </Text>
+          </View>
+          {loading && <ActivityIndicator size="small" color={GOLD} />}
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <Svg width={22} height={22} viewBox="0 0 24 24">
+              <Path
+                d="M18 6L6 18M6 6l12 12"
+                stroke="#aaa"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            </Svg>
+          </Pressable>
+        </View>
+
+        <WebView
+          source={{ uri: url }}
+          style={{ flex: 1, backgroundColor: BLACK }}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          startInLoadingState={false}
+          javaScriptEnabled
+          domStorageEnabled
+          setSupportMultipleWindows={false}
+        />
+      </View>
+    </Modal>
   );
 }
 
@@ -834,6 +904,9 @@ export function ChatbotScreen({ visible, onClose }: Props) {
   const [showWhatsAppBanner, setShowWhatsAppBanner] = useState(false);
   const [kbHeight, setKbHeight] = useState(0);
   const [sessionLoading, setSessionLoading] = useState(false);
+  const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
+
+  const openInApp = useCallback((url: string) => setWebViewUrl(url), []);
 
   // Email summary state
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -902,6 +975,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
       setEmailError(null);
       setEmailDeclined(false);
       setSessionLoading(false);
+      setWebViewUrl(null);
       userMsgCount.current = 0;
     }
   }, [visible]);
@@ -1046,13 +1120,15 @@ export function ChatbotScreen({ visible, onClose }: Props) {
       const flightMatch = FLIGHT_SIGNAL_RE.exec(raw);
       const flightToken = flightMatch ? flightMatch[1] : undefined;
 
-      let hotelParams: { city: string; checkin: string; checkout: string } | undefined;
+      let hotelParams: { city: string; checkin: string; checkout: string; stars?: number } | undefined;
       if (hotelMatch) {
-        const [city, checkin, checkout] = hotelMatch[1].split("|");
+        const [city, checkin, checkout, starsStr] = hotelMatch[1].split("|");
+        const stars = parseInt(starsStr ?? "0") || 0;
         hotelParams = {
           city: city?.trim() ?? "",
           checkin: checkin?.trim() ?? "",
           checkout: checkout?.trim() ?? "",
+          stars: stars > 0 ? stars : undefined,
         };
       }
 
@@ -1340,12 +1416,14 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                           apiBase={API_BASE}
                           isAr={isAr}
                           params={msg.hotelParams}
+                          openInApp={openInApp}
                         />
                       )}
                       {msg.showOffers && (
                         <OffersDisplay
                           apiBase={API_BASE}
                           isAr={isAr}
+                          openInApp={openInApp}
                         />
                       )}
                       {msg.showWhatsApp && (
@@ -1522,6 +1600,10 @@ export function ChatbotScreen({ visible, onClose }: Props) {
           )}
         </Animated.View>
       </View>
+
+      {webViewUrl && (
+        <InAppBrowserModal url={webViewUrl} onClose={() => setWebViewUrl(null)} />
+      )}
     </Modal>
   );
 }
