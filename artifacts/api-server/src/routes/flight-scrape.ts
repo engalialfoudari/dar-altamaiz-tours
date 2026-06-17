@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getBrowser, applyStealthOverrides, humanDelay } from "../lib/browser";
+import { getBrowser, applyStealthOverrides } from "../lib/browser";
 
 const router = Router();
 
@@ -40,18 +40,23 @@ async function scrapeDtToursFlights(params: {
   try {
     await applyStealthOverrides(page);
 
+    // Step 1 — load homepage and wait for ALL network activity to settle
     await page.goto("https://dt-tours.com/", {
-      waitUntil: "networkidle2",
-      timeout: 30_000,
+      waitUntil: "networkidle0",
+      timeout: 45_000,
     });
 
-    await page.waitForSelector("#flight_form", { timeout: 12_000 });
-    await humanDelay(600, 1200);
+    // Step 2 — wait for the flight form to appear (proves dynamic shell is ready)
+    await page.waitForSelector("#flight_form", { timeout: 15_000 });
+
+    // Step 3 — small human-like pause before interacting
+    await new Promise((r) => setTimeout(r, 1_200));
 
     const depFmt = fmtDate(params.depDate);
     const retFmt = params.retDate ? fmtDate(params.retDate) : null;
     const isRoundTrip = !!retFmt;
 
+    // Step 4 — fill form fields via direct JS injection
     await page.evaluate(
       (from, fromLabel, to, toLabel, dep, ret, adults, roundTrip) => {
         const setVal = (id: string, val: string) => {
@@ -101,14 +106,7 @@ async function scrapeDtToursFlights(params: {
           }
         }
 
-        const adultSel = [
-          "select[name='adult']",
-          "input[name='adult']",
-          "select[name='adt']",
-          "#adult",
-          "#adt",
-        ];
-        for (const sel of adultSel) {
+        for (const sel of ["select[name='adult']", "input[name='adult']", "select[name='adt']", "#adult", "#adt"]) {
           const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
           if (el) {
             el.value = String(adults);
@@ -127,53 +125,62 @@ async function scrapeDtToursFlights(params: {
       isRoundTrip
     );
 
-    await humanDelay(500, 900);
-
-    const [navResult] = await Promise.allSettled([
-      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 40_000 }),
+    // Step 5 — submit form and wait for results page to fully load (networkidle0)
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle0", timeout: 60_000 }),
       page.evaluate(() => {
         const form = document.getElementById("flight_form") as HTMLFormElement | null;
         if (form) form.submit();
       }),
     ]);
 
-    if (navResult.status === "rejected") {
-      throw new Error(`Navigation failed: ${String(navResult.reason)}`);
-    }
+    // Step 6 — hard 5-second delay so all async price/flight data finishes rendering
+    await new Promise((r) => setTimeout(r, 5_000));
 
-    await humanDelay(2_000, 3_500);
-
+    // Step 7 — wait for a concrete result element to confirm content is live
     await page
       .waitForSelector(
-        ".result_box, .oneway_result_item, .result-row, .fare_list_item, .fareDetails, [class*='result'], [class*='flight_list']",
-        { timeout: 30_000 }
+        [
+          ".result_box",
+          ".oneway_result_item",
+          ".result-row",
+          ".fare_list_item",
+          ".fareDetails",
+          ".fareResult",
+          "[class*='result']",
+          "[class*='flight_list']",
+          "[data-flight-key]",
+        ].join(", "),
+        { timeout: 20_000 }
       )
       .catch(() => {});
 
-    await humanDelay(3_000, 5_000);
+    // Step 8 — extra buffer for any staggered AJAX price updates
+    await new Promise((r) => setTimeout(r, 2_000));
 
     const finalUrl = page.url();
-    const pageTitle = await page.title();
     const html = await page.content();
 
-    const snippet = html.slice(0, 6000);
-    await import("node:fs/promises").then((fs) =>
-      fs.writeFile("/tmp/dt_flight_debug.html", html).catch(() => {})
-    );
-
-    if (html.includes("no result") || html.includes("No Result")) {
+    if (
+      html.includes("no result") ||
+      html.includes("No Result") ||
+      html.includes("no flights") ||
+      html.includes("No Flights")
+    ) {
       return [];
     }
 
+    // Step 9 — parse the fully-rendered DOM
     return await page.evaluate(
       (origin: string, destination: string, bookUrl: string): ScrapedFlight[] => {
         const results: ScrapedFlight[] = [];
-        const priceRe = /(?:KWD|USD|AED|SAR|QAR|BHD|OMR)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
+        const priceRe =
+          /(?:KWD|USD|AED|SAR|QAR|BHD|OMR)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
         const timeRe = /\b([01]?\d|2[0-3]):([0-5]\d)\b/g;
 
         const CARRIERS = [
           "Kuwait Airways", "Jazeera", "flydubai", "Air Arabia", "Emirates", "Etihad",
-          "Qatar Airways", "flynas", "Oman Air", "Gulf Air", "Saudi", "Saudia",
+          "Qatar Airways", "flynas", "Oman Air", "Gulf Air", "Saudia",
           "IndiGo", "Air India", "Turkish Airlines", "Royal Jordanian", "MEA",
           "EgyptAir", "Nile Air", "British Airways", "KLM", "Lufthansa",
           "Air France", "Singapore Airlines", "Malaysia Airlines", "Thai Airways",
@@ -200,11 +207,7 @@ async function scrapeDtToursFlights(params: {
             const priceMatches = [...text.matchAll(priceRe)];
             const price = priceMatches[0]?.[1] ?? priceMatches[0]?.[2] ?? "";
             const currency = priceMatches[0]?.[0]?.match(/[A-Z]{3}/)?.[0] ?? "KWD";
-
             const times = [...text.matchAll(timeRe)].map((m) => m[0]).slice(0, 2);
-            const dep = times[0] ?? "";
-            const arr = times[1] ?? "";
-
             const carrier = CARRIERS.find((c) => text.toLowerCase().includes(c.toLowerCase())) ?? "";
             const stopsMatch = text.match(/(\d)\s*stop/i);
             const stops = stopsMatch
@@ -213,17 +216,16 @@ async function scrapeDtToursFlights(params: {
               ? 0
               : 0;
             const durMatch = text.match(/(\d+h\s*\d*m?|\d+\s*hrs?\s*\d*\s*m(?:in)?s?)/i);
-            const duration = durMatch ? durMatch[0].trim() : "";
 
             if (price || carrier) {
               results.push({
                 carrier: carrier || "Airline",
-                departure: dep,
-                arrival: arr,
+                departure: times[0] ?? "",
+                arrival: times[1] ?? "",
                 origin,
                 destination,
                 stops,
-                duration,
+                duration: durMatch ? durMatch[0].trim() : "",
                 price,
                 currency,
                 bookUrl,
@@ -232,17 +234,15 @@ async function scrapeDtToursFlights(params: {
           });
         }
 
+        // Fallback: scan full page text for any prices
         if (results.length === 0) {
-          const allText = document.body.innerText;
-          const allPrices = [...allText.matchAll(priceRe)];
           const seen = new Set<string>();
-          for (const m of allPrices) {
+          for (const m of [...document.body.innerText.matchAll(priceRe)]) {
             const v = m[1] ?? m[2];
             if (v && !seen.has(v) && parseFloat(v.replace(/,/g, "")) > 5) {
               seen.add(v);
-              const idx = results.length;
               results.push({
-                carrier: CARRIERS[idx % CARRIERS.length] ?? "Airline",
+                carrier: CARRIERS[results.length % CARRIERS.length] ?? "Airline",
                 departure: "", arrival: "", origin, destination, stops: 0, duration: "",
                 price: v, currency: "KWD", bookUrl,
               });
@@ -288,17 +288,10 @@ router.post("/flight-scrape", async (req, res) => {
       retDate,
       adults: Math.max(1, Math.min(9, Number(adults))),
     });
-
-    const debugUrl = await import("node:fs/promises")
-      .then((fs) => fs.readFile("/tmp/dt_flight_debug.html", "utf8"))
-      .then((h) => ({ url: "saved", title: "", snippet: h.slice(0, 800) }))
-      .catch(() => ({ url: "", title: "", snippet: "" }));
-
-    res.json({ ok: true, flights, count: flights.length, _debug: { resultUrl: debugUrl.snippet.slice(0,100) } });
+    res.json({ ok: true, flights, count: flights.length });
   } catch (err: unknown) {
     req.log.error({ err }, "Flight scrape failed");
-    const msg = err instanceof Error ? err.message : "Scrape failed";
-    res.status(502).json({ ok: false, error: msg });
+    res.status(502).json({ ok: false, error: err instanceof Error ? err.message : "Scrape failed" });
   }
 });
 

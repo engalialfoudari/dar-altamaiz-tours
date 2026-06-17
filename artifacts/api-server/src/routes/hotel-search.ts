@@ -1,11 +1,5 @@
 import { Router } from "express";
-import { getBrowser, applyStealthOverrides, humanDelay } from "../lib/browser";
-import { getHotelCredentials as getRawHotelCredentials } from "../lib/credentials";
-
-function getHotelCredentials() {
-  const raw = getRawHotelCredentials();
-  return { username: raw.apiKey, password: raw.secret };
-}
+import { getBrowser, applyStealthOverrides } from "../lib/browser";
 
 const router = Router();
 
@@ -29,33 +23,6 @@ function fmtDateDMY(iso: string): string {
   return `${dd}-${mm}-${yyyy}`;
 }
 
-async function tryHotelApi(params: {
-  city: string;
-  checkin: string;
-  checkout: string;
-  rooms: number;
-  adults: number;
-}): Promise<HotelOption[] | null> {
-  const { username, password } = getHotelCredentials();
-  if (!username || !password) return null;
-  try {
-    const res = await fetch("https://dt-tours.com/index.php/api/hotel/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
-      },
-      body: JSON.stringify({ city: params.city, checkin: params.checkin, checkout: params.checkout, rooms: params.rooms, adults: params.adults }),
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { hotels?: HotelOption[] };
-      if (data.hotels && data.hotels.length > 0) return data.hotels;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-
 async function scrapeDtToursHotels(params: {
   city: string;
   checkin: string;
@@ -69,14 +36,19 @@ async function scrapeDtToursHotels(params: {
   try {
     await applyStealthOverrides(page);
 
+    // Step 1 — load homepage and wait for ALL network activity to settle
     await page.goto("https://dt-tours.com/", {
-      waitUntil: "networkidle2",
-      timeout: 30_000,
+      waitUntil: "networkidle0",
+      timeout: 45_000,
     });
 
-    await page.waitForSelector("#hotel_search", { timeout: 12_000 });
-    await humanDelay(600, 1200);
+    // Step 2 — wait for hotel search form to appear (proves dynamic shell is ready)
+    await page.waitForSelector("#hotel_search", { timeout: 15_000 });
 
+    // Step 3 — small human-like pause before interacting
+    await new Promise((r) => setTimeout(r, 1_200));
+
+    // Step 4 — fill hotel form fields via direct JS injection
     await page.evaluate(
       (city: string, checkin: string, checkout: string, rooms: number) => {
         const setVal = (id: string, val: string) => {
@@ -105,8 +77,7 @@ async function scrapeDtToursHotels(params: {
           co.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
-        const roomSels = ["select[name='rooms']", "input[name='rooms']", "#rooms"];
-        for (const sel of roomSels) {
+        for (const sel of ["select[name='rooms']", "input[name='rooms']", "#rooms"]) {
           const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
           if (el) { el.value = String(rooms); break; }
         }
@@ -117,36 +88,46 @@ async function scrapeDtToursHotels(params: {
       params.rooms
     );
 
-    await humanDelay(500, 900);
-
-    const [navResult] = await Promise.allSettled([
-      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 40_000 }),
+    // Step 5 — submit form and wait for results page (networkidle0)
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle0", timeout: 60_000 }),
       page.evaluate(() => {
         const form = document.getElementById("hotel_search") as HTMLFormElement | null;
         if (form) form.submit();
       }),
     ]);
 
-    if (navResult.status === "rejected") {
-      throw new Error(`Navigation failed: ${String(navResult.reason)}`);
-    }
+    // Step 6 — hard 5-second delay so all async hotel data finishes rendering
+    await new Promise((r) => setTimeout(r, 5_000));
 
-    await humanDelay(2_000, 3_500);
-
+    // Step 7 — wait for a concrete result element to confirm live content is present
     await page
       .waitForSelector(
-        ".hotel-result, .hotel_result, .hotel-card, .property-card, [class*='hotel-item'], [class*='hotel_list'], [class*='property']",
-        { timeout: 28_000 }
+        [
+          ".hotel-result",
+          ".hotel_result",
+          ".hotel-card",
+          ".property-card",
+          "[class*='hotel-item']",
+          "[class*='hotel_list']",
+          ".result_box",
+          "[data-hotel-id]",
+        ].join(", "),
+        { timeout: 20_000 }
       )
       .catch(() => {});
 
-    await humanDelay(3_000, 5_000);
+    // Step 8 — extra buffer for staggered price updates
+    await new Promise((r) => setTimeout(r, 2_000));
 
     const finalUrl = page.url();
+
+    // Step 9 — parse the fully-rendered DOM
     return await page.evaluate(
       (city: string, bookUrl: string): HotelOption[] => {
         const results: HotelOption[] = [];
-        const priceRe = /(?:KWD|USD|AED|SAR|QAR|BHD)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
+        const priceRe =
+          /(?:KWD|USD|AED|SAR|QAR|BHD)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
 
         const SELECTORS = [
           ".hotel-result", ".hotel_result", ".hotel-card", ".property-card",
@@ -213,17 +194,12 @@ router.post("/hotel-search", async (req, res) => {
   }
 
   try {
-    const apiResult = await tryHotelApi({ city, checkin, checkout, rooms, adults });
-    if (apiResult && apiResult.length > 0) {
-      res.json({ ok: true, hotels: apiResult, source: "api" });
-      return;
-    }
     const hotels = await scrapeDtToursHotels({
       city, checkin, checkout,
       rooms: Math.max(1, Math.min(9, Number(rooms))),
       adults: Math.max(1, Math.min(9, Number(adults))),
     });
-    res.json({ ok: true, hotels, count: hotels.length, source: "scrape" });
+    res.json({ ok: true, hotels, count: hotels.length });
   } catch (err: unknown) {
     req.log.error({ err }, "Hotel search failed");
     res.status(502).json({ ok: false, error: err instanceof Error ? err.message : "Hotel search failed" });

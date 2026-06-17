@@ -39,3 +39,21 @@ Puppeteer's postinstall script fails to download Chrome in Replit because:
 
 ## Scraping strategy
 Use direct JS injection (`page.evaluate(...)`) to set all form field values — do NOT interact with autocomplete dropdowns. Submit via `form.submit()`. Both approaches are more reliable than simulating UI interaction in headless mode.
+
+## dt-tours.com rendering pattern (critical)
+The site (travelomatix CMS) uses a two-phase render:
+1. Server sends HTML shell with **placeholder text** in package cards (`.destpack .pname` shows "Top International City", "Recommended Hotels", etc.)
+2. JavaScript makes API calls and overwrites those placeholders with live database content
+
+**Required wait sequence for any page scrape:**
+```
+goto(url, { waitUntil: "networkidle0" })   // NOT networkidle2
+await new Promise(r => setTimeout(r, 5000)) // hard 5s delay
+waitForFunction(() => firstCard.innerText !== "Top International City...")  // poll until live
+await new Promise(r => setTimeout(r, 1500)) // buffer for images/prices
+evaluate(...)                              // parse now-populated DOM
+```
+
+**Also filter inside evaluate():** even after waiting, some placeholder slots may survive. Maintain a `PLACEHOLDERS` blocklist and skip cards whose title matches.
+
+**Do NOT use axios+cheerio** for any dt-tours.com page — the static HTML only contains the placeholder shell; all real data requires JS execution.
