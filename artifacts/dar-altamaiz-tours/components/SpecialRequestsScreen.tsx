@@ -615,7 +615,7 @@ export function SpecialRequestsScreen() {
           disabled={submitting}
         >
           {submitting ? (
-            <Text style={styles.submitBtnText}>جاري الإرسال...</Text>
+            <Text style={styles.submitBtnText}>جاري الإرسال / Sending...</Text>
           ) : (
             <View style={{ alignItems: "center" }}>
               <Text style={styles.submitBtnTextAr}>إرسال</Text>
