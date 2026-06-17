@@ -34,6 +34,7 @@ const API_BASE =
 const WHATSAPP_SIGNAL = "[WHATSAPP]";
 const GOODBYE_SIGNAL = "[GOODBYE]";
 const HOTEL_SIGNAL = "[HOTEL]";
+const OFFERS_SIGNAL = "[OFFERS]";
 const FLIGHT_SIGNAL_RE = /\[FLIGHT:([^\]]+)\]/;
 const ESCALATE_AFTER_MESSAGES = 8;
 const STORAGE_KEY = "dtours_chat_v1";
@@ -65,6 +66,8 @@ interface Message {
   showWhatsApp?: boolean;
   flightToken?: string;
   showHotel?: boolean;
+  showOffers?: boolean;
+  hotelParams?: { city: string; checkin: string; checkout: string };
 }
 
 interface SavedSession {
@@ -141,24 +144,76 @@ function TypingDots() {
   );
 }
 
-interface FlightSegmentData {
+interface ScrapedFlight {
   carrier: string;
-  flightNumber: string;
+  departure: string;
+  arrival: string;
   origin: string;
   destination: string;
-  departureTime: string;
-  arrivalTime: string;
+  stops: number;
   duration: string;
+  price: string;
+  currency: string;
+  bookUrl: string;
 }
 
-interface FlightOptionData {
-  key: string;
-  totalPrice: string;
+interface HotelOptionData {
+  name: string;
+  stars: number;
+  location: string;
+  price: string;
   currency: string;
-  segments: FlightSegmentData[];
-  stops: number;
-  totalDuration: string;
-  bookingCode: string;
+  nights?: number;
+  bookUrl: string;
+}
+
+interface OfferCardData {
+  title: string;
+  description: string;
+  price?: string;
+  image?: string;
+  link: string;
+}
+
+function SearchLoadingCard({
+  isAr,
+  elapsed,
+  label,
+}: {
+  isAr: boolean;
+  elapsed: number;
+  label: "flight" | "hotel" | "offers";
+}) {
+  const messages = {
+    flight: {
+      ar: "جاري البحث لك عن أفضل الأسعار، الرجاء الانتظار قليلاً... ✈️",
+      en: "Searching for the best fares, please wait... ✈️",
+    },
+    hotel: {
+      ar: "جاري البحث عن أفضل الفنادق المتاحة، لحظة من فضلك... 🏨",
+      en: "Searching for the best available hotels, please wait... 🏨",
+    },
+    offers: {
+      ar: "جاري تحميل أحدث العروض والصفقات... 🎯",
+      en: "Loading the latest deals and offers... 🎯",
+    },
+  };
+  const msg = isAr ? messages[label].ar : messages[label].en;
+  const secLabel = isAr ? "ثانية" : "s";
+
+  return (
+    <View style={flightStyles.card}>
+      <View style={flightStyles.loadingRow}>
+        <ActivityIndicator size="small" color={GOLD} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={[flightStyles.loadingText, { fontSize: 13 }]}>{msg}</Text>
+          <Text style={flightStyles.elapsedText}>
+            {elapsed > 0 ? `${elapsed} ${secLabel}` : ""}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
 }
 
 function FlightInlineSearch({
@@ -174,10 +229,15 @@ function FlightInlineSearch({
   const [fromId, fromLabel, toId, toLabel, dep, ret, adultsStr] = parts;
   const adults = parseInt(adultsStr ?? "1") || 1;
 
-  const [status, setStatus] = React.useState<"idle" | "loading" | "done" | "fallback">("idle");
-  const [flights, setFlights] = React.useState<FlightOptionData[]>([]);
-  const [searchError, setSearchError] = React.useState<string | null>(null);
+  const [status, setStatus] = React.useState<"loading" | "done" | "fallback">("loading");
+  const [flights, setFlights] = React.useState<ScrapedFlight[]>([]);
+  const [elapsed, setElapsed] = React.useState(0);
   const hasFetched = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -185,24 +245,24 @@ function FlightInlineSearch({
 
     (async () => {
       try {
-        const statusRes = await fetch(`${apiBase}/flight-search/status`);
-        const statusData = (await statusRes.json()) as { configured: boolean };
-        if (!statusData.configured) {
-          setStatus("fallback");
-          return;
-        }
-        setStatus("loading");
-        const res = await fetch(`${apiBase}/flight-search`, {
+        const res = await fetch(`${apiBase}/flight-scrape`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ from: fromId, to: toId, depDate: dep, retDate: ret || undefined, adults }),
+          body: JSON.stringify({
+            from: fromId,
+            to: toId,
+            fromLabel,
+            toLabel,
+            depDate: dep,
+            retDate: ret || undefined,
+            adults,
+          }),
         });
-        const data = (await res.json()) as { ok: boolean; flights?: FlightOptionData[]; error?: string };
+        const data = (await res.json()) as { ok: boolean; flights?: ScrapedFlight[]; error?: string };
         if (data.ok && data.flights && data.flights.length > 0) {
           setFlights(data.flights.slice(0, 5));
           setStatus("done");
         } else {
-          setSearchError(data.error ?? null);
           setStatus("fallback");
         }
       } catch {
@@ -214,19 +274,8 @@ function FlightInlineSearch({
   const openWebsite = () =>
     Linking.openURL(buildFlightRedirectUrl(token, apiBase)).catch(() => {});
 
-  if (status === "idle") return null;
-
   if (status === "loading") {
-    return (
-      <View style={flightStyles.card}>
-        <View style={flightStyles.loadingRow}>
-          <ActivityIndicator size="small" color={GOLD} />
-          <Text style={flightStyles.loadingText}>
-            {isAr ? "جارٍ البحث عن أفضل الأسعار..." : "Searching live fares..."}
-          </Text>
-        </View>
-      </View>
-    );
+    return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="flight" />;
   }
 
   if (status === "fallback") {
@@ -245,47 +294,37 @@ function FlightInlineSearch({
   return (
     <View style={flightStyles.resultsWrap}>
       <Text style={flightStyles.resultsHeader}>
-        {isAr
-          ? `✈️ ${fromLabel} ← ${toLabel}`
-          : `✈️ ${fromLabel} → ${toLabel}`}
+        {isAr ? `✈️ ${fromLabel} ← ${toLabel}` : `✈️ ${fromLabel} → ${toLabel}`}
       </Text>
-      {flights.map((f) => {
-        const seg = f.segments[0];
-        const lastSeg = f.segments[f.segments.length - 1];
-        const carrier = f.bookingCode || seg?.carrier || "—";
-        return (
-          <Pressable
-            key={f.key}
-            style={({ pressed }) => [flightStyles.flightRow, pressed && { opacity: 0.85 }]}
-            onPress={openWebsite}
-          >
-            <View style={flightStyles.flightLeft}>
-              <Text style={flightStyles.flightCarrier}>{carrier}</Text>
-              {f.stops > 0 && (
-                <Text style={flightStyles.flightStops}>
-                  {isAr ? `${f.stops} توقف` : `${f.stops} stop${f.stops > 1 ? "s" : ""}`}
-                </Text>
-              )}
-              {f.stops === 0 && (
-                <Text style={flightStyles.flightDirect}>{isAr ? "مباشر" : "Direct"}</Text>
-              )}
-            </View>
-            <View style={flightStyles.flightMid}>
-              <Text style={flightStyles.flightTime}>{seg?.departureTime ?? "—"}</Text>
-              <Text style={flightStyles.flightArrow}>→</Text>
-              <Text style={flightStyles.flightTime}>{lastSeg?.arrivalTime ?? "—"}</Text>
-            </View>
-            <View style={flightStyles.flightRight}>
-              <Text style={flightStyles.flightPrice}>
-                {f.currency} {f.totalPrice}
+      {flights.map((f, idx) => (
+        <Pressable
+          key={idx}
+          style={({ pressed }) => [flightStyles.flightRow, pressed && { opacity: 0.85 }]}
+          onPress={() => Linking.openURL(f.bookUrl || "https://dt-tours.com").catch(() => {})}
+        >
+          <View style={flightStyles.flightLeft}>
+            <Text style={flightStyles.flightCarrier}>{f.carrier || "—"}</Text>
+            {f.stops > 0 ? (
+              <Text style={flightStyles.flightStops}>
+                {isAr ? `${f.stops} توقف` : `${f.stops} stop${f.stops > 1 ? "s" : ""}`}
               </Text>
-              <Text style={flightStyles.flightBook}>
-                {isAr ? "احجز" : "Book"}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
+            ) : (
+              <Text style={flightStyles.flightDirect}>{isAr ? "مباشر" : "Direct"}</Text>
+            )}
+          </View>
+          <View style={flightStyles.flightMid}>
+            <Text style={flightStyles.flightTime}>{f.departure || "—"}</Text>
+            <Text style={flightStyles.flightArrow}>→</Text>
+            <Text style={flightStyles.flightTime}>{f.arrival || "—"}</Text>
+          </View>
+          <View style={flightStyles.flightRight}>
+            <Text style={flightStyles.flightPrice}>
+              {f.currency} {f.price}
+            </Text>
+            <Text style={flightStyles.flightBook}>{isAr ? "احجز" : "Book"}</Text>
+          </View>
+        </Pressable>
+      ))}
       <Pressable
         style={({ pressed }) => [flightStyles.moreBtn, pressed && { opacity: 0.8 }]}
         onPress={openWebsite}
@@ -294,9 +333,203 @@ function FlightInlineSearch({
           {isAr ? "عرض جميع الرحلات على الموقع →" : "View all flights on website →"}
         </Text>
       </Pressable>
-      {searchError && (
-        <Text style={flightStyles.errorNote}>{searchError}</Text>
-      )}
+    </View>
+  );
+}
+
+function HotelInlineSearch({
+  apiBase,
+  isAr,
+  params,
+}: {
+  apiBase: string;
+  isAr: boolean;
+  params?: { city: string; checkin: string; checkout: string };
+}) {
+  const [status, setStatus] = React.useState<"loading" | "done" | "fallback">("loading");
+  const [hotels, setHotels] = React.useState<HotelOptionData[]>([]);
+  const [elapsed, setElapsed] = React.useState(0);
+  const hasFetched = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    (async () => {
+      try {
+        const body = params
+          ? { city: params.city, checkin: params.checkin, checkout: params.checkout }
+          : { city: "Dubai", checkin: "", checkout: "" };
+        if (!body.checkin) {
+          setStatus("fallback");
+          return;
+        }
+        const res = await fetch(`${apiBase}/hotel-search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json()) as { ok: boolean; hotels?: HotelOptionData[]; error?: string };
+        if (data.ok && data.hotels && data.hotels.length > 0) {
+          setHotels(data.hotels.slice(0, 5));
+          setStatus("done");
+        } else {
+          setStatus("fallback");
+        }
+      } catch {
+        setStatus("fallback");
+      }
+    })();
+  }, []);
+
+  const openWebsite = () =>
+    Linking.openURL("https://dt-tours.com").catch(() => {});
+
+  if (status === "loading") {
+    return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="hotel" />;
+  }
+
+  if (status === "fallback" || hotels.length === 0) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.flightCta, pressed && { opacity: 0.8 }]}
+        onPress={openWebsite}
+      >
+        <Text style={styles.flightCtaText}>
+          {isAr ? "🏨 شوف الفنادق المتاحة" : "🏨 View Available Hotels"}
+        </Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={flightStyles.resultsWrap}>
+      <Text style={flightStyles.resultsHeader}>
+        {isAr ? `🏨 فنادق ${params?.city ?? ""}` : `🏨 Hotels in ${params?.city ?? ""}`}
+      </Text>
+      {hotels.map((h, idx) => (
+        <Pressable
+          key={idx}
+          style={({ pressed }) => [flightStyles.flightRow, pressed && { opacity: 0.85 }]}
+          onPress={() => Linking.openURL(h.bookUrl || "https://dt-tours.com").catch(() => {})}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={flightStyles.flightCarrier} numberOfLines={1}>{h.name}</Text>
+            <Text style={flightStyles.flightStops}>
+              {"★".repeat(Math.min(h.stars, 5))} {h.location}
+            </Text>
+          </View>
+          <View style={flightStyles.flightRight}>
+            <Text style={flightStyles.flightPrice}>{h.currency} {h.price}</Text>
+            <Text style={flightStyles.flightBook}>{isAr ? "احجز" : "Book"}</Text>
+          </View>
+        </Pressable>
+      ))}
+      <Pressable
+        style={({ pressed }) => [flightStyles.moreBtn, pressed && { opacity: 0.8 }]}
+        onPress={openWebsite}
+      >
+        <Text style={flightStyles.moreBtnText}>
+          {isAr ? "عرض جميع الفنادق على الموقع →" : "View all hotels on website →"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function OffersDisplay({
+  apiBase,
+  isAr,
+}: {
+  apiBase: string;
+  isAr: boolean;
+}) {
+  const [status, setStatus] = React.useState<"loading" | "done" | "empty">("loading");
+  const [offers, setOffers] = React.useState<OfferCardData[]>([]);
+  const [elapsed, setElapsed] = React.useState(0);
+  const hasFetched = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/offers`);
+        const data = (await res.json()) as { ok: boolean; offers?: OfferCardData[] };
+        if (data.ok && data.offers && data.offers.length > 0) {
+          setOffers(data.offers.slice(0, 6));
+          setStatus("done");
+        } else {
+          setStatus("empty");
+        }
+      } catch {
+        setStatus("empty");
+      }
+    })();
+  }, []);
+
+  const openWebsite = () => Linking.openURL("https://dt-tours.com").catch(() => {});
+
+  if (status === "loading") {
+    return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="offers" />;
+  }
+
+  if (status === "empty" || offers.length === 0) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.flightCta, pressed && { opacity: 0.8 }]}
+        onPress={openWebsite}
+      >
+        <Text style={styles.flightCtaText}>
+          {isAr ? "🎯 شوف أحدث العروض على موقعنا" : "🎯 View latest offers on our website"}
+        </Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={flightStyles.resultsWrap}>
+      <Text style={flightStyles.resultsHeader}>
+        {isAr ? "🎯 أحدث عروضنا المميزة" : "🎯 Our Latest Deals"}
+      </Text>
+      {offers.map((o, idx) => (
+        <Pressable
+          key={idx}
+          style={({ pressed }) => [flightStyles.offerRow, pressed && { opacity: 0.85 }]}
+          onPress={() => Linking.openURL(o.link).catch(() => {})}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={flightStyles.offerTitle} numberOfLines={2}>{o.title}</Text>
+            {o.description ? (
+              <Text style={flightStyles.offerDesc} numberOfLines={1}>{o.description}</Text>
+            ) : null}
+          </View>
+          {o.price ? (
+            <Text style={flightStyles.flightPrice}>{o.price}</Text>
+          ) : (
+            <Text style={flightStyles.flightBook}>{isAr ? "تفاصيل →" : "Details →"}</Text>
+          )}
+        </Pressable>
+      ))}
+      <Pressable
+        style={({ pressed }) => [flightStyles.moreBtn, pressed && { opacity: 0.8 }]}
+        onPress={openWebsite}
+      >
+        <Text style={flightStyles.moreBtnText}>
+          {isAr ? "عرض جميع العروض على الموقع →" : "View all offers on website →"}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -312,12 +545,18 @@ const flightStyles = StyleSheet.create({
   },
   loadingRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
   },
   loadingText: {
-    color: "rgba(255,255,255,0.55)",
+    color: "rgba(255,255,255,0.75)",
     fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  elapsedText: {
+    color: "rgba(212,175,55,0.55)",
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
   },
   resultsWrap: {
@@ -389,6 +628,28 @@ const flightStyles = StyleSheet.create({
   flightBook: {
     color: "rgba(212,175,55,0.6)",
     fontSize: 9,
+    fontFamily: "Inter_400Regular",
+  },
+  offerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,31,91,0.35)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.18)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  offerTitle: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 17,
+  },
+  offerDesc: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
   },
   moreBtn: {
@@ -638,12 +899,14 @@ export function ChatbotScreen({ visible, onClose }: Props) {
       const hasEscalation = raw.includes(WHATSAPP_SIGNAL);
       const hasGoodbye = raw.includes(GOODBYE_SIGNAL);
       const hasHotel = raw.includes(HOTEL_SIGNAL);
+      const hasOffers = raw.includes(OFFERS_SIGNAL);
       const flightMatch = FLIGHT_SIGNAL_RE.exec(raw);
       const flightToken = flightMatch ? flightMatch[1] : undefined;
       const clean = raw
         .replace(WHATSAPP_SIGNAL, "")
         .replace(GOODBYE_SIGNAL, "")
         .replace(HOTEL_SIGNAL, "")
+        .replace(OFFERS_SIGNAL, "")
         .replace(FLIGHT_SIGNAL_RE, "")
         .trimEnd();
 
@@ -654,6 +917,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
         showWhatsApp: hasEscalation,
         flightToken,
         showHotel: hasHotel,
+        showOffers: hasOffers,
       };
       setMessages((prev) => [...prev, botMsg]);
 
@@ -916,19 +1180,17 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                         />
                       )}
                       {msg.showHotel && !msg.flightToken && (
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.flightCta,
-                            pressed && { opacity: 0.8 },
-                          ]}
-                          onPress={() =>
-                            Linking.openURL("https://dt-tours.com").catch(() => {})
-                          }
-                        >
-                          <Text style={styles.flightCtaText}>
-                            {isAr ? "🏨 شوف الفنادق المتاحة" : "🏨 View Available Hotels"}
-                          </Text>
-                        </Pressable>
+                        <HotelInlineSearch
+                          apiBase={API_BASE}
+                          isAr={isAr}
+                          params={msg.hotelParams}
+                        />
+                      )}
+                      {msg.showOffers && (
+                        <OffersDisplay
+                          apiBase={API_BASE}
+                          isAr={isAr}
+                        />
                       )}
                       {msg.showWhatsApp && (
                         <Pressable

@@ -8,6 +8,9 @@ import searchRouter from "./search";
 import chatSummaryRouter from "./chat-summary";
 import flightRedirectRouter from "./flight-redirect";
 import flightSearchRouter from "./flight-search";
+import flightScrapeRouter from "./flight-scrape";
+import hotelSearchRouter from "./hotel-search";
+import offersRouter from "./offers";
 
 const router: IRouter = Router();
 
@@ -20,5 +23,8 @@ router.use(searchRouter);
 router.use(chatSummaryRouter);
 router.use(flightRedirectRouter);
 router.use(flightSearchRouter);
+router.use(flightScrapeRouter);
+router.use(hotelSearchRouter);
+router.use(offersRouter);
 
 export default router;

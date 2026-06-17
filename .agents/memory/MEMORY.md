@@ -1,3 +1,4 @@
 - [EAS Build Issues](eas-build-issues.md) — worklets/reanimated native build diagnosis and fix history for Dar AlTamaiz Tours
 - [DTTours Scraper](dtours-scraper.md) — how to extract packages from dt-tours.com (CSS selectors, URL patterns)
 - [Travelport Integration](travelport-integration.md) — live flight search status, credential invisible-char fix, blocking endpoint issue
+- [Chromium in Replit (puppeteer)](chromium-replit-setup.md) — skip auto-download, use nix system Chromium; exact dt-tours.com form field IDs for direct JS injection
