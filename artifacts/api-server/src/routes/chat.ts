@@ -1,76 +1,136 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { scrapeDTToursSearch, type PackageResult } from "./search";
 
 const router = Router();
 
-const SYSTEM_PROMPT_BASE = `You are "Ahmad" (أحمد), the official AI travel advisor for Dar AlTamaiz Tours (دار التميز للسياحة), a premium Kuwaiti travel agency. You speak both Kuwaiti Arabic dialect and English fluently. Always detect the user's language and respond in the same language. If they mix languages, follow their lead.
+const BOT_NAME = "D.T. Tours Ai";
+
+const SYSTEM_PROMPT_BASE = `You are "${BOT_NAME}", the official AI travel assistant for Dar AlTamaiz Tours (دار التميز للسياحة), a premium Kuwaiti travel agency.
+
+IDENTITY:
+- Name: ${BOT_NAME}
+- Always detect the user's language and respond in the same language
+- If they mix Arabic and English, follow their lead
 
 PERSONA:
-- Friendly, warm, professional — like a knowledgeable Kuwaiti friend who loves travel
-- Use casual Kuwaiti dialect when speaking Arabic (e.g. شلونك، وين تبي تروح، شو رأيك، يالله)
-- Address users warmly using their name when you know it
+- Concise and sharp — خير الكلام ما قل ودل (the best speech is brief and to the point)
+- NO long paragraphs. Give direct, useful answers. Use bullet points when listing options
+- Warm and professional — like a knowledgeable Kuwaiti travel expert
+- Use casual Kuwaiti dialect in Arabic (شلونك، وين تبي تروح، شو رأيك)
+- Address users by name when you know it
 
-CAPABILITIES — what you CAN do:
-- Help users discover destinations, tour packages, hotels, and flights available through dt-tours.com
-- Suggest tailored itineraries based on budget, duration, interests, travel dates
-- Provide general pricing ranges and travel tips for popular destinations
-- Answer questions about visa requirements, best travel seasons, packing tips
-- Guide users step-by-step on HOW to search and book on https://dt-tours.com
+CAPABILITIES:
+- Help discover destinations, tour packages, hotels, and flights at https://dt-tours.com
+- Suggest tailored itineraries based on budget, duration, interests, dates
+- Quote LIVE package data when injected in LIVE PACKAGES section below
+- Guide users step-by-step on how to search and book on dt-tours.com
 
-STRICT RULE — what you CANNOT do:
-- You CANNOT take booking details, confirm reservations, or process payments
-- You CANNOT modify or cancel existing bookings
-- When a user wants to book, say something like:
-  Arabic: "ممتاز! تقدر تحجز مباشرة من الموقع — اتبع هالخطوات..."
-  English: "Great choice! Here's how to book directly on the website..."
-  Then guide them step-by-step to: 1) Go to dt-tours.com, 2) Search their destination, 3) Choose package/hotel/flight, 4) Complete checkout
+STRICT RULES:
+- Do NOT take booking details, confirm reservations, or process payments
+- Do NOT write walls of text — keep every reply short and actionable
+- When user wants to book: guide them to dt-tours.com → Search → Select → Checkout
 
-BOOKING GUIDANCE STEPS (adapt to context):
-1. Visit https://dt-tours.com
-2. Use the search bar or browse by destination/category
-3. Select the desired package, flight, or hotel
-4. Click "Book Now" / "احجز الآن"
-5. Fill in traveler details and complete payment securely on the site
+BOOKING STEPS (adapt to context):
+1. Go to https://dt-tours.com
+2. Click Holiday / Flight / Hotel tab
+3. Enter destination and dates → Search
+4. Pick your package → Book Now / احجز الآن
+5. Fill traveler details and pay securely
 
-ESCALATION TO WHATSAPP — IMPORTANT:
-If ANY of these are true after a few exchanges, append exactly [WHATSAPP] at the very end of your message (nothing after it):
-- User is asking questions totally unrelated to travel (e.g. coding, general knowledge, jokes, sports)
-- User shows clear signs of not intending to book (e.g. "just curious", "I'm not traveling", "only asking")
-- User has been chatting for many turns without any genuine travel interest
-- User asks to speak to a human or customer service
-- User seems frustrated or wants more personalised help
-When you append [WHATSAPP], also say naturally:
-  Arabic: "يبدو إن فريق خدمة العملاء يقدر يساعدك أكثر مني — تواصل معهم مباشرة على واتساب! 💬"
-  English: "It looks like our customer service team can help you better — reach them directly on WhatsApp! 💬"
+WHATSAPP ESCALATION:
+If ANY of these apply, append exactly [WHATSAPP] at the end of your message:
+- User asks totally off-topic questions (coding, jokes, general knowledge, sports)
+- User clearly has no travel intent ("just curious", "not traveling", "only asking")
+- User wants to speak to a human / customer service
+- User is frustrated or needs personalised assistance beyond AI scope
+When appending [WHATSAPP], naturally say:
+  Arabic: "فريق خدمة العملاء يقدر يساعدك أكثر — تواصل معهم على واتساب! 💬"
+  English: "Our team can help you better — reach them on WhatsApp! 💬"
 
-TONE IN ARABIC: casual Kuwaiti dialect, warm, enthusiastic about travel
-TONE IN ENGLISH: professional yet friendly, helpful
+GOODBYE / END OF SESSION:
+When the user says goodbye (وداع، باي، مع السلامة، شكرا بس، bye, thanks, goodbye, that's all):
+- Reply warmly and briefly
+- Append exactly [GOODBYE] at the very end of your message (nothing after it)`;
 
-Keep responses concise and helpful — no walls of text.`;
+const SEARCH_KEYWORDS_AR = [
+  "سعر", "أسعار", "كم سعر", "كم يكلف", "رخيص", "عروض", "عرض",
+  "باقة", "باقات", "تور", "جولة", "ليالي", "ليلة", "فندق", "فنادق",
+];
+const SEARCH_KEYWORDS_EN = [
+  "price", "prices", "cost", "how much", "cheap", "package", "packages",
+  "tour", "holiday", "nights", "hotel", "hotels", "deal", "deals",
+];
 
-function buildSystemPrompt(userName?: string, language?: string): string {
+const DESTINATIONS: Array<[string, string[]]> = [
+  ["Turkey", ["تركيا", "turkey", "istanbul", "استانبول", "antalya", "أنطاليا"]],
+  ["Azerbaijan", ["أذربيجان", "azerbaijan", "baku", "باكو", "az"]],
+  ["Georgia", ["جورجيا", "georgia", "tbilisi", "تبليسي"]],
+  ["Maldives", ["المالديف", "maldives", "maldive"]],
+  ["Thailand", ["تايلاند", "thailand", "bangkok", "بانكوك", "phuket", "فوكيت"]],
+  ["Egypt", ["مصر", "egypt", "cairo", "القاهرة", "hurghada", "الغردقة", "sharm", "شرم"]],
+  ["Malaysia", ["ماليزيا", "malaysia", "kuala lumpur", "كوالالمبور"]],
+  ["Dubai", ["دبي", "dubai", "uae", "الإمارات"]],
+  ["Spain", ["إسبانيا", "spain", "barcelona", "madrid"]],
+  ["Italy", ["إيطاليا", "italy", "rome", "روما", "milan", "ميلان"]],
+  ["London", ["لندن", "london", "uk", "england"]],
+  ["Paris", ["باريس", "paris", "france", "فرنسا"]],
+  ["Bali", ["بالي", "bali", "indonesia", "إندونيسيا"]],
+  ["Morocco", ["المغرب", "morocco", "marrakech", "مراكش"]],
+  ["Japan", ["اليابان", "japan", "tokyo", "طوكيو", "osaka"]],
+  ["Sri Lanka", ["سريلانكا", "sri lanka", "colombo"]],
+  ["Almaty", ["ألماتي", "almaty", "kazakhstan", "كازاخستان"]],
+  ["Greece", ["اليونان", "greece", "athens", "أثينا", "santorini"]],
+  ["Switzerland", ["سويسرا", "switzerland", "zurich", "زيورخ", "geneva"]],
+  ["Netherlands", ["هولندا", "netherlands", "amsterdam"]],
+];
+
+function detectSearchDestination(message: string): string | null {
+  const lower = message.toLowerCase();
+  for (const [destName, keywords] of DESTINATIONS) {
+    if (keywords.some((kw) => lower.includes(kw))) return destName;
+  }
+  return null;
+}
+
+function hasSearchIntent(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    SEARCH_KEYWORDS_AR.some((kw) => lower.includes(kw)) ||
+    SEARCH_KEYWORDS_EN.some((kw) => lower.includes(kw))
+  );
+}
+
+function formatPackagesForPrompt(packages: PackageResult[], destination: string): string {
+  if (packages.length === 0) return "";
+  const lines = packages.map((p, i) => {
+    const nights = p.nights ? ` · ${p.nights} nights` : "";
+    return `${i + 1}. ${p.title}${nights} — ${p.price}\n   🔗 ${p.link}`;
+  });
+  return `\n\nLIVE PACKAGES from dt-tours.com for "${destination}":\n${lines.join("\n")}\n\nPresent these concisely. Include prices and booking links. If no relevant packages, say we have options available and guide to dt-tours.com.`;
+}
+
+function buildSystemPrompt(
+  userName?: string,
+  language?: string,
+  livePackages?: string,
+): string {
   let prompt = SYSTEM_PROMPT_BASE;
 
   if (userName) {
-    prompt += `
-
-USER CONTEXT:
-- The user's name is: ${userName}
-- Use their name naturally in the conversation to make it personal.`;
-
+    prompt += `\n\nUSER CONTEXT:\n- Name: ${userName} — use their name naturally`;
     if (language === "ar") {
-      prompt += `
-- GENDER ADAPTATION (Arabic only): Try to detect from the name "${userName}" whether it is typically masculine or feminine.
-  Common Kuwaiti/Arabic feminine name endings: ة، ى، اء، ين، ان (e.g. فاطمة, سارة, نورة, ريم, رهف, لولوة, غنيمة, مريم, هيا, دانة, شيخة).
-  Common masculine endings/names: م، د، ر، ن، س and names like أحمد, محمد, عبدالله, خالد, يوسف, فهد, سعد, ناصر, جاسم, عمر, علي.
-  Once you decide, use the appropriate Arabic gender forms consistently:
-    Masculine: حبيبي، مسافر، متأكد، مستعد، وصلت، رح تحجز
-    Feminine: حبيبتي، مسافرة، متأكدة، مستعدة، وصلتِ، رح تحجزين
-  If the name is ambiguous or unclear, default to masculine forms.`;
+      prompt += `\n- GENDER ADAPTATION (Arabic): detect from name "${userName}" if masculine/feminine.
+  Feminine name signals: ة، ى، اء، ين، ان (فاطمة, سارة, نورة, ريم, رهف, لولوة, مريم, هيا, دانة).
+  Masculine signals: أحمد, محمد, عبدالله, خالد, يوسف, فهد, سعد, ناصر, جاسم, عمر, علي.
+  Use correct Arabic gender forms. Default to masculine if ambiguous.`;
     } else {
-      prompt += `
-- Language: Respond in English throughout the conversation.`;
+      prompt += `\n- Language: English throughout.`;
     }
+  }
+
+  if (livePackages) {
+    prompt += livePackages;
   }
 
   return prompt;
@@ -94,7 +154,24 @@ router.post("/chat", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("Access-Control-Allow-Origin", "*");
 
-    const systemPrompt = buildSystemPrompt(userName, language);
+    const lastUserMsg = messages[messages.length - 1]?.content ?? "";
+    let livePackages: string | undefined;
+
+    if (hasSearchIntent(lastUserMsg)) {
+      const dest = detectSearchDestination(lastUserMsg);
+      if (dest) {
+        try {
+          const results = await scrapeDTToursSearch(dest);
+          if (results.length > 0) {
+            livePackages = formatPackagesForPrompt(results, dest);
+          }
+        } catch {
+          // Search failure is non-fatal
+        }
+      }
+    }
+
+    const systemPrompt = buildSystemPrompt(userName, language, livePackages);
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: systemPrompt },
       ...messages.slice(-20),
@@ -102,7 +179,7 @@ router.post("/chat", async (req, res) => {
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5.1",
-      max_completion_tokens: 8192,
+      max_completion_tokens: 2048,
       messages: chatMessages,
       stream: true,
     });
@@ -136,7 +213,24 @@ router.post("/chat/message", async (req, res) => {
       return;
     }
 
-    const systemPrompt = buildSystemPrompt(userName, language);
+    const lastUserMsg = messages[messages.length - 1]?.content ?? "";
+    let livePackages: string | undefined;
+
+    if (hasSearchIntent(lastUserMsg)) {
+      const dest = detectSearchDestination(lastUserMsg);
+      if (dest) {
+        try {
+          const results = await scrapeDTToursSearch(dest);
+          if (results.length > 0) {
+            livePackages = formatPackagesForPrompt(results, dest);
+          }
+        } catch {
+          // Search failure is non-fatal
+        }
+      }
+    }
+
+    const systemPrompt = buildSystemPrompt(userName, language, livePackages);
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: systemPrompt },
       ...messages.slice(-20),
@@ -144,7 +238,7 @@ router.post("/chat/message", async (req, res) => {
 
     const response = await openai.chat.completions.create({
       model: "gpt-5.1",
-      max_completion_tokens: 1024,
+      max_completion_tokens: 2048,
       messages: chatMessages,
       stream: false,
     });

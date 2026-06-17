@@ -1,2 +1,2 @@
 - [EAS Build Issues](eas-build-issues.md) — worklets/reanimated native build diagnosis and fix history for Dar AlTamaiz Tours
-- [Gold Baseline](gold-baseline.md) — user-confirmed working state; restore here if anything breaks
+- [DTTours Scraper](dtours-scraper.md) — how to extract packages from dt-tours.com (CSS selectors, URL patterns)
