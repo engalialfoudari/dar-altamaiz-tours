@@ -4,6 +4,7 @@ import {
   Animated,
   Easing,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -13,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,8 +22,8 @@ import Svg, { Path } from "react-native-svg";
 
 const GOLD = "#D4AF37";
 const BLACK = "#000000";
-const NAVY = "#0A1628";
-const NAVY_BTN = "#1B3A8E";
+const NAVY_BG = "#0A1628";
+const NAVY = "#001F5B";
 const WHATSAPP_URL = "https://wa.me/96590087797";
 const API_BASE =
   process.env.EXPO_PUBLIC_API_BASE ??
@@ -75,8 +77,18 @@ function TypingDots() {
       Animated.loop(
         Animated.sequence([
           Animated.delay(i * 150),
-          Animated.timing(dot, { toValue: -6, duration: 300, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
-          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+          Animated.timing(dot, {
+            toValue: -6,
+            duration: 300,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.quad),
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+            easing: Easing.in(Easing.quad),
+          }),
           Animated.delay(450 - i * 150),
         ])
       )
@@ -104,6 +116,7 @@ interface Props {
 
 export function ChatbotScreen({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [language, setLanguage] = useState<Language | null>(null);
   const [userName, setUserName] = useState("");
   const [nameError, setNameError] = useState(false);
@@ -111,10 +124,33 @@ export function ChatbotScreen({ visible, onClose }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showWhatsAppBanner, setShowWhatsAppBanner] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const slideAnim = useRef(new Animated.Value(600)).current;
   const userMsgCount = useRef(0);
   const isAr = language === "ar";
+
+  const headerTitle = isAr ? "أحمد - دار التميز تورز" : "Ahmed - D.T. Tours";
+  const headerSub = isAr ? "مُساعدك الشخصي للسياحة" : "Your Personal Travel Assistant";
+
+  const sheetHeight =
+    kbHeight > 0
+      ? screenHeight - kbHeight - insets.top - 8
+      : screenHeight * 0.9;
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKbHeight(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      setKbHeight(0);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -133,6 +169,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
       setInput("");
       setLoading(false);
       setShowWhatsAppBanner(false);
+      setKbHeight(0);
       userMsgCount.current = 0;
     }
   }, [visible]);
@@ -158,14 +195,9 @@ export function ChatbotScreen({ visible, onClose }: Props) {
     const text = input.trim();
     if (!text || loading) return;
     setInput("");
-
     userMsgCount.current += 1;
 
-    const userMsg: Message = {
-      id: `u_${Date.now()}`,
-      role: "user",
-      content: text,
-    };
+    const userMsg: Message = { id: `u_${Date.now()}`, role: "user", content: text };
     const historyForApi: Array<{ role: Role; content: string }> = [
       ...messages
         .filter((m) => m.id !== "greeting")
@@ -188,8 +220,14 @@ export function ChatbotScreen({ visible, onClose }: Props) {
         }),
       });
 
-      const data = await res.json() as { ok: boolean; content?: string; error?: string };
-      const raw = data.content ?? (isAr ? "عذراً، صار خطأ. حاول مرة ثانية!" : "Sorry, something went wrong. Please try again!");
+      const data = (await res.json()) as {
+        ok: boolean;
+        content?: string;
+        error?: string;
+      };
+      const raw =
+        data.content ??
+        (isAr ? "عذراً، صار خطأ. حاول مرة ثانية!" : "Sorry, something went wrong. Please try again!");
       const hasEscalation = raw.includes(WHATSAPP_SIGNAL);
       const clean = raw.replace(WHATSAPP_SIGNAL, "").trimEnd();
 
@@ -199,19 +237,22 @@ export function ChatbotScreen({ visible, onClose }: Props) {
         content: clean,
         showWhatsApp: hasEscalation,
       };
-
       setMessages((prev) => [...prev, botMsg]);
 
       if (hasEscalation || userMsgCount.current >= ESCALATE_AFTER_MESSAGES) {
         setShowWhatsAppBanner(true);
       }
     } catch {
-      const errMsg: Message = {
-        id: `err_${Date.now()}`,
-        role: "assistant",
-        content: isAr ? "في مشكلة بالاتصال. تأكد من الإنترنت وحاول مرة ثانية." : "Connection issue. Please check your internet and try again.",
-      };
-      setMessages((prev) => [...prev, errMsg]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `err_${Date.now()}`,
+          role: "assistant",
+          content: isAr
+            ? "في مشكلة بالاتصال. تأكد من الإنترنت وحاول مرة ثانية."
+            : "Connection issue. Please check your internet and try again.",
+        },
+      ]);
     } finally {
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -232,25 +273,29 @@ export function ChatbotScreen({ visible, onClose }: Props) {
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
+
         <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: insets.bottom, transform: [{ translateY: slideAnim }] },
+            {
+              height: sheetHeight,
+              paddingBottom: insets.bottom,
+              transform: [{ translateY: slideAnim }],
+            },
           ]}
         >
-          {/* Header */}
+          {/* ── Header ── */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <View style={styles.avatarWrap}>
-                <TamaizAvatar size={38} />
+              {/* Bespoke double-ring avatar */}
+              <View style={styles.avatarOuter}>
+                <View style={styles.avatarInner}>
+                  <TamaizAvatar size={34} />
+                </View>
               </View>
               <View>
-                <Text style={styles.headerName}>
-                  {isAr ? "أحمد · دار التميز" : "Ahmad · Dar AlTamaiz"}
-                </Text>
-                <Text style={styles.headerSub}>
-                  {isAr ? "مُساعدك الشخصي للسياحة" : "Your Personal Travel Assistant"}
-                </Text>
+                <Text style={styles.headerName}>{headerTitle}</Text>
+                <Text style={styles.headerSub}>{headerSub}</Text>
               </View>
             </View>
             <Pressable
@@ -269,16 +314,26 @@ export function ChatbotScreen({ visible, onClose }: Props) {
             </Pressable>
           </View>
 
-          {/* Language & name picker */}
+          {/* ── Language & Name picker ── */}
           {language === null ? (
             <ScrollView
               contentContainerStyle={styles.langPicker}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <View style={styles.langIconWrap}>
-                <TamaizAvatar size={80} />
+              {/* Branded avatar cluster */}
+              <View style={styles.avatarCluster}>
+                <View style={styles.avatarHalo} />
+                <View style={styles.avatarOuterLg}>
+                  <View style={styles.avatarInnerLg}>
+                    <TamaizAvatar size={76} />
+                  </View>
+                </View>
+                <View style={styles.avatarBadge}>
+                  <Text style={styles.avatarBadgeText}>AI</Text>
+                </View>
               </View>
+              <Text style={styles.avatarBrand}>تميز · TAMAIZ</Text>
 
               <Text style={styles.langTitle}>مرحباً بكم 👋</Text>
               <Text style={styles.langTitleSub}>Welcome to Dar AlTamaiz Tours</Text>
@@ -289,7 +344,10 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                 <TextInput
                   style={[styles.nameInput, nameError && styles.nameInputError]}
                   value={userName}
-                  onChangeText={(t) => { setUserName(t); if (t.trim()) setNameError(false); }}
+                  onChangeText={(t) => {
+                    setUserName(t);
+                    if (t.trim()) setNameError(false);
+                  }}
                   placeholder="أدخل اسمك / Enter your name"
                   placeholderTextColor="rgba(255,255,255,0.35)"
                   returnKeyType="done"
@@ -304,30 +362,36 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                 )}
               </View>
 
-              {/* Language buttons */}
+              {/* Language buttons — side by side */}
               <Text style={styles.langPrompt}>اختر لغتك / Choose your language</Text>
-
-              <Pressable
-                style={({ pressed }) => [styles.langBtn, pressed && { opacity: 0.82 }]}
-                onPress={() => startChat("ar")}
-              >
-                <Text style={styles.langBtnText}>🇰🇼 عربي — اللهجة الكويتية</Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [styles.langBtn, pressed && { opacity: 0.82 }]}
-                onPress={() => startChat("en")}
-              >
-                <Text style={styles.langBtnText}>🇬🇧 English</Text>
-              </Pressable>
+              <View style={styles.langBtnRow}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.langBtn,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => startChat("ar")}
+                >
+                  <Text style={styles.langBtnText}>عربي 🇰🇼</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.langBtn,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => startChat("en")}
+                >
+                  <Text style={styles.langBtnText}>English 🇬🇧</Text>
+                </Pressable>
+              </View>
             </ScrollView>
           ) : (
+            /* ── Chat view ── */
             <KeyboardAvoidingView
               style={{ flex: 1 }}
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
               keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 60 : 0}
             >
-              {/* Messages */}
               <ScrollView
                 ref={scrollRef}
                 style={styles.messages}
@@ -347,22 +411,29 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                     ]}
                   >
                     {msg.role === "assistant" && (
-                      <View style={styles.botAvatar}>
-                        <TamaizAvatar size={28} />
+                      <View style={styles.botAvatarWrap}>
+                        <TamaizAvatar size={26} />
                       </View>
                     )}
                     <View style={{ maxWidth: "78%" }}>
                       <View
                         style={[
                           styles.bubble,
-                          msg.role === "user" ? styles.bubbleUser : styles.bubbleBot,
+                          msg.role === "user"
+                            ? styles.bubbleUser
+                            : styles.bubbleBot,
                         ]}
                       >
                         <Text
                           style={[
                             styles.bubbleText,
-                            msg.role === "user" ? styles.bubbleTextUser : styles.bubbleTextBot,
-                            isAr && { textAlign: "right", writingDirection: "rtl" },
+                            msg.role === "user"
+                              ? styles.bubbleTextUser
+                              : styles.bubbleTextBot,
+                            isAr && {
+                              textAlign: "right",
+                              writingDirection: "rtl",
+                            },
                           ]}
                         >
                           {msg.content}
@@ -370,11 +441,16 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                       </View>
                       {msg.showWhatsApp && (
                         <Pressable
-                          style={({ pressed }) => [styles.inlineCta, pressed && { opacity: 0.8 }]}
+                          style={({ pressed }) => [
+                            styles.inlineCta,
+                            pressed && { opacity: 0.8 },
+                          ]}
                           onPress={openWhatsApp}
                         >
                           <Text style={styles.inlineCtaText}>
-                            {isAr ? "💬 تواصل معنا على واتساب" : "💬 Chat with us on WhatsApp"}
+                            {isAr
+                              ? "💬 تواصل معنا على واتساب"
+                              : "💬 Chat with us on WhatsApp"}
                           </Text>
                         </Pressable>
                       )}
@@ -384,18 +460,20 @@ export function ChatbotScreen({ visible, onClose }: Props) {
 
                 {loading && (
                   <View style={[styles.msgRow, styles.msgRowBot]}>
-                    <View style={styles.botAvatar}>
-                      <TamaizAvatar size={28} />
+                    <View style={styles.botAvatarWrap}>
+                      <TamaizAvatar size={26} />
                     </View>
                     <TypingDots />
                   </View>
                 )}
               </ScrollView>
 
-              {/* WhatsApp banner */}
               {showWhatsAppBanner && (
                 <Pressable
-                  style={({ pressed }) => [styles.waBanner, pressed && { opacity: 0.85 }]}
+                  style={({ pressed }) => [
+                    styles.waBanner,
+                    pressed && { opacity: 0.85 },
+                  ]}
                   onPress={openWhatsApp}
                 >
                   <Text style={styles.waBannerText}>
@@ -406,14 +484,14 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                 </Pressable>
               )}
 
-              {/* Input area */}
+              {/* Input bar — no gold anywhere */}
               <View style={styles.inputRow}>
                 <TextInput
                   style={[styles.inputBox, isAr && { textAlign: "right" }]}
                   value={input}
                   onChangeText={setInput}
                   placeholder={isAr ? "اكتب رسالتك..." : "Type your message..."}
-                  placeholderTextColor="#888"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
                   multiline
                   maxLength={500}
                   returnKeyType="send"
@@ -430,12 +508,12 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                   disabled={!input.trim() || loading}
                 >
                   {loading ? (
-                    <ActivityIndicator size="small" color={BLACK} />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Svg width={18} height={18} viewBox="0 0 24 24">
                       <Path
                         d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"
-                        stroke={BLACK}
+                        stroke="#FFFFFF"
                         strokeWidth="2.2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -459,53 +537,65 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
   sheet: {
-    backgroundColor: NAVY,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: "90%",
+    backgroundColor: NAVY_BG,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     overflow: "hidden",
     borderTopWidth: 1.5,
     borderLeftWidth: 0.5,
     borderRightWidth: 0.5,
-    borderColor: "rgba(212,175,55,0.35)",
+    borderColor: "rgba(212,175,55,0.3)",
   },
+
+  /* ── Header ── */
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: BLACK,
+    backgroundColor: "#060E1E",
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(212,175,55,0.2)",
+    borderBottomColor: "rgba(0,31,91,0.8)",
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
-  avatarWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#111",
+  /* Double-ring avatar in header */
+  avatarOuter: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 2,
     borderColor: GOLD,
+    padding: 2,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#0A1628",
+  },
+  avatarInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.18)",
     overflow: "hidden",
+    backgroundColor: "#111",
   },
   headerName: {
     color: GOLD,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: "Inter_700Bold",
+    letterSpacing: 0.2,
   },
   headerSub: {
-    color: "#888",
-    fontSize: 11,
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 10.5,
     fontFamily: "Inter_400Regular",
     marginTop: 1,
   },
@@ -513,62 +603,115 @@ const styles = StyleSheet.create({
     padding: 6,
   },
 
+  /* ── Welcome / Lang picker ── */
   langPicker: {
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingVertical: 28,
-    gap: 12,
+    paddingVertical: 24,
+    gap: 14,
     flexGrow: 1,
   },
-  langIconWrap: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    borderWidth: 2.5,
-    borderColor: GOLD,
+
+  /* Branded avatar cluster */
+  avatarCluster: {
+    width: 120,
+    height: 120,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  avatarHalo: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.18)",
+    backgroundColor: "transparent",
+  },
+  avatarOuterLg: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    borderWidth: 2.5,
+    borderColor: GOLD,
+    padding: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0A1628",
+  },
+  avatarInnerLg: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.14)",
     overflow: "hidden",
     backgroundColor: "#111",
   },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: NAVY,
+    borderWidth: 1.5,
+    borderColor: GOLD,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarBadgeText: {
+    color: GOLD,
+    fontSize: 8,
+    fontFamily: "Inter_700Bold",
+  },
+  avatarBrand: {
+    color: GOLD,
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginTop: -8,
+  },
+
   langTitle: {
     color: "#FFFFFF",
-    fontSize: 20,
+    fontSize: 19,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
   langTitleSub: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 13,
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12.5,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    marginTop: -4,
+    marginTop: -6,
   },
 
   nameFieldWrap: {
     width: "100%",
-    marginTop: 6,
     gap: 6,
   },
   nameLabel: {
     color: GOLD,
-    fontSize: 13,
+    fontSize: 12.5,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
   },
   nameInput: {
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 12,
     color: "#FFFFFF",
     fontSize: 15,
     fontFamily: "Inter_400Regular",
     borderWidth: 1.5,
-    borderColor: "rgba(212,175,55,0.35)",
+    borderColor: "rgba(0,31,91,0.9)",
     textAlign: "center",
   },
   nameInputError: {
@@ -583,28 +726,34 @@ const styles = StyleSheet.create({
   },
 
   langPrompt: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 12,
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 11.5,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    marginTop: 4,
+  },
+  /* Side-by-side language buttons */
+  langBtnRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
   },
   langBtn: {
-    width: "100%",
-    backgroundColor: NAVY_BTN,
-    borderRadius: 12,
-    paddingVertical: 13,
+    flex: 1,
+    backgroundColor: NAVY,
+    borderRadius: 11,
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   langBtnText: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: "Inter_700Bold",
   },
 
+  /* ── Chat messages ── */
   messages: {
     flex: 1,
   },
@@ -618,23 +767,17 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 8,
   },
-  msgRowUser: {
-    justifyContent: "flex-end",
-  },
-  msgRowBot: {
-    justifyContent: "flex-start",
-  },
-  botAvatar: {
+  msgRowUser: { justifyContent: "flex-end" },
+  msgRowBot: { justifyContent: "flex-start" },
+  botAvatarWrap: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#111",
     borderWidth: 1.5,
     borderColor: GOLD,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
     overflow: "hidden",
+    flexShrink: 0,
+    backgroundColor: "#111",
   },
   bubble: {
     borderRadius: 18,
@@ -642,45 +785,36 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   bubbleUser: {
-    backgroundColor: GOLD,
+    backgroundColor: NAVY,
     borderBottomRightRadius: 4,
   },
   bubbleBot: {
-    backgroundColor: "#0F1E36",
+    backgroundColor: "#0D1C35",
     borderBottomLeftRadius: 4,
     borderWidth: 0.5,
-    borderColor: "rgba(212,175,55,0.15)",
+    borderColor: "rgba(0,31,91,0.6)",
   },
-  bubbleText: {
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  bubbleTextUser: {
-    color: BLACK,
-    fontFamily: "Inter_700Bold",
-  },
-  bubbleTextBot: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_400Regular",
-  },
+  bubbleText: { fontSize: 14, lineHeight: 21 },
+  bubbleTextUser: { color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  bubbleTextBot: { color: "#FFFFFF", fontFamily: "Inter_400Regular" },
 
   typingBubble: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0F1E36",
+    backgroundColor: "#0D1C35",
     borderRadius: 18,
     borderBottomLeftRadius: 4,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 5,
     borderWidth: 0.5,
-    borderColor: "rgba(212,175,55,0.15)",
+    borderColor: "rgba(0,31,91,0.5)",
   },
   typingDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: GOLD,
+    backgroundColor: NAVY,
   },
 
   inlineCta: {
@@ -711,19 +845,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  /* ── Input bar — zero gold ── */
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(212,175,55,0.12)",
-    backgroundColor: BLACK,
+    borderTopColor: "rgba(0,31,91,0.7)",
+    backgroundColor: "#060E1E",
   },
   inputBox: {
     flex: 1,
-    backgroundColor: "#0F1E36",
+    backgroundColor: "#0D1C35",
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -732,18 +867,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     maxHeight: 100,
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.2)",
+    borderColor: "rgba(0,31,91,0.8)",
   },
   sendBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: GOLD,
+    backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   sendBtnDisabled: {
-    backgroundColor: "#333",
+    backgroundColor: "#1a2540",
   },
 });

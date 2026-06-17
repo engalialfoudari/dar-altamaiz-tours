@@ -1,0 +1,31 @@
+Act as an expert Frontend Developer and UI/UX Designer. The current implementation of the chatbot has several bad design and usability issues that must be fixed immediately. Refer to the attached screenshots for context.
+
+Please implement the following changes precisely:
+
+1. LANGUAGE BUTTONS REDESIGN (Home Screen):
+   - The current language buttons look very unappealing. Clean them up completely.
+   - Place both language buttons side-by-side on the EXACT SAME ROW (horizontal layout).
+   - Button 1 text: "عربي 🇰🇼"
+   - Button 2 text: "English 🇬🇧"
+   - Style: Keep them small, uniform, clean, and colored in "Navy Blue" (#001F5B) with bold white text.
+
+2. AVATAR REFINEMENT & UNIQUENESS:
+   - Adjust the presentation and styling of the provided robot avatar to make it look highly integrated and customized. 
+   - Modify its container, borders, or styling so it looks like a unique, bespoke asset designed exclusively for Dar AlTamaiz Tours, avoiding a "generic/stock" appearance.
+
+3. MOBILE KEYBOARD & INPUT VISIBILITY FIX (Image 2 Context):
+   - CRITICAL BUG: When the mobile keyboard opens, it completely blocks the input text area, preventing the user from seeing what they are typing.
+   - You MUST fix this layout bug. Implement responsive CSS/JS (e.g., handling window resize or using visualViewport API) to ensure the chat input bar automatically sticks to the top of the mobile virtual keyboard when focused, keeping the text fully visible.
+
+4. DYNAMIC HEADER TITLE CHANGE:
+   - The header text at the very top of the chat widget must change dynamically based on the selected language:
+     - If the user selects Arabic, the header must display: "أحمد - دار التميز تورز"
+     - If the user selects English, the header must display: "Ahmed - D.T. Tours"
+
+5. SEND BUTTON & INPUT AREA COLOR FIX (Image 3 Context):
+   - SPECIAL INSTRUCTION: Make absolutely sure there is NO GOLD COLOR USED AT ALL on the send button or around the text input area. 
+   - Completely remove any gold accents, borders, or backgrounds from the entire chat input and send action area.
+   - Change the color of the send button and any associated action elements to the matching "Navy Blue" (#001F5B). 
+   - Ensure the send button icon or text looks premium, professional, and entirely consistent with the navy blue theme.
+
+Please refactor the HTML, CSS, and JS files to apply these changes immediately and provide the updated clean code.
