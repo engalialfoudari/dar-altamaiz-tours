@@ -210,16 +210,22 @@ export function ChatbotScreen({ visible, onClose }: Props) {
     setLoading(true);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     try {
       const res = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: historyForApi,
           userName: userName.trim(),
           language: language ?? "ar",
         }),
       });
+
+      clearTimeout(timeoutId);
 
       const data = (await res.json()) as {
         ok: boolean;
@@ -243,15 +249,22 @@ export function ChatbotScreen({ visible, onClose }: Props) {
       if (hasEscalation || userMsgCount.current >= ESCALATE_AFTER_MESSAGES) {
         setShowWhatsAppBanner(true);
       }
-    } catch {
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      const isAbort =
+        err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
       setMessages((prev) => [
         ...prev,
         {
           id: `err_${Date.now()}`,
           role: "assistant",
-          content: isAr
-            ? "في مشكلة بالاتصال. تأكد من الإنترنت وحاول مرة ثانية."
-            : "Connection issue. Please check your internet and try again.",
+          content: isAbort
+            ? isAr
+              ? "الرد يأخذ وقت أطول من المعتاد. حاول مرة ثانية 🔄"
+              : "Response is taking longer than usual. Please try again 🔄"
+            : isAr
+              ? "ما قدرت أتصل بالخادم. تأكد من الإنترنت وحاول مرة ثانية."
+              : "Couldn't reach the server. Check your internet and try again.",
         },
       ]);
     } finally {
