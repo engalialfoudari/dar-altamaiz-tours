@@ -284,10 +284,13 @@ function FlightInlineSearch({
     void (async () => {
       // Run geo-check and puppeteer scrape in parallel so we know the
       // user's location by the time we need to choose a fallback.
-      const geoPromise = fetch(`${apiBase}/geo`, { signal: AbortSignal.timeout(6_000) })
+      const geoCtrl = new AbortController();
+      const geoTid = setTimeout(() => geoCtrl.abort(), 6_000);
+      const geoPromise = fetch(`${apiBase}/geo`, { signal: geoCtrl.signal })
         .then((r) => r.json() as Promise<{ isKuwait: boolean }>)
         .then((d) => { isKuwaitRef.current = d.isKuwait ?? false; })
-        .catch(() => { isKuwaitRef.current = false; });
+        .catch(() => { isKuwaitRef.current = false; })
+        .finally(() => clearTimeout(geoTid));
 
       const scrapePromise = (async () => {
         try {
