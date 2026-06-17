@@ -510,15 +510,29 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                   {loading ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Svg width={18} height={18} viewBox="0 0 24 24">
-                      <Path
-                        d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"
-                        stroke="#FFFFFF"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </Svg>
+                    <View style={{ alignItems: "center" }}>
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 13,
+                          fontFamily: "Inter_700Bold",
+                          lineHeight: 16,
+                        }}
+                      >
+                        إرسال
+                      </Text>
+                      <Text
+                        style={{
+                          color: "rgba(255,255,255,0.65)",
+                          fontSize: 9.5,
+                          fontFamily: "Inter_400Regular",
+                          lineHeight: 13,
+                          letterSpacing: 0.3,
+                        }}
+                      >
+                        Send
+                      </Text>
+                    </View>
                   )}
                 </Pressable>
               </View>
@@ -870,15 +884,18 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,31,91,0.8)",
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
     backgroundColor: NAVY,
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "flex-end",
     flexShrink: 0,
+    minWidth: 52,
   },
   sendBtnDisabled: {
-    backgroundColor: "#1a2540",
+    backgroundColor: "#0e1e3a",
+    opacity: 0.55,
   },
 });
