@@ -19,7 +19,7 @@ import Svg, { Path } from "react-native-svg";
 
 import { AppHeader } from "@/components/AppHeader";
 import { BottomTabBar, Tab, TabKey, TABS } from "@/components/BottomTabBar";
-import { ChatbotScreen, KuwaitiManIcon } from "@/components/ChatbotScreen";
+import { ChatbotScreen } from "@/components/ChatbotScreen";
 import { InfoModal } from "@/components/InfoModal";
 import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import colors from "@/constants/colors";
@@ -727,7 +727,11 @@ export default function HomeScreen() {
           onPress={() => setShowChatbot(true)}
           accessibilityLabel="Open Tamaiz AI travel advisor"
         >
-          <KuwaitiManIcon size={34} />
+          <Image
+              source={require("../../assets/images/tamaiz-robot.png")}
+              style={{ width: 40, height: 40, borderRadius: 20 }}
+              resizeMode="cover"
+            />
         </Pressable>
       )}
 

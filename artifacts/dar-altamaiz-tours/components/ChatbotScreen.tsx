@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -15,15 +16,12 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, {
-  Circle,
-  Ellipse,
-  Path,
-} from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 
 const GOLD = "#D4AF37";
 const BLACK = "#000000";
 const NAVY = "#0A1628";
+const NAVY_BTN = "#1B3A8E";
 const WHATSAPP_URL = "https://wa.me/96590087797";
 const API_BASE =
   process.env.EXPO_PUBLIC_API_BASE ??
@@ -42,103 +40,27 @@ interface Message {
   showWhatsApp?: boolean;
 }
 
-const GREETINGS: Record<Language, string> = {
-  ar: "هلا والله! 👋 أنا تميز، مستشارك السياحي الشخصي من دار التميز للسياحة.\n\nوين تبي تسافر؟ قولي وأساعدك تلقى أحسن الباقات والعروض! ✈️",
-  en: "Welcome! 👋 I'm Tamaiz, your personal travel advisor from Dar AlTamaiz Tours.\n\nWhere would you like to travel? Tell me and I'll help you find the perfect package! ✈️",
-};
+const ROBOT_IMAGE = require("../assets/images/tamaiz-robot.png");
+
+function TamaizAvatar({ size = 36 }: { size?: number }) {
+  return (
+    <Image
+      source={ROBOT_IMAGE}
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+      resizeMode="cover"
+    />
+  );
+}
 
 export function KuwaitiManIcon({ size = 36 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 100 100">
-      {/* Ghitra (white headscarf) - main body */}
-      <Path
-        d="M50 10 Q78 12 82 38 Q76 30 50 28 Q24 30 18 38 Q22 12 50 10Z"
-        fill="#F8F8F8"
-      />
-      {/* Ghitra right drape */}
-      <Path
-        d="M82 38 Q88 52 80 68 Q72 78 66 70 Q72 56 70 44 Q76 40 82 38Z"
-        fill="#F8F8F8"
-      />
-      {/* Ghitra left tuck */}
-      <Path
-        d="M18 38 Q16 46 20 50 Q26 40 30 40 Q24 38 18 38Z"
-        fill="#EFEFEF"
-      />
-      {/* Iqal outer ring (black cord) */}
-      <Ellipse
-        cx="50"
-        cy="34"
-        rx="26"
-        ry="8"
-        fill="none"
-        stroke="#111111"
-        strokeWidth="5"
-      />
-      {/* Iqal inner ring */}
-      <Ellipse
-        cx="50"
-        cy="30"
-        rx="22"
-        ry="6"
-        fill="none"
-        stroke="#111111"
-        strokeWidth="4"
-      />
-      {/* Face */}
-      <Ellipse cx="50" cy="64" rx="20" ry="22" fill="#E8B88A" />
-      {/* Left ear */}
-      <Ellipse cx="30" cy="62" rx="3.5" ry="5" fill="#E8B88A" />
-      {/* Right ear */}
-      <Ellipse cx="70" cy="62" rx="3.5" ry="5" fill="#E8B88A" />
-      {/* Left eyebrow */}
-      <Path
-        d="M38 53 Q43 51 47 52"
-        stroke="#5c3a1e"
-        strokeWidth="1.8"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* Right eyebrow */}
-      <Path
-        d="M53 52 Q57 51 62 53"
-        stroke="#5c3a1e"
-        strokeWidth="1.8"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* Left eye */}
-      <Ellipse cx="42" cy="59" rx="3.2" ry="3.5" fill="#2c1810" />
-      <Circle cx="43.2" cy="57.8" r="1" fill="white" />
-      {/* Right eye */}
-      <Ellipse cx="58" cy="59" rx="3.2" ry="3.5" fill="#2c1810" />
-      <Circle cx="59.2" cy="57.8" r="1" fill="white" />
-      {/* Nose */}
-      <Path
-        d="M47 65 Q50 68.5 53 65"
-        stroke="#c48a5a"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* Mustache */}
-      <Path
-        d="M43 70 Q50 73.5 57 70"
-        stroke="#4a2c1a"
-        strokeWidth="2"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* Smile */}
-      <Path
-        d="M44 76 Q50 81 56 76"
-        stroke="#c07850"
-        strokeWidth="1.8"
-        fill="none"
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
+  return <TamaizAvatar size={size} />;
+}
+
+function buildGreeting(lang: Language, name: string): string {
+  if (lang === "ar") {
+    return `السلام عليكم ورحمة الله وبركاته، حياكم الله، معاكم أحمد مُساعدكم الشخصي في تطبيق دار التميز تورز 👋\nشلون أقدر اساعدكم اليوم يا ${name}؟`;
+  }
+  return `Assalamu Alaikum, welcome! I'm Ahmad, your personal travel assistant at Dar AlTamaiz Tours 👋\nHow can I help you today, ${name}?`;
 }
 
 function TypingDots() {
@@ -183,6 +105,8 @@ interface Props {
 export function ChatbotScreen({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const [language, setLanguage] = useState<Language | null>(null);
+  const [userName, setUserName] = useState("");
+  const [nameError, setNameError] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -203,6 +127,8 @@ export function ChatbotScreen({ visible, onClose }: Props) {
     } else {
       slideAnim.setValue(600);
       setLanguage(null);
+      setUserName("");
+      setNameError(false);
       setMessages([]);
       setInput("");
       setLoading(false);
@@ -212,11 +138,17 @@ export function ChatbotScreen({ visible, onClose }: Props) {
   }, [visible]);
 
   const startChat = (lang: Language) => {
+    const name = userName.trim();
+    if (!name) {
+      setNameError(true);
+      return;
+    }
+    setNameError(false);
     setLanguage(lang);
     const greeting: Message = {
       id: "greeting",
       role: "assistant",
-      content: GREETINGS[lang],
+      content: buildGreeting(lang, name),
     };
     setMessages([greeting]);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -249,7 +181,11 @@ export function ChatbotScreen({ visible, onClose }: Props) {
       const res = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: historyForApi }),
+        body: JSON.stringify({
+          messages: historyForApi,
+          userName: userName.trim(),
+          language: language ?? "ar",
+        }),
       });
 
       const data = await res.json() as { ok: boolean; content?: string; error?: string };
@@ -306,14 +242,14 @@ export function ChatbotScreen({ visible, onClose }: Props) {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.avatarWrap}>
-                <KuwaitiManIcon size={38} />
+                <TamaizAvatar size={38} />
               </View>
               <View>
                 <Text style={styles.headerName}>
-                  {isAr ? "تميز · Tamaiz" : "Tamaiz · تميز"}
+                  {isAr ? "أحمد · دار التميز" : "Ahmad · Dar AlTamaiz"}
                 </Text>
                 <Text style={styles.headerSub}>
-                  {isAr ? "دار التميز للسياحة" : "Dar AlTamaiz Tours"}
+                  {isAr ? "مُساعدك الشخصي للسياحة" : "Your Personal Travel Assistant"}
                 </Text>
               </View>
             </View>
@@ -333,34 +269,63 @@ export function ChatbotScreen({ visible, onClose }: Props) {
             </Pressable>
           </View>
 
-          {/* Language picker */}
+          {/* Language & name picker */}
           {language === null ? (
-            <View style={styles.langPicker}>
+            <ScrollView
+              contentContainerStyle={styles.langPicker}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.langIconWrap}>
-                <KuwaitiManIcon size={72} />
+                <TamaizAvatar size={80} />
               </View>
-              <Text style={styles.langTitle}>Choose your language</Text>
-              <Text style={styles.langTitle}>اختر لغتك</Text>
+
+              <Text style={styles.langTitle}>مرحباً بكم 👋</Text>
+              <Text style={styles.langTitleSub}>Welcome to Dar AlTamaiz Tours</Text>
+
+              {/* Name input */}
+              <View style={styles.nameFieldWrap}>
+                <Text style={styles.nameLabel}>( الاسم / Name )</Text>
+                <TextInput
+                  style={[styles.nameInput, nameError && styles.nameInputError]}
+                  value={userName}
+                  onChangeText={(t) => { setUserName(t); if (t.trim()) setNameError(false); }}
+                  placeholder="أدخل اسمك / Enter your name"
+                  placeholderTextColor="rgba(255,255,255,0.35)"
+                  returnKeyType="done"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  maxLength={40}
+                />
+                {nameError && (
+                  <Text style={styles.nameError}>
+                    ✱ الاسم مطلوب · Name is required
+                  </Text>
+                )}
+              </View>
+
+              {/* Language buttons */}
+              <Text style={styles.langPrompt}>اختر لغتك / Choose your language</Text>
+
               <Pressable
-                style={({ pressed }) => [styles.langBtn, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [styles.langBtn, pressed && { opacity: 0.82 }]}
                 onPress={() => startChat("ar")}
               >
-                <Text style={styles.langBtnText}>عربي 🇰🇼</Text>
-                <Text style={styles.langBtnSub}>اللهجة الكويتية</Text>
+                <Text style={styles.langBtnText}>🇰🇼 عربي — اللهجة الكويتية</Text>
               </Pressable>
+
               <Pressable
-                style={({ pressed }) => [styles.langBtn, styles.langBtnAlt, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [styles.langBtn, pressed && { opacity: 0.82 }]}
                 onPress={() => startChat("en")}
               >
-                <Text style={styles.langBtnText}>English 🇬🇧</Text>
-                <Text style={[styles.langBtnSub, { color: "rgba(255,255,255,0.6)" }]}>English Language</Text>
+                <Text style={styles.langBtnText}>🇬🇧 English</Text>
               </Pressable>
-            </View>
+            </ScrollView>
           ) : (
             <KeyboardAvoidingView
               style={{ flex: 1 }}
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
-              keyboardVerticalOffset={0}
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 60 : 0}
             >
               {/* Messages */}
               <ScrollView
@@ -369,6 +334,9 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                 contentContainerStyle={styles.messagesContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
+                onContentSizeChange={() =>
+                  scrollRef.current?.scrollToEnd({ animated: true })
+                }
               >
                 {messages.map((msg) => (
                   <View
@@ -380,7 +348,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                   >
                     {msg.role === "assistant" && (
                       <View style={styles.botAvatar}>
-                        <KuwaitiManIcon size={28} />
+                        <TamaizAvatar size={28} />
                       </View>
                     )}
                     <View style={{ maxWidth: "78%" }}>
@@ -417,7 +385,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
                 {loading && (
                   <View style={[styles.msgRow, styles.msgRowBot]}>
                     <View style={styles.botAvatar}>
-                      <KuwaitiManIcon size={28} />
+                      <TamaizAvatar size={28} />
                     </View>
                     <TypingDots />
                   </View>
@@ -497,7 +465,7 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: "88%",
+    height: "90%",
     overflow: "hidden",
     borderTopWidth: 1.5,
     borderLeftWidth: 0.5,
@@ -546,52 +514,95 @@ const styles = StyleSheet.create({
   },
 
   langPicker: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 28,
-    gap: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    gap: 12,
+    flexGrow: 1,
   },
   langIconWrap: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#111",
+    width: 108,
+    height: 108,
+    borderRadius: 54,
     borderWidth: 2.5,
     borderColor: GOLD,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: 4,
+    overflow: "hidden",
+    backgroundColor: "#111",
   },
   langTitle: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 16,
+    color: "#FFFFFF",
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
-  langBtn: {
+  langTitleSub: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginTop: -4,
+  },
+
+  nameFieldWrap: {
     width: "100%",
-    backgroundColor: GOLD,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 4,
+    marginTop: 6,
+    gap: 6,
   },
-  langBtnAlt: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  langBtnText: {
-    color: BLACK,
-    fontSize: 18,
+  nameLabel: {
+    color: GOLD,
+    fontSize: 13,
     fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    letterSpacing: 0.3,
   },
-  langBtnSub: {
-    color: "rgba(0,0,0,0.65)",
+  nameInput: {
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    borderWidth: 1.5,
+    borderColor: "rgba(212,175,55,0.35)",
+    textAlign: "center",
+  },
+  nameInputError: {
+    borderColor: "#FF6B6B",
+    backgroundColor: "rgba(255,107,107,0.06)",
+  },
+  nameError: {
+    color: "#FF8080",
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    marginTop: 2,
+    textAlign: "center",
+  },
+
+  langPrompt: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  langBtn: {
+    width: "100%",
+    backgroundColor: NAVY_BTN,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  langBtnText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
   },
 
   messages: {
@@ -623,6 +634,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    overflow: "hidden",
   },
   bubble: {
     borderRadius: 18,

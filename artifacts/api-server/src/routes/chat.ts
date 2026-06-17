@@ -3,12 +3,12 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
-const SYSTEM_PROMPT = `You are "Tamaiz" (تميز), the official AI travel advisor for Dar AlTamaiz Tours (دار التميز للسياحة), a premium Kuwaiti travel agency. You speak both Kuwaiti Arabic dialect and English fluently. Always detect the user's language and respond in the same language. If they mix languages, follow their lead.
+const SYSTEM_PROMPT_BASE = `You are "Ahmad" (أحمد), the official AI travel advisor for Dar AlTamaiz Tours (دار التميز للسياحة), a premium Kuwaiti travel agency. You speak both Kuwaiti Arabic dialect and English fluently. Always detect the user's language and respond in the same language. If they mix languages, follow their lead.
 
 PERSONA:
 - Friendly, warm, professional — like a knowledgeable Kuwaiti friend who loves travel
 - Use casual Kuwaiti dialect when speaking Arabic (e.g. شلونك، وين تبي تروح، شو رأيك، يالله)
-- Address users warmly (حبيبي / حبيبتي when appropriate in Arabic)
+- Address users warmly using their name when you know it
 
 CAPABILITIES — what you CAN do:
 - Help users discover destinations, tour packages, hotels, and flights available through dt-tours.com
@@ -46,12 +46,42 @@ When you append [WHATSAPP], also say naturally:
 TONE IN ARABIC: casual Kuwaiti dialect, warm, enthusiastic about travel
 TONE IN ENGLISH: professional yet friendly, helpful
 
-Start conversations with a warm greeting. Keep responses concise and helpful — no walls of text.`;
+Keep responses concise and helpful — no walls of text.`;
+
+function buildSystemPrompt(userName?: string, language?: string): string {
+  let prompt = SYSTEM_PROMPT_BASE;
+
+  if (userName) {
+    prompt += `
+
+USER CONTEXT:
+- The user's name is: ${userName}
+- Use their name naturally in the conversation to make it personal.`;
+
+    if (language === "ar") {
+      prompt += `
+- GENDER ADAPTATION (Arabic only): Try to detect from the name "${userName}" whether it is typically masculine or feminine.
+  Common Kuwaiti/Arabic feminine name endings: ة، ى، اء، ين، ان (e.g. فاطمة, سارة, نورة, ريم, رهف, لولوة, غنيمة, مريم, هيا, دانة, شيخة).
+  Common masculine endings/names: م، د، ر، ن، س and names like أحمد, محمد, عبدالله, خالد, يوسف, فهد, سعد, ناصر, جاسم, عمر, علي.
+  Once you decide, use the appropriate Arabic gender forms consistently:
+    Masculine: حبيبي، مسافر، متأكد، مستعد، وصلت، رح تحجز
+    Feminine: حبيبتي، مسافرة، متأكدة، مستعدة، وصلتِ، رح تحجزين
+  If the name is ambiguous or unclear, default to masculine forms.`;
+    } else {
+      prompt += `
+- Language: Respond in English throughout the conversation.`;
+    }
+  }
+
+  return prompt;
+}
 
 router.post("/chat", async (req, res) => {
   try {
-    const { messages } = req.body as {
+    const { messages, userName, language } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
+      userName?: string;
+      language?: string;
     };
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -64,8 +94,9 @@ router.post("/chat", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("Access-Control-Allow-Origin", "*");
 
+    const systemPrompt = buildSystemPrompt(userName, language);
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...messages.slice(-20),
     ];
 
@@ -94,8 +125,10 @@ router.post("/chat", async (req, res) => {
 
 router.post("/chat/message", async (req, res) => {
   try {
-    const { messages } = req.body as {
+    const { messages, userName, language } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
+      userName?: string;
+      language?: string;
     };
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -103,8 +136,9 @@ router.post("/chat/message", async (req, res) => {
       return;
     }
 
+    const systemPrompt = buildSystemPrompt(userName, language);
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...messages.slice(-20),
     ];
 
