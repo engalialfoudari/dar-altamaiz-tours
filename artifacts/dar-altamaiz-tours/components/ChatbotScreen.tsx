@@ -580,9 +580,12 @@ function OffersDisplay({
     if (hasFetched.current) return;
     hasFetched.current = true;
 
-    (async () => {
+    void (async () => {
       try {
-        const res = await fetch(`${apiBase}/offers`);
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 90_000);
+        const res = await fetch(`${apiBase}/offers`, { signal: ctrl.signal });
+        clearTimeout(tid);
         const data = (await res.json()) as { ok: boolean; offers?: OfferCardData[] };
         if (data.ok && data.offers && data.offers.length > 0) {
           setOffers(data.offers.slice(0, 6));
