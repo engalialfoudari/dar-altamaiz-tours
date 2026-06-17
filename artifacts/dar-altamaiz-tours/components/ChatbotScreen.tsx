@@ -34,6 +34,7 @@ const API_BASE =
 const WHATSAPP_SIGNAL = "[WHATSAPP]";
 const GOODBYE_SIGNAL = "[GOODBYE]";
 const HOTEL_SIGNAL = "[HOTEL]";
+const HOTEL_SIGNAL_RE = /\[HOTEL:([^\]]+)\]/;
 const OFFERS_SIGNAL = "[OFFERS]";
 const FLIGHT_SIGNAL_RE = /\[FLIGHT:([^\]]+)\]/;
 const ESCALATE_AFTER_MESSAGES = 8;
@@ -320,8 +321,13 @@ function FlightInlineSearch({
           body: formBody.toString(),
         });
 
-        const finalUrl = searchRes.url;
-        const searchId = finalUrl.match(/\/flight\/search\/(\d+)/)?.[1];
+        // response.url is empty on Android (OkHttp doesn't expose final redirect URL)
+        // So we also parse the HTML body which always contains the search_id
+        const responseText = await searchRes.text();
+        const searchId =
+          searchRes.url.match(/\/flight\/search\/(\d+)/)?.[1] ??
+          responseText.match(/\/flight\/search\/(\d+)/)?.[1] ??
+          responseText.match(/search_id["'\s:=]+(\d+)/i)?.[1];
         if (!searchId) { setStatus("fallback"); return; }
 
         const TIMEOUT = 120_000;
@@ -1031,13 +1037,26 @@ export function ChatbotScreen({ visible, onClose }: Props) {
 
       const hasEscalation = raw.includes(WHATSAPP_SIGNAL);
       const hasGoodbye = raw.includes(GOODBYE_SIGNAL);
-      const hasHotel = raw.includes(HOTEL_SIGNAL);
+      const hotelMatch = HOTEL_SIGNAL_RE.exec(raw);
+      const hasHotel = !!hotelMatch || raw.includes(HOTEL_SIGNAL);
       const hasOffers = raw.includes(OFFERS_SIGNAL);
       const flightMatch = FLIGHT_SIGNAL_RE.exec(raw);
       const flightToken = flightMatch ? flightMatch[1] : undefined;
+
+      let hotelParams: { city: string; checkin: string; checkout: string } | undefined;
+      if (hotelMatch) {
+        const [city, checkin, checkout] = hotelMatch[1].split("|");
+        hotelParams = {
+          city: city?.trim() ?? "",
+          checkin: checkin?.trim() ?? "",
+          checkout: checkout?.trim() ?? "",
+        };
+      }
+
       const clean = raw
         .replace(WHATSAPP_SIGNAL, "")
         .replace(GOODBYE_SIGNAL, "")
+        .replace(HOTEL_SIGNAL_RE, "")
         .replace(HOTEL_SIGNAL, "")
         .replace(OFFERS_SIGNAL, "")
         .replace(FLIGHT_SIGNAL_RE, "")
@@ -1050,6 +1069,7 @@ export function ChatbotScreen({ visible, onClose }: Props) {
         showWhatsApp: hasEscalation,
         flightToken,
         showHotel: hasHotel,
+        hotelParams,
         showOffers: hasOffers,
       };
       setMessages((prev) => [...prev, botMsg]);
