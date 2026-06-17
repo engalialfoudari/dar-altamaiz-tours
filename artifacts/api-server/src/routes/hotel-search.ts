@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getBrowser, applyStealthOverrides } from "../lib/browser";
+import { getFreshPage, applyStealthOverrides } from "../lib/browser";
 
 const router = Router();
 
@@ -14,6 +14,12 @@ export interface HotelOption {
   thumbnail?: string;
 }
 
+interface HotelCityResult {
+  id: string;
+  label: string;
+  value: string;
+}
+
 function fmtDateDMY(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
@@ -23,6 +29,27 @@ function fmtDateDMY(iso: string): string {
   return `${dd}-${mm}-${yyyy}`;
 }
 
+// Call travelomatix hotel city autocomplete API for the correct internal destination ID
+async function getHotelCityId(query: string): Promise<HotelCityResult | null> {
+  try {
+    const url = `https://dt-tours.com/index.php/ajax/get_hotel_city_list?term=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/137 Safari/537.36",
+        "Referer": "https://dt-tours.com/",
+        "X-Requested-With": "XMLHttpRequest",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as HotelCityResult[];
+    return data?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function scrapeDtToursHotels(params: {
   city: string;
   checkin: string;
@@ -30,28 +57,31 @@ async function scrapeDtToursHotels(params: {
   rooms: number;
   adults: number;
 }): Promise<HotelOption[]> {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
+  // Step 1 — resolve correct internal hotel city ID from autocomplete API
+  const cityLoc = await getHotelCityId(params.city);
+
+  // Fresh incognito context per request — prevents stale cookies from interfering
+  const { page, cleanup } = await getFreshPage();
 
   try {
     await applyStealthOverrides(page);
 
-    // Step 1 — load homepage and wait for ALL network activity to settle
+    // Step 2 — load homepage with networkidle0
     await page.goto("https://dt-tours.com/", {
       waitUntil: "networkidle0",
       timeout: 45_000,
     });
 
-    // Step 2 — wait for hotel search form to appear (proves dynamic shell is ready)
     await page.waitForSelector("#hotel_search", { timeout: 15_000 });
+    await new Promise((r) => setTimeout(r, 800));
 
-    // Step 3 — small human-like pause before interacting
-    await new Promise((r) => setTimeout(r, 1_200));
+    const checkinFmt = fmtDateDMY(params.checkin);
+    const checkoutFmt = fmtDateDMY(params.checkout);
 
-    // Step 4 — fill hotel form fields via direct JS injection
+    // Step 3 — inject form values using the correct internal city ID
     await page.evaluate(
-      (city: string, checkin: string, checkout: string, rooms: number) => {
-        const setVal = (id: string, val: string) => {
+      (cityLabel, cityId, checkin, checkout, rooms, adults) => {
+        const setV = (id: string, val: string) => {
           const el = document.getElementById(id) as HTMLInputElement | null;
           if (el) {
             el.value = val;
@@ -60,79 +90,87 @@ async function scrapeDtToursHotels(params: {
           }
         };
 
-        setVal("hotel_destination_search_name", city);
-        setVal("hot_id_dest", city);
+        // Destination — internal ID is critical for travelomatix to accept the search
+        setV("hotel_destination_search_name", cityLabel);
+        setV("hot_id_dest", cityId);
 
+        // Dates (fields may be readonly — remove that attr first)
         const ci = document.getElementById("hotel_checkin") as HTMLInputElement | null;
-        if (ci) {
-          ci.removeAttribute("readonly");
-          ci.value = checkin;
-          ci.dispatchEvent(new Event("change", { bubbles: true }));
-        }
+        if (ci) { ci.removeAttribute("readonly"); ci.value = checkin; ci.dispatchEvent(new Event("change", { bubbles: true })); }
 
         const co = document.getElementById("hotel_checkout") as HTMLInputElement | null;
-        if (co) {
-          co.removeAttribute("readonly");
-          co.value = checkout;
-          co.dispatchEvent(new Event("change", { bubbles: true }));
+        if (co) { co.removeAttribute("readonly"); co.value = checkout; co.dispatchEvent(new Event("change", { bubbles: true })); }
+
+        // Rooms
+        for (const sel of ["select[name='no_of_rooms']", "input[name='no_of_rooms']", "#no_of_rooms", "#rooms"]) {
+          const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
+          if (el) { el.value = String(rooms); el.dispatchEvent(new Event("change", { bubbles: true })); break; }
         }
 
-        for (const sel of ["select[name='rooms']", "input[name='rooms']", "#rooms"]) {
+        // Adults
+        for (const sel of ["select[name='adult']", "input[name='adult']", "#adult", "#adt"]) {
           const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
-          if (el) { el.value = String(rooms); break; }
+          if (el) { el.value = String(adults); el.dispatchEvent(new Event("change", { bubbles: true })); break; }
         }
       },
-      params.city,
-      fmtDateDMY(params.checkin),
-      fmtDateDMY(params.checkout),
-      params.rooms
+      cityLoc?.label ?? params.city,
+      cityLoc?.id ?? params.city,
+      checkinFmt,
+      checkoutFmt,
+      params.rooms,
+      params.adults
     );
 
-    // Step 5 — submit form and wait for results page (networkidle0)
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Step 4 — click the submit button (triggers JS hooks)
     await Promise.all([
       page.waitForNavigation({ waitUntil: "networkidle0", timeout: 60_000 }),
       page.evaluate(() => {
-        const form = document.getElementById("hotel_search") as HTMLFormElement | null;
-        if (form) form.submit();
+        const btn =
+          document.querySelector<HTMLElement>("#hotel_search [type='submit']") ??
+          document.querySelector<HTMLElement>("#hotel_search button[type='submit']") ??
+          document.querySelector<HTMLElement>("#hotel_search button") ??
+          document.querySelector<HTMLElement>(".hotel-search-btn");
+        if (btn) { btn.click(); return; }
+        (document.getElementById("hotel_search") as HTMLFormElement | null)?.submit();
       }),
     ]);
 
-    // Step 6 — hard 5-second delay so all async hotel data finishes rendering
+    // Step 5 — hard 5-second delay for dynamic results to render
     await new Promise((r) => setTimeout(r, 5_000));
 
-    // Step 7 — wait for a concrete result element to confirm live content is present
+    // Step 6 — wait for actual result elements
     await page
       .waitForSelector(
         [
-          ".hotel-result",
-          ".hotel_result",
-          ".hotel-card",
-          ".property-card",
-          "[class*='hotel-item']",
-          "[class*='hotel_list']",
-          ".result_box",
-          "[data-hotel-id]",
+          ".hotel-result", ".hotel_result", ".hotel-card", ".property-card",
+          "[class*='hotel-item']", "[class*='hotel_list']", ".result_box",
+          "[data-hotel-id]", ".hotel-listing", "#hotel-results", ".hotel-row",
+          "table.hotels tr", ".search-result", "#results",
         ].join(", "),
-        { timeout: 20_000 }
+        { timeout: 25_000 }
       )
       .catch(() => {});
 
-    // Step 8 — extra buffer for staggered price updates
+    // Step 7 — buffer for price updates
     await new Promise((r) => setTimeout(r, 2_000));
 
     const finalUrl = page.url();
+    const html = await page.content();
 
-    // Step 9 — parse the fully-rendered DOM
+    if (html.length < 500 || html.includes("An uncaught Exception")) return [];
+
     return await page.evaluate(
       (city: string, bookUrl: string): HotelOption[] => {
         const results: HotelOption[] = [];
-        const priceRe =
-          /(?:KWD|USD|AED|SAR|QAR|BHD)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
+        const priceRe = /(?:KWD|USD|AED|SAR|QAR|BHD)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
 
         const SELECTORS = [
           ".hotel-result", ".hotel_result", ".hotel-card", ".property-card",
           "[class*='hotel-item']", "[class*='hotel_list'] li", "[class*='property-item']",
-          ".result_box", "[data-hotel-id]",
+          ".result_box", "[data-hotel-id]", ".hotel-listing", ".hotel-row",
+          "table.hotels tr:not(:first-child)", "#results > *", ".search-result",
         ];
 
         let rows: NodeListOf<Element> | null = null;
@@ -161,6 +199,7 @@ async function scrapeDtToursHotels(params: {
           });
         }
 
+        // Fallback: scan page text for prices
         if (results.length === 0) {
           const seen = new Set<string>();
           for (const m of [...document.body.innerText.matchAll(priceRe)]) {
@@ -175,11 +214,10 @@ async function scrapeDtToursHotels(params: {
 
         return results.slice(0, 5);
       },
-      params.city,
-      finalUrl
+      params.city, finalUrl
     );
   } finally {
-    await page.close().catch(() => {});
+    await cleanup().catch(() => {});
   }
 }
 

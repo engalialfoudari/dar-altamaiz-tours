@@ -245,9 +245,12 @@ function FlightInlineSearch({
 
     (async () => {
       try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 90_000);
         const res = await fetch(`${apiBase}/flight-scrape`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
           body: JSON.stringify({
             from: fromId,
             to: toId,
@@ -258,6 +261,7 @@ function FlightInlineSearch({
             adults,
           }),
         });
+        clearTimeout(tid);
         const data = (await res.json()) as { ok: boolean; flights?: ScrapedFlight[]; error?: string };
         if (data.ok && data.flights && data.flights.length > 0) {
           setFlights(data.flights.slice(0, 5));
@@ -369,11 +373,15 @@ function HotelInlineSearch({
           setStatus("fallback");
           return;
         }
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 90_000);
         const res = await fetch(`${apiBase}/hotel-search`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
           body: JSON.stringify(body),
         });
+        clearTimeout(tid);
         const data = (await res.json()) as { ok: boolean; hotels?: HotelOptionData[]; error?: string };
         if (data.ok && data.hotels && data.hotels.length > 0) {
           setHotels(data.hotels.slice(0, 5));

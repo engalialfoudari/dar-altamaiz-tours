@@ -11,6 +11,7 @@ import flightSearchRouter from "./flight-search";
 import flightScrapeRouter from "./flight-scrape";
 import hotelSearchRouter from "./hotel-search";
 import offersRouter from "./offers";
+import debugScrapeRouter from "./debug-scrape";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(flightSearchRouter);
 router.use(flightScrapeRouter);
 router.use(hotelSearchRouter);
 router.use(offersRouter);
+router.use(debugScrapeRouter);
 
 export default router;

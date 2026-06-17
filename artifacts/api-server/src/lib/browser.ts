@@ -1,7 +1,7 @@
 import puppeteerExtra from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import { execSync } from "node:child_process";
-import type { Browser, Page } from "puppeteer";
+import type { Browser, BrowserContext, Page } from "puppeteer";
 
 puppeteerExtra.use(StealthPlugin());
 
@@ -191,4 +191,29 @@ export async function closeBrowser(): Promise<void> {
     await _browser.close().catch(() => {});
     _browser = null;
   }
+}
+
+/**
+ * Create a page with a clean cookie slate for each scrape request.
+ * createBrowserContext() crashes with --single-process Chromium, so we clear
+ * cookies via CDP instead. This prevents stale travelomatix session cookies from
+ * showing the payment page instead of search results.
+ * Callers MUST call cleanup() in their finally block.
+ */
+export async function getFreshPage(): Promise<{ page: Page; context: BrowserContext; cleanup: () => Promise<void> }> {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+
+  // Clear all cookies so previous PHP sessions don't interfere
+  try {
+    const cdp = await page.createCDPSession();
+    await cdp.send("Network.clearBrowserCookies");
+    await cdp.detach();
+  } catch { /* ignore — not fatal */ }
+
+  return {
+    page,
+    context: browser.defaultBrowserContext(),
+    cleanup: async () => { await page.close().catch(() => {}); },
+  };
 }
