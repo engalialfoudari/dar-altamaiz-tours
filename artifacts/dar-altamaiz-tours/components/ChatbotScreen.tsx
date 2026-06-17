@@ -295,7 +295,9 @@ function FlightInlineSearch({
       const scrapePromise = (async () => {
         try {
           const ctrl = new AbortController();
-          const tid = setTimeout(() => ctrl.abort(), 90_000);
+          // 20s window: if puppeteer has results they come fast; if not,
+          // stop waiting and open the in-app browser immediately
+          const tid = setTimeout(() => ctrl.abort(), 20_000);
           const res = await fetch(`${apiBase}/flight-scrape`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -315,7 +317,7 @@ function FlightInlineSearch({
             setStatus("done");
             return;
           }
-        } catch { /* timeout or error — fall through */ }
+        } catch { /* timeout or network error — fall through to in-app browser */ }
         setStatus("fallback");
       })();
 
@@ -373,6 +375,16 @@ function FlightInlineSearch({
     }
   };
 
+  // Auto-open the in-app browser the moment fallback is reached —
+  // user sees the search results without having to tap anything.
+  useEffect(() => {
+    if (status === "fallback") {
+      openFlightSearch();
+    }
+  // openFlightSearch reads a ref so it never changes identity; status is the only dep.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
   if (status === "loading") {
     return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="flight" />;
   }
@@ -386,8 +398,8 @@ function FlightInlineSearch({
       >
         <Text style={styles.flightCtaText}>
           {isKuwait
-            ? (isAr ? "✈️ ابحث عن رحلتك على موقعنا" : "✈️ Search on dt-tours.com")
-            : (isAr ? "✈️ عرض الأسعار على Google Flights" : "✈️ View Prices on Google Flights")}
+            ? (isAr ? "✈️ جاري فتح نتائج الرحلات…" : "✈️ Opening flight results…")
+            : (isAr ? "✈️ جاري فتح Google Flights…" : "✈️ Opening Google Flights…")}
         </Text>
       </Pressable>
     );
