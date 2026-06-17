@@ -614,9 +614,14 @@ export function SpecialRequestsScreen() {
           onPress={handleSubmit}
           disabled={submitting}
         >
-          <Text style={styles.submitBtnText}>
-            {submitting ? "جاري الإرسال..." : "Submit Request  ›"}
-          </Text>
+          {submitting ? (
+            <Text style={styles.submitBtnText}>جاري الإرسال...</Text>
+          ) : (
+            <View style={{ alignItems: "center" }}>
+              <Text style={styles.submitBtnTextAr}>إرسال</Text>
+              <Text style={styles.submitBtnTextEn}>Send</Text>
+            </View>
+          )}
         </Pressable>
       </ScrollView>
       </KeyboardAvoidingView>
@@ -793,23 +798,36 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   submitBtn: {
-    backgroundColor: gold,
+    backgroundColor: "#001F5B",
     borderRadius: 50,
-    height: 50,
+    height: 54,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,
-    shadowColor: gold,
+    shadowColor: "#001F5B",
     shadowOpacity: 0.35,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
   submitBtnText: {
-    color: navy,
-    fontSize: 16,
+    color: "#FFFFFF",
+    fontSize: 15,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+  },
+  submitBtnTextAr: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 19,
+  },
+  submitBtnTextEn: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 14,
+    letterSpacing: 0.4,
   },
   modalOverlay: {
     flex: 1,
