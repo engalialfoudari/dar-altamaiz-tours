@@ -297,8 +297,32 @@ async function scrapeDtToursHotels(params: {
             const thumbEl = row.querySelector("img");
             const thumbnail = (thumbEl as HTMLImageElement)?.src ?? "";
 
+            // ── Per-hotel booking URL ──
+            // Try to find the anchor that links to THIS hotel's detail/book page.
+            // Fall back to the city search URL only if nothing specific is found.
+            const HOTEL_LINK_SELS = [
+              "a[href*='hotel/detail']",
+              "a[href*='hotel_detail']",
+              "a[href*='hotel_id']",
+              "a[href*='/hotel/']",
+              "a.book-btn", "a.book-now", "a.btn-book",
+              ".book-btn a", ".book-now a", "[class*='book-btn'] a",
+              "a[href*='book']",
+              ".hotel-name a", ".htl-name a", "[class*='hotel-name'] a",
+              "a[href]:not([href='#']):not([href='javascript:void(0)'])",
+            ];
+            let hotelUrl = bookUrl;
+            for (const sel of HOTEL_LINK_SELS) {
+              const el = row.querySelector(sel) as HTMLAnchorElement | null;
+              const href = el?.href ?? "";
+              if (href && href !== window.location.href && !href.endsWith("#") && !href.startsWith("javascript")) {
+                hotelUrl = href;
+                break;
+              }
+            }
+
             if (price) {
-              results.push({ name: name || "Hotel", stars, location: city, price, currency, bookUrl, thumbnail });
+              results.push({ name: name || "Hotel", stars, location: city, price, currency, bookUrl: hotelUrl, thumbnail });
             }
           });
         }
