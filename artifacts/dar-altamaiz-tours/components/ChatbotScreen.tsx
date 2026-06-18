@@ -269,8 +269,6 @@ function FlightInlineSearch({
   const [flights, setFlights] = React.useState<ScrapedFlight[]>([]);
   const [elapsed, setElapsed] = React.useState(0);
   const hasFetched = useRef(false);
-  // null = still detecting, true = Kuwait, false = everywhere else
-  const isKuwaitRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -282,97 +280,42 @@ function FlightInlineSearch({
     hasFetched.current = true;
 
     void (async () => {
-      // Run geo-check and puppeteer scrape in parallel so we know the
-      // user's location by the time we need to choose a fallback.
-      const geoCtrl = new AbortController();
-      const geoTid = setTimeout(() => geoCtrl.abort(), 6_000);
-      const geoPromise = fetch(`${apiBase}/geo`, { signal: geoCtrl.signal })
-        .then((r) => r.json() as Promise<{ isKuwait: boolean }>)
-        .then((d) => { isKuwaitRef.current = d.isKuwait ?? false; })
-        .catch(() => { isKuwaitRef.current = false; })
-        .finally(() => clearTimeout(geoTid));
-
-      const scrapePromise = (async () => {
-        try {
-          const ctrl = new AbortController();
-          // 20s window: if puppeteer has results they come fast; if not,
-          // stop waiting and open the in-app browser immediately
-          const tid = setTimeout(() => ctrl.abort(), 20_000);
-          const res = await fetch(`${apiBase}/flight-scrape`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal: ctrl.signal,
-            body: JSON.stringify({
-              from: fromId, to: toId,
-              fromLabel: fromLabel ?? fromId,
-              toLabel: toLabel ?? toId,
-              depDate: dep, retDate: ret || undefined,
-              adults,
-            }),
-          });
-          clearTimeout(tid);
-          const data = await res.json() as { ok: boolean; flights?: ScrapedFlight[] };
-          if (data.ok && data.flights && data.flights.length > 0) {
-            setFlights(data.flights.slice(0, 5));
-            setStatus("done");
-            return;
-          }
-        } catch { /* timeout or network error — fall through to in-app browser */ }
-        setStatus("fallback");
-      })();
-
-      await Promise.all([geoPromise, scrapePromise]);
+      try {
+        const ctrl = new AbortController();
+        // 20s window: if puppeteer has results they come fast; if not,
+        // fall through to Kayak immediately
+        const tid = setTimeout(() => ctrl.abort(), 20_000);
+        const res = await fetch(`${apiBase}/flight-scrape`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            from: fromId, to: toId,
+            fromLabel: fromLabel ?? fromId,
+            toLabel: toLabel ?? toId,
+            depDate: dep, retDate: ret || undefined,
+            adults,
+          }),
+        });
+        clearTimeout(tid);
+        const data = await res.json() as { ok: boolean; flights?: ScrapedFlight[] };
+        if (data.ok && data.flights && data.flights.length > 0) {
+          setFlights(data.flights.slice(0, 5));
+          setStatus("done");
+          return;
+        }
+      } catch { /* timeout or network error — fall through to Kayak */ }
+      setStatus("fallback");
     })();
   }, []);
 
-  const AIRPORT_IDS: Record<string, string> = {
-    KWI: "3945", DXB: "1921", AUH: "3976", SHJ: "3977",
-    IST: "3533", SAW: "3938", TBS: "4030", GYD: "4014",
-    DOH: "3928", BAH: "3907", RUH: "3956", JED: "3940",
-    MED: "3960", LHR: "3543", CDG: "3518", BKK: "3899",
-    KUL: "3949", CMB: "3916", SIN: "3961", AMM: "3896",
-    CAI: "3911", HRG: "3934", SSH: "3963", CMN: "3917",
-  };
-
   const openFlightSearch = () => {
-    if (isKuwaitRef.current === true) {
-      // Kuwait users: open dt-tours.com in-app browser — device IP gets GDS results
-      const params = new URLSearchParams({
-        from: fromId, fromLabel: fromLabel ?? fromId,
-        fromLocId: AIRPORT_IDS[fromId] ?? fromId,
-        to: toId, toLabel: toLabel ?? toId,
-        toLocId: AIRPORT_IDS[toId] ?? toId,
-        dep: dep ?? "", ret: ret ?? "",
-        adults: String(adultsStr ?? "1"),
-      });
-      openInApp(`${apiBase}/flight-launch?${params.toString()}`);
-    } else {
-      // Non-Kuwait users: Google Flights with the route pre-filled
-      const depFormatted = dep
-        ? dep.replace(/-/g, "").slice(2)   // "2026-07-20" → "260720"
-        : "";
-      const retFormatted = ret
-        ? ret.replace(/-/g, "").slice(2)
-        : "";
-      const tripType = ret ? "r" : "o"; // round-trip or one-way
-      const googleBase = "https://www.google.com/travel/flights/search";
-      const q = [
-        `Flights from ${fromLabel ?? fromId} to ${toLabel ?? toId}`,
-        dep,
-        `${adults} passenger${adults > 1 ? "s" : ""}`,
-      ]
-        .filter(Boolean)
-        .join(" ");
-      // Simple search URL that loads the Google Flights widget
-      const searchUrl = `${googleBase}?q=${encodeURIComponent(q)}&hl=${isAr ? "ar" : "en"}`;
-      // Kayak is a reliable alternative if Google blocks
-      const kayakUrl = ret
-        ? `https://www.kayak.com/flights/${fromId}-${toId}/${depFormatted}/${retFormatted}/${adults}adults`
-        : `https://www.kayak.com/flights/${fromId}-${toId}/${depFormatted}/${adults}adults`;
-      // Try Google first, fall back header shows Kayak in the browser
-      void tripType; void kayakUrl;
-      openInApp(searchUrl);
-    }
+    // Kayak has clean URL-based pre-filled search that works from any IP.
+    // dt-tours.com form-submit doesn't work externally (requires their own session).
+    const kayakUrl = ret
+      ? `https://www.kayak.com/flights/${fromId}-${toId}/${dep}/${ret}/${adults}adults`
+      : `https://www.kayak.com/flights/${fromId}-${toId}/${dep}/${adults}adults`;
+    openInApp(kayakUrl);
   };
 
   // Auto-open the in-app browser the moment fallback is reached —
@@ -390,16 +333,13 @@ function FlightInlineSearch({
   }
 
   if (status === "fallback") {
-    const isKuwait = isKuwaitRef.current;
     return (
       <Pressable
         style={({ pressed }) => [styles.flightCta, pressed && { opacity: 0.8 }]}
         onPress={openFlightSearch}
       >
         <Text style={styles.flightCtaText}>
-          {isKuwait
-            ? (isAr ? "✈️ جاري فتح نتائج الرحلات…" : "✈️ Opening flight results…")
-            : (isAr ? "✈️ جاري فتح Google Flights…" : "✈️ Opening Google Flights…")}
+          {isAr ? "✈️ عرض الأسعار على Kayak" : "✈️ View Prices on Kayak"}
         </Text>
       </Pressable>
     );
