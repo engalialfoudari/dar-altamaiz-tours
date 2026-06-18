@@ -63,7 +63,15 @@
         }
       ],
       "expo-web-browser",
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/app-icon-new.png",
+          "color": "#D4AF37",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
