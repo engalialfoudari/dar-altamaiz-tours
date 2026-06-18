@@ -29,7 +29,6 @@ function fmtDateDMY(iso: string): string {
   return `${dd}-${mm}-${yyyy}`;
 }
 
-// Call travelomatix hotel city autocomplete API for the correct internal destination ID
 async function getHotelCityId(query: string): Promise<HotelCityResult | null> {
   try {
     const url = `https://dt-tours.com/index.php/ajax/get_hotel_city_list?term=${encodeURIComponent(query)}`;
@@ -40,7 +39,6 @@ async function getHotelCityId(query: string): Promise<HotelCityResult | null> {
         "X-Requested-With": "XMLHttpRequest",
         "Accept": "application/json, text/javascript, */*; q=0.01",
       },
-      signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as HotelCityResult[];
@@ -56,17 +54,14 @@ async function scrapeDtToursHotels(params: {
   checkout: string;
   rooms: number;
   adults: number;
+  stars?: number;
 }): Promise<HotelOption[]> {
-  // Step 1 — resolve correct internal hotel city ID from autocomplete API
   const cityLoc = await getHotelCityId(params.city);
-
-  // Fresh incognito context per request — prevents stale cookies from interfering
   const { page, cleanup } = await getFreshPage();
 
   try {
     await applyStealthOverrides(page);
 
-    // Step 2 — load homepage with networkidle0
     await page.goto("https://dt-tours.com/", {
       waitUntil: "networkidle0",
       timeout: 45_000,
@@ -78,7 +73,6 @@ async function scrapeDtToursHotels(params: {
     const checkinFmt = fmtDateDMY(params.checkin);
     const checkoutFmt = fmtDateDMY(params.checkout);
 
-    // Step 3 — inject form values using the correct internal city ID
     await page.evaluate(
       (cityLabel, cityId, checkin, checkout, rooms, adults) => {
         const setV = (id: string, val: string) => {
@@ -90,24 +84,20 @@ async function scrapeDtToursHotels(params: {
           }
         };
 
-        // Destination — internal ID is critical for travelomatix to accept the search
         setV("hotel_destination_search_name", cityLabel);
         setV("hot_id_dest", cityId);
 
-        // Dates (fields may be readonly — remove that attr first)
         const ci = document.getElementById("hotel_checkin") as HTMLInputElement | null;
         if (ci) { ci.removeAttribute("readonly"); ci.value = checkin; ci.dispatchEvent(new Event("change", { bubbles: true })); }
 
         const co = document.getElementById("hotel_checkout") as HTMLInputElement | null;
         if (co) { co.removeAttribute("readonly"); co.value = checkout; co.dispatchEvent(new Event("change", { bubbles: true })); }
 
-        // Rooms
         for (const sel of ["select[name='no_of_rooms']", "input[name='no_of_rooms']", "#no_of_rooms", "#rooms"]) {
           const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
           if (el) { el.value = String(rooms); el.dispatchEvent(new Event("change", { bubbles: true })); break; }
         }
 
-        // Adults
         for (const sel of ["select[name='adult']", "input[name='adult']", "#adult", "#adt"]) {
           const el = document.querySelector<HTMLInputElement | HTMLSelectElement>(sel);
           if (el) { el.value = String(adults); el.dispatchEvent(new Event("change", { bubbles: true })); break; }
@@ -123,7 +113,6 @@ async function scrapeDtToursHotels(params: {
 
     await new Promise((r) => setTimeout(r, 500));
 
-    // Step 4 — click the submit button (triggers JS hooks)
     await Promise.all([
       page.waitForNavigation({ waitUntil: "networkidle0", timeout: 60_000 }),
       page.evaluate(() => {
@@ -137,10 +126,9 @@ async function scrapeDtToursHotels(params: {
       }),
     ]);
 
-    // Step 5 — hard 5-second delay for dynamic results to render
+    // Hard wait for results to render
     await new Promise((r) => setTimeout(r, 5_000));
 
-    // Step 6 — wait for actual result elements
     await page
       .waitForSelector(
         [
@@ -153,7 +141,54 @@ async function scrapeDtToursHotels(params: {
       )
       .catch(() => {});
 
-    // Step 7 — buffer for price updates
+    // ── Star filter: click dt-tours.com's own sidebar checkbox ──
+    // This makes the site itself return only the requested star category,
+    // so we don't have to guess from the full list.
+    if (params.stars && params.stars > 0) {
+      const starValue = String(params.stars);
+      const clicked = await page.evaluate((sv: string) => {
+        // travelomatix uses various patterns for star filter checkboxes
+        const candidates = [
+          // value attribute equals the star count
+          `input[type="checkbox"][value="${sv}"]`,
+          // id contains "star" and the number
+          `input[type="checkbox"][id*="star_${sv}"]`,
+          `input[type="checkbox"][id*="star"][id*="${sv}"]`,
+          `input[type="checkbox"][name*="star"][value="${sv}"]`,
+          // data attribute
+          `input[type="checkbox"][data-value="${sv}"]`,
+          `[data-star="${sv}"] input[type="checkbox"]`,
+        ];
+        for (const sel of candidates) {
+          const el = document.querySelector<HTMLInputElement>(sel);
+          if (el && !el.checked) {
+            el.click();
+            return true;
+          }
+        }
+        // Fallback: find a label whose text is exactly "X Star" or "X Stars"
+        const labels = Array.from(document.querySelectorAll("label, .filter-label, [class*='star-filter'] span"));
+        for (const lbl of labels) {
+          const txt = (lbl as HTMLElement).innerText?.trim() ?? "";
+          if (/^[★]{0,5}$/.test(txt) && txt.length === parseInt(sv)) {
+            (lbl as HTMLElement).click();
+            return true;
+          }
+          if (new RegExp(`^${sv}\\s*[Ss]tar`).test(txt)) {
+            (lbl as HTMLElement).click();
+            return true;
+          }
+        }
+        return false;
+      }, starValue);
+
+      if (clicked) {
+        // Give the AJAX filter time to refresh results
+        await new Promise((r) => setTimeout(r, 3_500));
+      }
+    }
+
+    // Final buffer for price cells to finish loading
     await new Promise((r) => setTimeout(r, 2_000));
 
     const finalUrl = page.url();
@@ -167,7 +202,7 @@ async function scrapeDtToursHotels(params: {
         const priceRe = /(?:KWD|USD|AED|SAR|QAR|BHD)\s*([\d,]+\.?\d*)|(\d{1,6}(?:\.\d{1,3})?)\s*(?:KWD|USD|AED|SAR)/gi;
 
         const SELECTORS = [
-          ".hotel-card:not(.skeleton)",  // real cards, skip skeleton loaders
+          ".hotel-card:not(.skeleton)",
           ".hotel-result:not(.skeleton)", ".hotel_result", ".hotel-card", ".property-card",
           "[class*='hotel-item']:not(.skeleton)", "[class*='hotel_list'] li", "[class*='property-item']",
           ".result_box", "[data-hotel-id]", ".hotel-listing", ".hotel-row",
@@ -184,17 +219,16 @@ async function scrapeDtToursHotels(params: {
           rows.forEach((row) => {
             const text = (row as HTMLElement).innerText ?? "";
             if (text.length < 5) return;
+
             const priceMatches = [...text.matchAll(priceRe)];
             const netPriceStr = priceMatches[0]?.[1] ?? priceMatches[0]?.[2] ?? "";
             const currency = priceMatches[0]?.[0]?.match(/[A-Z]{3}/)?.[0] ?? "KWD";
-            // Add 15% agency markup to net hotel prices before displaying
             const netNum = parseFloat(netPriceStr.replace(/,/g, ""));
             const price = netPriceStr && !isNaN(netNum)
               ? String(Math.ceil(netNum * 1.15 * 100) / 100)
               : netPriceStr;
-                // Regex to detect UI button/CTA text (not hotel names)
+
             const NOT_NAME = /Select|Book|Room|Check Avail|View Deal|More Info|See Details|احجز|اختر/i;
-            // Try many selectors for the hotel name
             const NAME_SELS = [
               ".hotel-name", ".htl-name", ".hotel-title", ".property-name",
               "[class*='hotel-name']", "[class*='hotel-title']", "[class*='htl-name']",
@@ -209,7 +243,6 @@ async function scrapeDtToursHotels(params: {
               const t = (el as HTMLElement)?.innerText?.trim() ?? "";
               if (t && t.length > 3 && t.length < 120 && !NOT_NAME.test(t)) { name = t; break; }
             }
-            // Fallback: first non-price, non-button text line in the card
             if (!name) {
               const lines = ((row as HTMLElement).innerText ?? "")
                 .split(/[\n\r]+/)
@@ -224,35 +257,61 @@ async function scrapeDtToursHotels(params: {
               }
             }
 
-            const starsEl = row.querySelector("[class*='star'], .rating, [data-star], [class*='rating']");
+            // ── Improved star detection ──
+            // 1. Count filled star icon elements (fa-star, icon-star, etc.)
+            const filledIcons = row.querySelectorAll(
+              "i.fa-star:not(.fa-star-o):not(.fa-star-half), " +
+              "i[class*='fa-star']:not([class*='star-o']):not([class*='half']), " +
+              "span.fa-star, [class*='icon-star']:not([class*='empty']):not([class*='half']), " +
+              ".star-on, .star-filled, [class*='star_on'], [class*='star-active']"
+            ).length;
+
+            // 2. Count ★ unicode characters inside the star container
+            const starsEl = row.querySelector(
+              "[class*='star'], .rating, [data-star], [class*='rating'], [class*='stars']"
+            );
             const starsInner = (starsEl as HTMLElement)?.innerText ?? "";
-            const starsCountInText = (starsInner.match(/★/g) ?? []).length;
-            const starsNumMatch = starsInner.match(/(\d)/);
-            const stars = starsCountInText > 0 ? starsCountInText : starsNumMatch ? parseInt(starsNumMatch[1]) : 0;
+            const unicodeCount = (starsInner.match(/★/g) ?? []).length;
+
+            // 3. data-star attribute on any element
+            const dataStarEl = row.querySelector("[data-star]");
+            const dataStar = dataStarEl ? parseInt((dataStarEl as HTMLElement).getAttribute("data-star") ?? "0") : 0;
+
+            // 4. "X Star" text inside a dedicated rating badge / span
+            const ratingBadge = row.querySelector(".rating-badge, [class*='star-label'], [class*='rating-text']");
+            const ratingText = (ratingBadge as HTMLElement)?.innerText ?? "";
+            const ratingTextMatch = ratingText.match(/(\d)\s*[Ss]tar/);
+
+            const stars =
+              filledIcons > 0 ? filledIcons :
+              unicodeCount > 0 ? unicodeCount :
+              dataStar > 0 ? dataStar :
+              ratingTextMatch ? parseInt(ratingTextMatch[1]) : 0;
+
             const thumbEl = row.querySelector("img");
             const thumbnail = (thumbEl as HTMLImageElement)?.src ?? "";
+
             if (price) {
               results.push({ name: name || "Hotel", stars, location: city, price, currency, bookUrl, thumbnail });
             }
           });
         }
 
-        // Fallback: scan page text for prices
+        // Fallback scan when no card selector matched
         if (results.length === 0) {
           const seen = new Set<string>();
           for (const m of [...document.body.innerText.matchAll(priceRe)]) {
             const v = m[1] ?? m[2];
             if (v && !seen.has(v) && parseFloat(v.replace(/,/g, "")) > 5) {
               seen.add(v);
-              results.push({ name: "Hotel Option", stars: 4, location: city, price: v, currency: "KWD", bookUrl });
-              if (results.length >= 8) break;
+              results.push({ name: "Hotel Option", stars: 0, location: city, price: v, currency: "KWD", bookUrl });
+              if (results.length >= 15) break;
             }
           }
         }
 
-        // Sort cheap → expensive
         results.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-        return results.slice(0, 10);
+        return results; // return ALL — caller applies star filter
       },
       params.city, finalUrl
     );
@@ -272,19 +331,42 @@ router.post("/hotel-search", async (req, res) => {
   }
 
   try {
-    let hotels = await scrapeDtToursHotels({
+    const starsNum = Number(stars) || 0;
+
+    const allHotels = await scrapeDtToursHotels({
       city, checkin, checkout,
       rooms: Math.max(1, Math.min(9, Number(rooms))),
       adults: Math.max(1, Math.min(9, Number(adults))),
+      stars: starsNum,
     });
-    // Filter by star category if requested
-    const starsNum = Number(stars);
+
+    let hotels: HotelOption[];
+    let starsMismatch = false;
+
     if (starsNum > 0) {
-      const filtered = hotels.filter((h) => h.stars === starsNum);
-      const rest = hotels.filter((h) => h.stars !== starsNum);
-      if (filtered.length > 0) hotels = [...filtered, ...rest];
+      // Strict: only return hotels matching the requested star rating
+      const exact = allHotels.filter((h) => h.stars === starsNum);
+      if (exact.length >= 1) {
+        // We have exact matches — return only those (up to 10, cheapest first)
+        hotels = exact.slice(0, 10);
+      } else {
+        // The site's filter didn't help or no exact matches detected.
+        // Try ±1 star as a graceful degradation (e.g. 4★ → also accept 3★ and 5★)
+        const nearby = allHotels.filter((h) => Math.abs(h.stars - starsNum) <= 1 && h.stars > 0);
+        if (nearby.length >= 1) {
+          hotels = nearby.slice(0, 10);
+          starsMismatch = true;
+        } else {
+          // Last resort: return all (star detection failed entirely)
+          hotels = allHotels.slice(0, 10);
+          starsMismatch = true;
+        }
+      }
+    } else {
+      hotels = allHotels.slice(0, 10);
     }
-    res.json({ ok: true, hotels, count: hotels.length });
+
+    res.json({ ok: true, hotels, count: hotels.length, starsMismatch });
   } catch (err: unknown) {
     req.log.error({ err }, "Hotel search failed");
     res.status(502).json({ ok: false, error: err instanceof Error ? err.message : "Hotel search failed" });

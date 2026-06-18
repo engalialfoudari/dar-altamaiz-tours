@@ -486,6 +486,7 @@ function HotelInlineSearch({
 }) {
   const [status, setStatus] = React.useState<"loading" | "done" | "fallback">("loading");
   const [hotels, setHotels] = React.useState<HotelOptionData[]>([]);
+  const [starsMismatch, setStarsMismatch] = React.useState(false);
   const [elapsed, setElapsed] = React.useState(0);
   const hasFetched = useRef(false);
 
@@ -515,9 +516,13 @@ function HotelInlineSearch({
           }),
         });
         clearTimeout(tid);
-        const data = (await res.json()) as { ok: boolean; hotels?: HotelOptionData[]; error?: string };
+        const data = (await res.json()) as {
+          ok: boolean; hotels?: HotelOptionData[];
+          starsMismatch?: boolean; error?: string;
+        };
         if (data.ok && data.hotels && data.hotels.length > 0) {
-          setHotels(data.hotels.slice(0, 10));
+          setHotels(data.hotels);
+          setStarsMismatch(data.starsMismatch ?? false);
           setStatus("done");
         } else {
           setStatus("fallback");
@@ -556,6 +561,13 @@ function HotelInlineSearch({
           ? `🏨 فنادق${starsLabel} في ${params?.city ?? ""} (رخيص → غالي)`
           : `🏨 Hotels${starsLabel} in ${params?.city ?? ""} (cheap → expensive)`}
       </Text>
+      {starsMismatch && params?.stars && params.stars > 0 && (
+        <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 6, textAlign: "center" }}>
+          {isAr
+            ? `⚠️ لم نجد فنادق ${params.stars}★ بالضبط — نعرض أقرب الخيارات المتاحة`
+            : `⚠️ No exact ${params.stars}★ match — showing closest available`}
+        </Text>
+      )}
       {hotels.map((h, idx) => (
         <Pressable
           key={idx}
