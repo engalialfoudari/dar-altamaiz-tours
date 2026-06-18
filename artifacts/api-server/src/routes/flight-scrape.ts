@@ -274,12 +274,16 @@ async function searchFlightsPuppeteer(params: {
     while (Date.now() - start < TIMEOUT_MS) {
       if (capturedFlightHtml && capturedSearchId) {
         const flights = parseFlightListHtml(capturedFlightHtml, from, to, depDate, capturedSearchId);
+        const resolvedUrl = knownSearchUrl ?? `${DT_HOME}/index.php/flight/search/${capturedSearchId}`;
         if (flights.length > 0) {
           await writeFile("/tmp/dt_flight_results_latest.html", capturedFlightHtml).catch(() => {});
-          return {
-            flights,
-            fallbackUrl: knownSearchUrl ?? `${DT_HOME}/index.php/flight/search/${capturedSearchId}`,
-          };
+          return { flights, fallbackUrl: resolvedUrl };
+        }
+        // XHR response captured but our HTML parser got 0 results —
+        // return the results page URL immediately so the client can open it
+        // rather than waiting the full 75 s timeout.
+        if (knownSearchUrl) {
+          return { flights: [], fallbackUrl: resolvedUrl };
         }
       }
 

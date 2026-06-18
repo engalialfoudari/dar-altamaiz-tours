@@ -265,7 +265,11 @@ function FlightInlineSearch({
   const [fromId, fromLabel, toId, toLabel, dep, ret, adultsStr] = parts;
   const adults = parseInt(adultsStr ?? "1") || 1;
 
-  const [status, setStatus] = React.useState<"loading" | "done" | "fallback">("loading");
+  // "loading"  — spinner, fetch in progress
+  // "waiting"  — 20 s passed, still fetching; show tap-to-open button
+  // "done"     — inline results available
+  // "fallback" — fetch completed, no inline results; auto-open with results URL
+  const [status, setStatus] = React.useState<"loading" | "waiting" | "done" | "fallback">("loading");
   const [flights, setFlights] = React.useState<ScrapedFlight[]>([]);
   const [elapsed, setElapsed] = React.useState(0);
   const hasFetched = useRef(false);
@@ -281,16 +285,20 @@ function FlightInlineSearch({
     if (hasFetched.current) return;
     hasFetched.current = true;
 
+    // After 20 s switch to "waiting" UI but keep the fetch alive so the server
+    // can return the real dt-tours.com results-page URL before we open anything.
+    const waitingTid = setTimeout(() => {
+      setStatus((s) => s === "loading" ? "waiting" : s);
+    }, 20_000);
+
     void (async () => {
       try {
-        const ctrl = new AbortController();
-        // 20s client window — puppeteer results arrive quickly when found;
-        // otherwise open dt-tours.com directly
-        const tid = setTimeout(() => ctrl.abort(), 20_000);
+        // No client-side abort — let the server respond (up to 75 s).
+        // The server now returns early once it has the searchId, so we get the
+        // correct results-page URL rather than having to fall back to homepage.
         const res = await fetch(`${apiBase}/flight-scrape`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: ctrl.signal,
           body: JSON.stringify({
             from: fromId, to: toId,
             fromLabel: fromLabel ?? fromId,
@@ -299,7 +307,7 @@ function FlightInlineSearch({
             adults,
           }),
         });
-        clearTimeout(tid);
+        clearTimeout(waitingTid);
         const data = await res.json() as { ok: boolean; flights?: ScrapedFlight[]; fallbackUrl?: string };
         if (data.fallbackUrl) fallbackUrlRef.current = data.fallbackUrl;
         if (data.ok && data.flights && data.flights.length > 0) {
@@ -307,27 +315,50 @@ function FlightInlineSearch({
           setStatus("done");
           return;
         }
-      } catch { /* timeout or network error — open dt-tours.com */ }
+      } catch { /* network error — fall back to dt-tours.com homepage */ }
       setStatus("fallback");
     })();
+
+    return () => clearTimeout(waitingTid);
   }, []);
 
   const openFlightSearch = () => {
     openInApp(fallbackUrlRef.current);
   };
 
-  // Auto-open the in-app browser the moment fallback is reached —
-  // user sees the search results without having to tap anything.
+  // Auto-open the in-app browser once the correct dt-tours.com results URL is
+  // available (status "fallback" = fetch completed, fallbackUrlRef updated).
+  // We do NOT auto-open at "waiting" because we don't have the results URL yet.
   useEffect(() => {
     if (status === "fallback") {
       openFlightSearch();
     }
-  // openFlightSearch reads a ref so it never changes identity; status is the only dep.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   if (status === "loading") {
     return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="flight" />;
+  }
+
+  // Still searching — give the user something to tap while we wait for the URL
+  if (status === "waiting") {
+    return (
+      <View style={styles.flightWaiting}>
+        <Text style={styles.flightWaitingText}>
+          {isAr
+            ? `✈️ جاري البحث… (${elapsed}ث)`
+            : `✈️ Searching flights… (${elapsed}s)`}
+        </Text>
+        <Pressable
+          style={({ pressed }) => [styles.flightCtaSmall, pressed && { opacity: 0.7 }]}
+          onPress={openFlightSearch}
+        >
+          <Text style={styles.flightCtaSmallText}>
+            {isAr ? "فتح dt-tours.com الآن" : "Open dt-tours.com now"}
+          </Text>
+        </Pressable>
+      </View>
+    );
   }
 
   if (status === "fallback") {
@@ -337,7 +368,7 @@ function FlightInlineSearch({
         onPress={openFlightSearch}
       >
         <Text style={styles.flightCtaText}>
-          {isAr ? "✈️ عرض الأسعار على dt-tours.com" : "✈️ View Prices on dt-tours.com"}
+          {isAr ? "✈️ عرض نتائج الرحلات على dt-tours.com" : "✈️ View Flight Results on dt-tours.com"}
         </Text>
       </Pressable>
     );
@@ -1908,6 +1939,36 @@ const styles = StyleSheet.create({
     color: "#D4AF37",
     fontSize: 13,
     fontFamily: "Inter_700Bold",
+  },
+  flightWaiting: {
+    marginTop: 8,
+    backgroundColor: "#0A1628",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#444",
+    gap: 8,
+  },
+  flightWaitingText: {
+    color: "#aaa",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  flightCtaSmall: {
+    backgroundColor: "transparent",
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#D4AF37",
+    alignSelf: "flex-start",
+  },
+  flightCtaSmallText: {
+    color: "#D4AF37",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
 
   inlineCta: {
