@@ -141,11 +141,12 @@ async function searchFlightsPuppeteer(params: {
   fromLabel: string; toLabel: string;
   depDate: string; retDate?: string;
   adults: number;
-}): Promise<ScrapedFlight[]> {
+}): Promise<{ flights: ScrapedFlight[]; fallbackUrl: string }> {
   const { from, to, depDate, retDate, adults } = params;
   const isRoundTrip = !!retDate;
   const depDDMMYYYY = toDateDDMMYYYY(depDate);
   const retDDMMYYYY = retDate ? toDateDDMMYYYY(retDate) : "";
+  const DT_HOME = "https://dt-tours.com";
 
   const [fromLoc, toLoc] = await Promise.all([
     lookupAirport(from),
@@ -156,12 +157,15 @@ async function searchFlightsPuppeteer(params: {
 
   let capturedFlightHtml: string | null = null;
   let capturedSearchId: string | null = null;
+  let knownSearchUrl: string | null = null;
 
   page.on("response", async (response) => {
     const url = response.url();
     if (!url.includes("flight_list")) return;
     const searchIdM = url.match(/search_id=(\d+)/);
     if (!searchIdM) return;
+    // As soon as we have a searchId we know the dt-tours results URL
+    knownSearchUrl = `${DT_HOME}/index.php/flight/search/${searchIdM[1]}`;
     try {
       const text = await response.text().catch(() => "");
       if (!text) return;
@@ -272,7 +276,10 @@ async function searchFlightsPuppeteer(params: {
         const flights = parseFlightListHtml(capturedFlightHtml, from, to, depDate, capturedSearchId);
         if (flights.length > 0) {
           await writeFile("/tmp/dt_flight_results_latest.html", capturedFlightHtml).catch(() => {});
-          return flights;
+          return {
+            flights,
+            fallbackUrl: knownSearchUrl ?? `${DT_HOME}/index.php/flight/search/${capturedSearchId}`,
+          };
         }
       }
 
@@ -280,6 +287,9 @@ async function searchFlightsPuppeteer(params: {
       const searchIdM = currentUrl.match(/\/flight\/search\/(\d+)/);
       if (searchIdM) {
         const searchId = searchIdM[1];
+        // Track the page URL as a known dt-tours search URL
+        if (!knownSearchUrl) knownSearchUrl = `${DT_HOME}/index.php/flight/search/${searchId}`;
+
         const domFlights = await page.evaluate(
           (sid: string, fromCode: string, toCode: string, dep: string) => {
             const cards = document.querySelectorAll(".rowresult.r-r-i");
@@ -329,13 +339,20 @@ async function searchFlightsPuppeteer(params: {
           searchId, from, to, depDate,
         ).catch(() => [] as ScrapedFlight[]);
 
-        if (domFlights.length > 0) return domFlights.slice(0, 8);
+        if (domFlights.length > 0) {
+          return {
+            flights: domFlights.slice(0, 8),
+            fallbackUrl: knownSearchUrl,
+          };
+        }
       }
 
       await new Promise((r) => setTimeout(r, 3_000));
     }
 
-    return [];
+    // Timed out — return the dt-tours search URL if puppeteer reached it,
+    // otherwise fall back to the homepage so the user can search manually
+    return { flights: [], fallbackUrl: knownSearchUrl ?? DT_HOME };
   } finally {
     await cleanup().catch(() => {});
   }
@@ -353,7 +370,7 @@ router.post("/flight-scrape", async (req, res) => {
   }
 
   try {
-    const flights = await searchFlightsPuppeteer({
+    const { flights, fallbackUrl } = await searchFlightsPuppeteer({
       from: from.toUpperCase(),
       to: to.toUpperCase(),
       fromLabel: fromLabel ?? from,
@@ -362,10 +379,10 @@ router.post("/flight-scrape", async (req, res) => {
       retDate,
       adults: Math.max(1, Math.min(9, Number(adults))),
     });
-    res.json({ ok: true, flights, count: flights.length });
+    res.json({ ok: true, flights, count: flights.length, fallbackUrl });
   } catch (err) {
     req.log.error({ err }, "Flight scrape failed");
-    res.status(502).json({ ok: false, error: err instanceof Error ? err.message : "Scrape failed" });
+    res.status(502).json({ ok: false, fallbackUrl: "https://dt-tours.com", error: err instanceof Error ? err.message : "Scrape failed" });
   }
 });
 

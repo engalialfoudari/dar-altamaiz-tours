@@ -269,6 +269,8 @@ function FlightInlineSearch({
   const [flights, setFlights] = React.useState<ScrapedFlight[]>([]);
   const [elapsed, setElapsed] = React.useState(0);
   const hasFetched = useRef(false);
+  // dt-tours.com results URL returned by the scraper (or homepage as last resort)
+  const fallbackUrlRef = useRef<string>("https://dt-tours.com");
 
   useEffect(() => {
     const timer = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -282,8 +284,8 @@ function FlightInlineSearch({
     void (async () => {
       try {
         const ctrl = new AbortController();
-        // 20s window: if puppeteer has results they come fast; if not,
-        // fall through to Kayak immediately
+        // 20s client window — puppeteer results arrive quickly when found;
+        // otherwise open dt-tours.com directly
         const tid = setTimeout(() => ctrl.abort(), 20_000);
         const res = await fetch(`${apiBase}/flight-scrape`, {
           method: "POST",
@@ -298,24 +300,20 @@ function FlightInlineSearch({
           }),
         });
         clearTimeout(tid);
-        const data = await res.json() as { ok: boolean; flights?: ScrapedFlight[] };
+        const data = await res.json() as { ok: boolean; flights?: ScrapedFlight[]; fallbackUrl?: string };
+        if (data.fallbackUrl) fallbackUrlRef.current = data.fallbackUrl;
         if (data.ok && data.flights && data.flights.length > 0) {
           setFlights(data.flights.slice(0, 5));
           setStatus("done");
           return;
         }
-      } catch { /* timeout or network error — fall through to Kayak */ }
+      } catch { /* timeout or network error — open dt-tours.com */ }
       setStatus("fallback");
     })();
   }, []);
 
   const openFlightSearch = () => {
-    // Kayak has clean URL-based pre-filled search that works from any IP.
-    // dt-tours.com form-submit doesn't work externally (requires their own session).
-    const kayakUrl = ret
-      ? `https://www.kayak.com/flights/${fromId}-${toId}/${dep}/${ret}/${adults}adults`
-      : `https://www.kayak.com/flights/${fromId}-${toId}/${dep}/${adults}adults`;
-    openInApp(kayakUrl);
+    openInApp(fallbackUrlRef.current);
   };
 
   // Auto-open the in-app browser the moment fallback is reached —
@@ -339,7 +337,7 @@ function FlightInlineSearch({
         onPress={openFlightSearch}
       >
         <Text style={styles.flightCtaText}>
-          {isAr ? "✈️ عرض الأسعار على Kayak" : "✈️ View Prices on Kayak"}
+          {isAr ? "✈️ عرض الأسعار على dt-tours.com" : "✈️ View Prices on dt-tours.com"}
         </Text>
       </Pressable>
     );
