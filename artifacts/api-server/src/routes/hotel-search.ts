@@ -257,35 +257,41 @@ async function scrapeDtToursHotels(params: {
               }
             }
 
-            // ── Improved star detection ──
-            // 1. Count filled star icon elements (fa-star, icon-star, etc.)
-            const filledIcons = row.querySelectorAll(
-              "i.fa-star:not(.fa-star-o):not(.fa-star-half), " +
-              "i[class*='fa-star']:not([class*='star-o']):not([class*='half']), " +
-              "span.fa-star, [class*='icon-star']:not([class*='empty']):not([class*='half']), " +
-              ".star-on, .star-filled, [class*='star_on'], [class*='star-active']"
-            ).length;
-
-            // 2. Count ★ unicode characters inside the star container
+            // ── Star detection (priority order matters) ──
+            // 1. Unicode ★ inside a star/rating container — most reliable
+            //    because classification stars use ★ while review stars use icon fonts
             const starsEl = row.querySelector(
               "[class*='star'], .rating, [data-star], [class*='rating'], [class*='stars']"
             );
             const starsInner = (starsEl as HTMLElement)?.innerText ?? "";
             const unicodeCount = (starsInner.match(/★/g) ?? []).length;
 
-            // 3. data-star attribute on any element
+            // 2. data-star attribute
             const dataStarEl = row.querySelector("[data-star]");
             const dataStar = dataStarEl ? parseInt((dataStarEl as HTMLElement).getAttribute("data-star") ?? "0") : 0;
 
-            // 4. "X Star" text inside a dedicated rating badge / span
+            // 3. "X Star" text inside a dedicated badge
             const ratingBadge = row.querySelector(".rating-badge, [class*='star-label'], [class*='rating-text']");
             const ratingText = (ratingBadge as HTMLElement)?.innerText ?? "";
             const ratingTextMatch = ratingText.match(/(\d)\s*[Ss]tar/);
 
+            // 4. Count filled fa-star icons ONLY inside a dedicated hotel-category
+            //    container — NOT the whole row (avoids picking up 5/5 review stars)
+            const starCategoryEl = row.querySelector(
+              ".hotel-star, .htl-star, [class*='hotel-star'], [class*='htl-star'], " +
+              ".star-rating, [class*='star-rating'], .category-star, [class*='category']"
+            );
+            const filledIcons = starCategoryEl
+              ? starCategoryEl.querySelectorAll(
+                  "i.fa-star:not(.fa-star-o):not(.fa-star-half), " +
+                  ".star-on, .star-filled, [class*='star_on']"
+                ).length
+              : 0;
+
             const stars =
-              filledIcons > 0 ? filledIcons :
               unicodeCount > 0 ? unicodeCount :
               dataStar > 0 ? dataStar :
+              filledIcons > 0 ? filledIcons :
               ratingTextMatch ? parseInt(ratingTextMatch[1]) : 0;
 
             const thumbEl = row.querySelector("img");
