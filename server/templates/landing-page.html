@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Dar AlTamaiz Tours — Curated Tours &amp; Travel Experiences</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Dar AlTamaiz Tours (D.T. Tours) offers premium guided tours and curated travel packages. Install the app on your iPhone or download for Android." />
+    <link rel="canonical" href="BASE_URL_PLACEHOLDER/" />
+
+    <!-- ── PWA / Home Screen ───────────────────────────────────────────── -->
+    <!-- ASSET_BASE_PLACEHOLDER is substituted server-side with whichever
+         mount prefix (e.g. /app, /mobile, or "") this page was actually
+         requested through, so these never resolve against a different
+         artifact's domain root. -->
+    <link rel="manifest" href="ASSET_BASE_PLACEHOLDER/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="D.T. Tours" />
+    <meta name="theme-color" content="#0A1628" />
+    <link rel="apple-touch-icon" href="ASSET_BASE_PLACEHOLDER/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="ASSET_BASE_PLACEHOLDER/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="ASSET_BASE_PLACEHOLDER/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="ASSET_BASE_PLACEHOLDER/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="ASSET_BASE_PLACEHOLDER/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="ASSET_BASE_PLACEHOLDER/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="ASSET_BASE_PLACEHOLDER/icons/icon-512.png" />
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Dar AlTamaiz Tours" />
+    <meta property="og:title" content="Dar AlTamaiz Tours — Curated Tours &amp; Travel Experiences" />
+    <meta property="og:description" content="Discover and book premium guided tours and travel packages with Dar AlTamaiz Tours. Available on iOS and Android." />
+    <meta property="og:url" content="BASE_URL_PLACEHOLDER/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://dt-tours.com/images/og-cover.jpg" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Dar AlTamaiz Tours — Curated Tours &amp; Travel Experiences" />
+    <meta name="twitter:description" content="Discover and book premium guided tours and travel packages with Dar AlTamaiz Tours. Available on iOS and Android." />
+    <meta name="twitter:image" content="https://dt-tours.com/images/og-cover.jpg" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "BASE_URL_PLACEHOLDER/#organization",
+          "name": "Dar AlTamaiz Tours",
+          "alternateName": "D.T. Tours",
+          "url": "https://dt-tours.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://dt-tours.com/images/og-cover.jpg",
+            "width": 1200,
+            "height": 630
+          },
+          "foundingDate": "2008",
+          "sameAs": [
+            "https://dt-tours.com/"
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "url": "https://wa.me/96590087797",
+            "availableLanguage": ["English", "Arabic"]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "BASE_URL_PLACEHOLDER/#website",
+          "url": "BASE_URL_PLACEHOLDER/",
+          "name": "Dar AlTamaiz Tours",
+          "description": "Dar AlTamaiz Tours (D.T. Tours) offers premium guided tours and curated travel packages. Install the app on your iPhone or download for Android.",
+          "publisher": {
+            "@id": "BASE_URL_PLACEHOLDER/#organization"
+          }
+        },
+        {
+          "@type": "TravelAgency",
+          "@id": "BASE_URL_PLACEHOLDER/#travelagency",
+          "name": "Dar AlTamaiz Tours",
+          "alternateName": "D.T. Tours",
+          "description": "Premium guided tours and curated travel experiences. Dar AlTamaiz Tours has served travellers since 2008 with high-quality packages and dedicated support.",
+          "url": "https://dt-tours.com/",
+          "foundingDate": "2008",
+          "image": "https://dt-tours.com/images/og-cover.jpg",
+          "parentOrganization": {
+            "@id": "BASE_URL_PLACEHOLDER/#organization"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "BASE_URL_PLACEHOLDER/#app",
+          "name": "Dar AlTamaiz Tours",
+          "alternateName": "D.T. Tours",
+          "applicationCategory": "TravelApplication",
+          "operatingSystem": "iOS, Android",
+          "url": "BASE_URL_PLACEHOLDER/",
+          "installUrl": "BASE_URL_PLACEHOLDER/",
+          "description": "Install the Dar AlTamaiz Tours app on iOS or Android to discover and book curated tours and travel packages.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "screenshot": "https://dt-tours.com/images/og-cover.jpg",
+          "publisher": {
+            "@id": "BASE_URL_PLACEHOLDER/#organization"
+          }
+        }
+      ]
+    }
+    </script>
+
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+
+      /* ── Shared reset ─────────────────────────────────────────────────── */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #222;
+        line-height: 1.5;
+      }
+
+      /* ══════════════════════════════════════════════════════════════════
+         STANDALONE SHELL  (shown only when launched from iOS Home Screen)
+      ══════════════════════════════════════════════════════════════════ */
+      #standalone-shell {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #0A1628;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-top: env(safe-area-inset-top, 44px);
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+      }
+
+      .sa-hero {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 48px 24px 32px;
+      }
+      .sa-icon {
+        width: 96px;
+        height: 96px;
+        border-radius: 22px;
+        border: 2.5px solid #C9A84C;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 24px rgba(201,168,76,0.25);
+      }
+      .sa-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #C9A84C;
+        letter-spacing: 0.5px;
+        margin: 0 0 4px;
+        text-align: center;
+      }
+      .sa-subtitle {
+        font-size: 14px;
+        color: rgba(255,255,255,0.55);
+        margin: 0 0 36px;
+        text-align: center;
+      }
+
+      .sa-cards {
+        width: 100%;
+        max-width: 420px;
+        padding: 0 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .sa-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(201,168,76,0.25);
+        border-radius: 14px;
+        text-decoration: none;
+        color: #fff;
+        transition: background 0.15s, border-color 0.15s;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .sa-card:active {
+        background: rgba(201,168,76,0.12);
+        border-color: rgba(201,168,76,0.6);
+      }
+      .sa-card-icon {
+        font-size: 24px;
+        width: 40px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+      .sa-card-text strong {
+        display: block;
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 2px;
+      }
+      .sa-card-text span {
+        font-size: 12px;
+        color: rgba(255,255,255,0.5);
+      }
+      .sa-card-chevron {
+        margin-left: auto;
+        font-size: 16px;
+        color: rgba(201,168,76,0.6);
+      }
+
+      .sa-footer {
+        margin-top: 40px;
+        padding: 0 24px 20px;
+        text-align: center;
+      }
+      .sa-footer-text {
+        font-size: 11px;
+        color: rgba(255,255,255,0.25);
+      }
+
+      /* ── In-app browser panel ───────────────────────────────────────── */
+      #sa-browser {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        flex-direction: column;
+        background: #0A1628;
+      }
+      .sa-browser-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 12px 0 4px;
+        padding-top: env(safe-area-inset-top, 44px);
+        height: calc(52px + env(safe-area-inset-top, 44px));
+        background: #0A1628;
+        border-bottom: 1px solid rgba(201,168,76,0.25);
+        flex-shrink: 0;
+      }
+      .sa-back-btn {
+        background: none;
+        border: none;
+        color: #C9A84C;
+        font-size: 17px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        -webkit-tap-highlight-color: transparent;
+        border-radius: 8px;
+      }
+      .sa-back-btn:active { opacity: 0.6; }
+      .sa-browser-title {
+        flex: 1;
+        font-size: 14px;
+        font-weight: 600;
+        color: rgba(255,255,255,0.75);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #sa-iframe {
+        flex: 1;
+        width: 100%;
+        border: none;
+        background: #fff;
+        min-height: 0;
+      }
+      .sa-iframe-blocked {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 32px;
+        text-align: center;
+        color: rgba(255,255,255,0.7);
+        font-size: 15px;
+      }
+      .sa-open-safari-btn {
+        padding: 14px 28px;
+        background: #C9A84C;
+        color: #0A1628;
+        font-weight: 700;
+        font-size: 15px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      /* ══════════════════════════════════════════════════════════════════
+         BROWSER / INSTALL PAGE  (shown in normal browser visits)
+      ══════════════════════════════════════════════════════════════════ */
+      #browser-page {
+        min-height: 100vh;
+        padding: 32px 20px;
+        text-align: center;
+        background: #fff;
+        color: #222;
+      }
+      .wrapper {
+        max-width: 480px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0;
+        color: #111;
+      }
+      .subtitle {
+        font-size: 15px;
+        color: #666;
+        margin-top: 8px;
+        margin-bottom: 32px;
+      }
+      .loading { display: none; margin: 60px 0; }
+      .spinner {
+        border: 2px solid #ddd;
+        border-top-color: #333;
+        border-radius: 50%;
+        width: 32px; height: 32px;
+        animation: spin 0.8s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .loading-text { font-size: 16px; color: #444; }
+      .content { display: block; }
+
+      /* ── iPhone Add-to-Home-Screen banner ───────────────────────────── */
+      .pwa-ios-banner {
+        display: none;
+        background: #0A1628;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 28px;
+        color: #fff;
+        text-align: left;
+        position: relative;
+      }
+      .pwa-ios-banner h2 {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 6px;
+        color: #C9A84C;
+      }
+      .pwa-ios-banner p {
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+        margin: 0 0 14px;
+        line-height: 1.5;
+      }
+      .pwa-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.8);
+      }
+      .pwa-step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .pwa-step-num {
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        border: 1px solid rgba(201,168,76,0.5);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 600;
+        color: #C9A84C;
+        flex-shrink: 0;
+      }
+
+      /* ── About section ──────────────────────────────────────────────── */
+      .about-section {
+        margin-bottom: 32px;
+        padding: 20px 24px;
+        border: 1px solid #e8e8e8;
+        border-radius: 12px;
+        background: #f9f9f9;
+        text-align: left;
+      }
+      .about-text { font-size: 15px; color: #555; margin: 0 0 14px; line-height: 1.6; }
+      .about-links { display: flex; flex-wrap: wrap; gap: 10px; }
+      .about-link {
+        font-size: 14px; font-weight: 500; color: #111;
+        text-decoration: underline; text-underline-offset: 2px;
+        transition: color 0.15s;
+      }
+      .about-link:hover { color: #555; }
+
+      /* ── Steps ──────────────────────────────────────────────────────── */
+      .steps-container { display: flex; flex-direction: column; gap: 20px; }
+      .step {
+        padding: 24px;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        text-align: center;
+        background: #fafafa;
+      }
+      .step-header {
+        display: flex; align-items: center; justify-content: center;
+        gap: 10px; margin-bottom: 12px;
+      }
+      .step-number {
+        width: 28px; height: 28px;
+        border: 1px solid #999; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 600; font-size: 14px; flex-shrink: 0; color: #555;
+      }
+      .step-title { font-size: 18px; font-weight: 600; margin: 0; color: #222; }
+      .step-description { font-size: 14px; margin-bottom: 16px; color: #666; }
+
+      /* ── Store buttons ──────────────────────────────────────────────── */
+      .store-buttons {
+        display: flex; flex-direction: column; gap: 6px;
+        justify-content: center; flex-wrap: wrap;
+      }
+      .store-button {
+        display: inline-flex; align-items: center; justify-content: center;
+        gap: 8px; padding: 12px 20px;
+        font-size: 14px; font-weight: 500;
+        border: 1px solid #ccc; border-radius: 8px;
+        text-decoration: none; color: #333; background: #fff;
+        transition: all 0.15s;
+      }
+      .store-button:hover { background: #f5f5f5; border-color: #999; }
+      .store-link {
+        display: inline-flex; align-items: center; justify-content: center;
+        gap: 6px; padding: 8px 0;
+        font-size: 13px; font-weight: 400;
+        text-decoration: underline; text-underline-offset: 2px;
+        color: #666; background: none; border: none;
+        transition: color 0.15s;
+      }
+      .store-link:hover { color: #333; }
+      .store-link .store-icon { width: 14px; height: 14px; }
+      .store-icon { width: 18px; height: 18px; }
+
+      /* ── QR section ─────────────────────────────────────────────────── */
+      .qr-section { background: #333; color: #fff; border-color: #333; }
+      .qr-section .step-number { border-color: rgba(255,255,255,0.5); color: #fff; }
+      .qr-section .step-title { color: #fff; }
+      .qr-section .step-description { color: rgba(255,255,255,0.7); }
+      .qr-code {
+        width: 180px; height: 180px;
+        margin: 0 auto 16px;
+        background: #fff; border-radius: 8px; padding: 12px;
+      }
+      .qr-code canvas { width: 100%; height: 100%; }
+      .open-button {
+        display: inline-block; padding: 12px 24px;
+        font-size: 14px; font-weight: 500;
+        border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+        text-decoration: none; color: #333; background: #fff;
+        transition: opacity 0.15s;
+      }
+      .open-button:hover { opacity: 0.9; }
+
+      /* ── Desktop ────────────────────────────────────────────────────── */
+      @media (min-width: 768px) {
+        #browser-page {
+          padding: 48px 32px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .wrapper { max-width: 720px; }
+        h1 { font-size: 32px; margin-bottom: 10px; }
+        .subtitle { font-size: 16px; margin-bottom: 40px; }
+        .steps-container { flex-direction: row; gap: 20px; align-items: stretch; }
+        .step { flex: 1; display: flex; flex-direction: column; padding: 28px; }
+        .step-description { flex-grow: 1; }
+        .store-buttons { flex-direction: column; gap: 10px; }
+        .qr-code { width: 200px; height: 200px; }
+      }
+      @media (min-width: 1024px) {
+        .wrapper { max-width: 800px; }
+        h1 { font-size: 36px; }
+        .steps-container { gap: 28px; }
+        .step { padding: 32px; }
+      }
+
+      /* ── Dark mode (browser page only) ─────────────────────────────── */
+      @media (prefers-color-scheme: dark) {
+        #browser-page { background: #0d0d0d; color: #e0e0e0; }
+        h1 { color: #f5f5f5; }
+        .subtitle { color: #999; }
+        .spinner { border-color: #444; border-top-color: #ccc; }
+        .loading-text { color: #aaa; }
+        .step { border-color: #333; background: #1a1a1a; }
+        .step-number { border-color: #666; color: #bbb; }
+        .step-title { color: #f0f0f0; }
+        .step-description { color: #888; }
+        .store-button { border-color: #444; color: #e0e0e0; background: #222; }
+        .store-button:hover { background: #2a2a2a; border-color: #666; }
+        .store-link { color: #888; }
+        .store-link:hover { color: #ccc; }
+        .qr-section { background: #111; border-color: #333; }
+        .qr-section .step-number { border-color: rgba(255,255,255,0.4); }
+        .qr-section .step-description { color: rgba(255,255,255,0.6); }
+        .open-button { background: #f0f0f0; color: #111; }
+        .open-button:hover { background: #e0e0e0; }
+        .about-section { background: #1a1a1a; border-color: #333; }
+        .about-text { color: #888; }
+        .about-link { color: #e0e0e0; }
+        .about-link:hover { color: #aaa; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- ══ STANDALONE SHELL (Home Screen PWA mode) ══════════════════════ -->
+    <div id="standalone-shell">
+      <div class="sa-hero">
+        <img class="sa-icon" src="/icons/icon-192.png" alt="D.T. Tours" />
+        <div class="sa-title">D.T. Tours · تميز</div>
+        <div class="sa-subtitle">Your Trusted Travel Partner Since 2008</div>
+      </div>
+
+      <div class="sa-cards">
+        <div class="sa-card" onclick="openPage('https://dt-tours.com/','Browse Tours')">
+          <div class="sa-card-icon">🌍</div>
+          <div class="sa-card-text">
+            <strong>Browse Tours</strong>
+            <span>Explore all packages &amp; destinations</span>
+          </div>
+          <div class="sa-card-chevron">›</div>
+        </div>
+
+        <div class="sa-card" onclick="openPage('https://dt-tours.com/index.php/tours/search/','Search Packages')">
+          <div class="sa-card-icon">✈️</div>
+          <div class="sa-card-text">
+            <strong>Search Packages</strong>
+            <span>Find your next adventure</span>
+          </div>
+          <div class="sa-card-chevron">›</div>
+        </div>
+
+        <div class="sa-card" onclick="openPage('https://dt-tours.com/?__app=login','My Account')">
+          <div class="sa-card-icon">👤</div>
+          <div class="sa-card-text">
+            <strong>My Account</strong>
+            <span>Log in or register</span>
+          </div>
+          <div class="sa-card-chevron">›</div>
+        </div>
+
+        <div class="sa-card" onclick="openPage('https://dt-tours.com/index.php/contact/','Contact Us')">
+          <div class="sa-card-icon">💬</div>
+          <div class="sa-card-text">
+            <strong>Contact Us</strong>
+            <span>Get in touch with our team</span>
+          </div>
+          <div class="sa-card-chevron">›</div>
+        </div>
+
+        <div class="sa-card" onclick="openPage('https://wa.me/96590087797','WhatsApp')">
+          <div class="sa-card-icon">📱</div>
+          <div class="sa-card-text">
+            <strong>WhatsApp Support</strong>
+            <span>Chat with us directly</span>
+          </div>
+          <div class="sa-card-chevron">›</div>
+        </div>
+      </div>
+
+      <div class="sa-footer">
+        <div class="sa-footer-text">Dar AlTamaiz Tours © 2008–2026</div>
+      </div>
+    </div>
+
+    <!-- ══ IN-APP BROWSER PANEL ══════════════════════════════════════════ -->
+    <div id="sa-browser">
+      <div class="sa-browser-bar">
+        <button class="sa-back-btn" onclick="closeInApp()">‹ Home</button>
+        <div class="sa-browser-title" id="sa-browser-title">D.T. Tours</div>
+      </div>
+      <iframe id="sa-iframe" src="" allow="forms; scripts; same-origin"></iframe>
+      <div class="sa-iframe-blocked" id="sa-blocked" style="display:none;">
+        <div style="font-size:40px;">🌐</div>
+        <p>This page needs to open in your browser.</p>
+        <a id="sa-blocked-link" href="#" class="sa-open-safari-btn" target="_blank" rel="noopener">Open in Safari</a>
+      </div>
+    </div>
+
+    <!-- ══ BROWSER / INSTALL PAGE ════════════════════════════════════════ -->
+    <div id="browser-page">
+      <div class="wrapper">
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <div class="loading-text">Opening in Expo Go...</div>
+        </div>
+
+        <div class="content" id="content">
+          <h1>Dar AlTamaiz Tours</h1>
+          <p class="subtitle">Premium guided tours &amp; curated travel experiences — install our app below</p>
+
+          <!-- iPhone PWA install instructions (shown only on iOS) -->
+          <div class="pwa-ios-banner" id="pwa-ios-banner">
+            <h2>📲 Install on your iPhone</h2>
+            <p>Add this page to your Home Screen for a full-screen app experience — no App Store required.</p>
+            <div class="pwa-steps">
+              <div class="pwa-step">
+                <div class="pwa-step-num">1</div>
+                <span>Tap the <strong>Share</strong> button <strong>⎙</strong> at the bottom of Safari</span>
+              </div>
+              <div class="pwa-step">
+                <div class="pwa-step-num">2</div>
+                <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+              </div>
+              <div class="pwa-step">
+                <div class="pwa-step-num">3</div>
+                <span>Tap <strong>"Add"</strong> — the D.T. Tours icon appears on your home screen</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="about-section">
+            <p class="about-text">
+              Dar AlTamaiz Tours (D.T. Tours) connects travellers with high-quality guided tours,
+              travel packages, and unforgettable experiences. Browse destinations and book directly
+              through our website or mobile app.
+            </p>
+            <div class="about-links">
+              <a href="https://dt-tours.com/" class="about-link">Visit our website</a>
+              <a href="https://dt-tours.com/index.php/tours/search/" class="about-link">Browse tours</a>
+              <a href="https://dt-tours.com/index.php/contact/" class="about-link">Contact us</a>
+            </div>
+          </div>
+
+          <div class="steps-container">
+            <div class="step">
+              <div class="step-header">
+                <div class="step-number">1</div>
+                <h2 class="step-title">Download Expo Go</h2>
+              </div>
+              <p class="step-description">
+                Expo Go is a free app to test mobile apps
+              </p>
+              <div class="store-buttons" id="store-buttons">
+                <a id="app-store-btn" href="https://apps.apple.com/app/id982107779" class="store-button" target="_blank">
+                  <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                  </svg>
+                  App Store
+                </a>
+                <a id="play-store-btn" href="https://play.google.com/store/apps/details?id=host.exp.exponent" class="store-button" target="_blank">
+                  <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+                  </svg>
+                  Google Play
+                </a>
+              </div>
+            </div>
+
+            <div class="step qr-section">
+              <div class="step-header">
+                <div class="step-number">2</div>
+                <h2 class="step-title">Scan QR Code</h2>
+              </div>
+              <p class="step-description">Use your phone's camera or Expo Go</p>
+              <div class="qr-code" id="qr-code"></div>
+              <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button">Open in Expo Go</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+    <script>
+      (function () {
+        // ── In-app browser helpers ─────────────────────────────────────
+        window.openPage = function(url, title) {
+          var browser  = document.getElementById('sa-browser');
+          var iframe   = document.getElementById('sa-iframe');
+          var blocked  = document.getElementById('sa-blocked');
+          var titleEl  = document.getElementById('sa-browser-title');
+          var link     = document.getElementById('sa-blocked-link');
+
+          titleEl.textContent = title || 'D.T. Tours';
+          blocked.style.display = 'none';
+          iframe.style.display  = 'block';
+          iframe.src = url;
+          browser.style.display = 'flex';
+
+          // If the iframe can't load (X-Frame-Options / CSP), show fallback
+          iframe.onerror = function() {
+            iframe.style.display = 'none';
+            link.href = url;
+            blocked.style.display = 'flex';
+          };
+          // Timeout fallback: if src didn't fire load within 8s show open-in-safari
+          var timeout = setTimeout(function() {
+            try {
+              // Accessing contentDocument throws if cross-origin blocked
+              var doc = iframe.contentDocument || iframe.contentWindow.document;
+              if (!doc || doc.URL === 'about:blank') {
+                iframe.style.display = 'none';
+                link.href = url;
+                blocked.style.display = 'flex';
+              }
+            } catch(e) {
+              iframe.style.display = 'none';
+              link.href = url;
+              blocked.style.display = 'flex';
+            }
+          }, 8000);
+          iframe.onload = function() { clearTimeout(timeout); };
+        };
+
+        window.closeInApp = function() {
+          var browser = document.getElementById('sa-browser');
+          var iframe  = document.getElementById('sa-iframe');
+          browser.style.display = 'none';
+          iframe.src = '';
+        };
+
+        // ── Standalone (PWA Home Screen) detection ─────────────────────
+        var isStandalone =
+          window.navigator.standalone === true ||
+          window.matchMedia('(display-mode: standalone)').matches;
+
+        if (isStandalone) {
+          document.getElementById('standalone-shell').style.display = 'flex';
+          document.getElementById('browser-page').style.display = 'none';
+          return;
+        }
+
+        // ── Browser mode ───────────────────────────────────────────────
+        var ua = navigator.userAgent;
+        var isAndroid = /Android/i.test(ua);
+        var isIOS =
+          /iPhone|iPad|iPod/i.test(ua) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        // Show the iOS install banner only on iPhone/iPad in Safari
+        if (isIOS) {
+          var banner = document.getElementById('pwa-ios-banner');
+          if (banner) banner.style.display = 'block';
+        }
+
+        var deepLink = 'exps://EXPS_URL_PLACEHOLDER';
+        var loadingEl = document.getElementById('loading');
+        var contentEl = document.getElementById('content');
+
+        // Adjust store buttons based on platform
+        var appStoreBtn = document.getElementById('app-store-btn');
+        var playStoreBtn = document.getElementById('play-store-btn');
+        var storeButtonsContainer = document.getElementById('store-buttons');
+        if (isIOS) {
+          playStoreBtn.className = 'store-link';
+          storeButtonsContainer.appendChild(playStoreBtn);
+        } else if (isAndroid) {
+          appStoreBtn.className = 'store-link';
+          storeButtonsContainer.insertBefore(playStoreBtn, appStoreBtn);
+        }
+
+        // QR code
+        if (typeof QRCodeStyling !== 'undefined') {
+          var qrCode = new QRCodeStyling({
+            width: 400, height: 400,
+            data: deepLink,
+            dotsOptions: { color: '#333333', type: 'rounded' },
+            backgroundOptions: { color: '#ffffff' },
+            cornersSquareOptions: { type: 'extra-rounded' },
+            cornersDotOptions: { type: 'dot' },
+            qrOptions: { errorCorrectionLevel: 'H' },
+          });
+          qrCode.append(document.getElementById('qr-code'));
+        }
+
+        // Auto-open Expo Go deep link on mobile (not iOS — they already see the banner)
+        if (isAndroid) {
+          loadingEl.style.display = 'block';
+          contentEl.style.display = 'none';
+          window.location.href = deepLink;
+          setTimeout(function () {
+            loadingEl.style.display = 'none';
+            contentEl.style.display = 'block';
+          }, 500);
+        }
+
+        // ── Service Worker registration ────────────────────────────────
+        // Scoped to this page's own mount prefix (not domain root) — a page
+        // served under a sub-path can't register a wider scope anyway, and
+        // registering against "/" here would target a different artifact.
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('ASSET_BASE_PLACEHOLDER/sw.js', { scope: 'ASSET_BASE_PLACEHOLDER/' }).catch(function () {});
+        }
+      })();
+    </script>
+  </body>
+</html>

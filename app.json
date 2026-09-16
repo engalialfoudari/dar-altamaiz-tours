@@ -1,0 +1,108 @@
+{
+  "expo": {
+    "name": "D.T. Tours",
+    "slug": "dttours",
+    "version": "1.0.2",
+    "owner": "engalialfoudari",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-icon-new.png",
+    "scheme": "dttours",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 5000,
+      "checkAutomatically": "ON_LOAD",
+      "url": "https://u.expo.dev/193bf2d0-8d16-482e-a165-8869c46042f7"
+    },
+    "splash": {
+      "image": "./assets/images/dt-tours-logo-email.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "icon": "./assets/images/ios-icon-1024.png",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Your location is used only to place an accurate delivery pin for your store order."
+      },
+      "bundleIdentifier": "com.dttours.app"
+    },
+    "android": {
+      "versionCode": 8,
+      "googleServicesFile": "./google-services.json",
+      "statusBar": {
+        "hidden": true,
+        "translucent": true
+      },
+      "navigationBar": {
+        "visible": "immersive"
+      },
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.dttours.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "backgroundColor": "#0A1628"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/app-icon-new.png",
+      "bundler": "metro",
+      "output": "static",
+      "name": "DT Tours App - Your next trip starts here !",
+      "shortName": "DT Tours App",
+      "display": "standalone",
+      "themeColor": "#0A1628",
+      "backgroundColor": "#0A1628",
+      "orientation": "portrait"
+    },
+    "plugins": [
+      "./plugins/withNewArch",
+      "./plugins/withAndroidPackaging",
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-web-browser",
+      "@clerk/expo-google-signin",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow DT Tours to use your location to place an accurate delivery pin."
+        }
+      ],
+      "expo-updates",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/app-icon-new.png",
+          "color": "#D4AF37",
+          "defaultChannel": "dttoursRetention",
+          "sounds": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "193bf2d0-8d16-482e-a165-8869c46042f7"
+      }
+    }
+  }
+}

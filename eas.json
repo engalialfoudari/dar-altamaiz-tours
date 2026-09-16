@@ -1,0 +1,29 @@
+{
+  "cli": { "version": ">= 10.0.0" },
+  "build": {
+    "preview": {
+      "channel": "preview",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "ORG_GRADLE_PROJECT_newArchEnabled": "true",
+        "EXPO_PUBLIC_API_BASE": "https://tours-dar-tamaiz--engalialfoudari.replit.app/api"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "ORG_GRADLE_PROJECT_newArchEnabled": "true",
+        "EXPO_PUBLIC_API_BASE": "https://tours-dar-tamaiz--engalialfoudari.replit.app/api"
+      }
+    }
+  }
+}
