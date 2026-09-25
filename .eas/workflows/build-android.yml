@@ -1,6 +1,6 @@
 name: Build Android Play Store AAB
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 jobs:
   build_android:
     type: build

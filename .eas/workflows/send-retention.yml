@@ -1,6 +1,6 @@
 name: Publish Android legacy OTA
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 jobs:
   update:
     type: update
