@@ -2,7 +2,7 @@
   "expo": {
     "name": "D.T. Tours",
     "slug": "dttours",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "owner": "engalialfoudari",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-new.png",
@@ -31,7 +31,7 @@
       "bundleIdentifier": "com.dttours.app"
     },
     "android": {
-      "versionCode": 8,
+      "versionCode": 11,
       "googleServicesFile": "./google-services.json",
       "statusBar": {
         "hidden": true,
@@ -100,6 +100,7 @@
       "reactCompiler": true
     },
     "extra": {
+      "EXPO_PUBLIC_CLERK_GOOGLE_WEB_CLIENT_ID": "441566823391-ptto4od848i7852bqd3m9lm3uh263ih5.apps.googleusercontent.com",
       "eas": {
         "projectId": "193bf2d0-8d16-482e-a165-8869c46042f7"
       }

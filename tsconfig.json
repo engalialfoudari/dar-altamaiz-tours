@@ -23,10 +23,10 @@
   ],
   "references": [
     {
-      "path": "../../lib/booking-rules"
+      "path": "./packages/booking-rules"
     },
     {
-      "path": "../../lib/api-client-react"
+      "path": "./packages/api-client-react"
     }
   ]
 }

@@ -42,8 +42,9 @@ import { MembersOffersScreen } from "@/components/MembersOffersScreen";
 import { useCart } from "@/lib/cartContext";
 import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
 import { FlightResultsScreen } from "@/components/FlightResultsScreen";
+import { FlightApiResultsScreen } from "@/components/FlightApiResultsScreen";
 import { FlightSearchScreen } from "@/components/FlightSearchScreen";
-import type { FlightSearchValues } from "@/lib/flightSearch";
+import { isSampleFlightPreviewUrl, type FlightSearchValues } from "@/lib/flightSearch";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import colors from "@/constants/colors";
 import {
@@ -1612,6 +1613,7 @@ export default function HomeScreen() {
     hotelPaymentOrderId?: string | string[];
     hotelPaymentStatus?: string | string[];
     postAuth?: string | string[];
+    portalAuth?: string | string[];
   }>();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -1635,6 +1637,9 @@ export default function HomeScreen() {
   const postAuthDestination = Array.isArray(paymentRouteParams.postAuth)
     ? paymentRouteParams.postAuth[0]
     : paymentRouteParams.postAuth;
+  const portalAuth = Array.isArray(paymentRouteParams.portalAuth)
+    ? paymentRouteParams.portalAuth[0]
+    : paymentRouteParams.portalAuth;
   const [phase, setPhase] = useState<"welcome" | "transitioning" | "shell">(
     postAuthDestination === "home" ? "shell" : "welcome",
   );
@@ -1643,7 +1648,7 @@ export default function HomeScreen() {
   const navSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
-  const [forceShowProfile, setForceShowProfile] = useState(false);
+  const [forceShowProfile, setForceShowProfile] = useState(portalAuth === "1");
   const [forceShowRequests, setForceShowRequests] = useState(false);
   const [profileScreenOpen, setProfileScreenOpen] = useState(false);
   const [homeLang, setHomeLang] = useState<HomeLang>("en");
@@ -2147,15 +2152,26 @@ export default function HomeScreen() {
       {flightResultsUrl && (
         <View style={[layerStyle, styles.nativeTravelLayer]}>
           <View style={{ flex: 1 }}>
-            <FlightResultsScreen
-              url={flightResultsUrl}
-              lang={homeLang}
-              onBack={() => {
-                setFlightResultsUrl(null);
-                setNativeScreen("flights");
-              }}
-              onClose={returnToMainHome}
-            />
+            {isSampleFlightPreviewUrl(flightResultsUrl)
+              ? <FlightResultsScreen
+                  url={flightResultsUrl}
+                  lang={homeLang}
+                  onBack={() => {
+                    setFlightResultsUrl(null);
+                    setNativeScreen("flights");
+                  }}
+                  onClose={returnToMainHome}
+                />
+              : <FlightApiResultsScreen
+                  url={flightResultsUrl}
+                  values={flightSearchDraft}
+                  lang={homeLang}
+                  onBack={() => {
+                    setFlightResultsUrl(null);
+                    setNativeScreen("flights");
+                  }}
+                  onClose={returnToMainHome}
+                />}
           </View>
           <BottomTabBar
             activeTab="home"

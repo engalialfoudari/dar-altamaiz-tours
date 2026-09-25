@@ -57,14 +57,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
     });
-    if (__DEV__) {
-      AsyncStorage.getItem(STOCK_STORAGE_KEY).then((data) => {
-        if (data) try {
-          const parsed = JSON.parse(data);
-          if (parsed && typeof parsed === "object") setStockByProductId(parsed);
-        } catch {}
-      });
-    }
+    AsyncStorage.getItem(STOCK_STORAGE_KEY).then((data) => {
+      if (data) try {
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === "object") setStockByProductId(parsed);
+      } catch {}
+    });
   }, []);
 
   useEffect(() => {
@@ -73,7 +71,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetch(`${apiBase}/store/products`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) return;
-        applyCatalog(parseServerCatalog(await response.json()));
+        const payload = await response.json();
+        applyCatalog(parseServerCatalog(payload));
+        const rows = Array.isArray(payload) ? payload : payload?.products;
+        const stock: Record<string, number> = {};
+        if (Array.isArray(rows)) rows.forEach((row: any) => {
+          const id = String(row.product_id ?? row.productId ?? row.id ?? "");
+          const available = Number(row.available_stock ?? row.availableStock ?? row.stock);
+          if (id && Number.isFinite(available)) stock[id] = Math.max(0, Math.floor(available));
+        });
+        setStock(stock);
       })
       .catch(() => {});
     return () => controller.abort();
@@ -86,7 +93,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const existing = current.find(i => i.productId === productId);
       const nextQuantity = (existing?.quantity || 0) + safeQuantity;
       const stock = stockByProductId[productId];
-      if (__DEV__ && stock !== undefined && nextQuantity > stock) {
+      if (stock !== undefined && nextQuantity > stock) {
         Alert.alert(`عذراً، الكمية المتاحة في المخزون هي ${stock} قطع فقط. يرجى تعديل الاختيار.`, "Requested quantity exceeds available stock.");
         return current;
       }
@@ -97,16 +104,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addItems = (incoming: CartItem[]) => {
-    save((current) => incoming.reduce((next, item) => {
-       if (!catalog.some((product) => product.id === item.productId)) return next;
-      const quantity = Math.max(1, Math.min(99, Math.floor(Number(item.quantity) || 1)));
-      const existing = next.find((entry) => entry.productId === item.productId);
-      return existing
-        ? next.map((entry) => entry.productId === item.productId
-          ? { ...entry, quantity: Math.min(99, entry.quantity + quantity) }
-          : entry)
-        : [...next, { productId: item.productId, quantity }];
-    }, [...current]));
+    save((current) => {
+      let exceededStock: number | null = null;
+      const nextItems = incoming.reduce((next, item) => {
+        if (!catalog.some((product) => product.id === item.productId)) return next;
+        const quantity = Math.max(1, Math.min(99, Math.floor(Number(item.quantity) || 1)));
+        const existing = next.find((entry) => entry.productId === item.productId);
+        const stock = stockByProductId[item.productId];
+        const requested = (existing?.quantity ?? 0) + quantity;
+        if (stock !== undefined && requested > stock) {
+          exceededStock = stock;
+          if (stock <= 0 || existing?.quantity === stock) return next;
+        }
+        const nextQuantity = stock === undefined ? Math.min(99, requested) : Math.min(stock, requested);
+        return existing
+          ? next.map((entry) => entry.productId === item.productId
+            ? { ...entry, quantity: nextQuantity }
+            : entry)
+          : [...next, { productId: item.productId, quantity: nextQuantity }];
+      }, [...current]);
+      if (exceededStock !== null) {
+        Alert.alert(`عذراً، الكمية المتاحة في المخزون هي ${exceededStock} قطع فقط.`, "The cart was limited to available stock.");
+      }
+      return nextItems;
+    });
   };
 
   const removeFromCart = (productId: string) => {
@@ -118,7 +139,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(productId);
     } else {
       const stock = stockByProductId[productId];
-      if (__DEV__ && stock !== undefined && quantity > stock) {
+      if (stock !== undefined && quantity > stock) {
         Alert.alert(`عذراً، الكمية المتاحة في المخزون هي ${stock} قطع فقط. يرجى تعديل الاختيار.`, "Requested quantity exceeds available stock.");
         return;
       }
@@ -131,7 +152,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
   const setStock = (stock: Record<string, number>) => {
     setStockByProductId(stock);
-    if (__DEV__) AsyncStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(stock)).catch(() => {});
+    AsyncStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(stock)).catch(() => {});
   };
 
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);

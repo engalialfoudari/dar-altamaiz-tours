@@ -24,7 +24,9 @@ import Svg, { Path } from "react-native-svg";
 import { WebView } from "react-native-webview";
 import * as Application from "expo-application";
 import * as Updates from "expo-updates";
+import { fetch as expoFetch } from "expo/fetch";
 import { BOOKING_RULES, CUSTOMER_BOOKING_GUIDANCE } from "@/lib/bookingRules";
+import { getAdminTokenExpiry, isAdminSessionExpiredMessage } from "@/lib/adminSession";
 const GOLD = "#D4AF37";
 const BLACK = "#000000";
 const NAVY_BG = "#0A1628";
@@ -255,6 +257,7 @@ function TypingDots() {
 }
 
 interface HotelOptionData {
+  id?: string | number;
   name: string;
   stars: number;
   location: string;
@@ -263,6 +266,97 @@ interface HotelOptionData {
   nights?: number;
   bookUrl: string;
   isRefundable?: boolean;
+}
+
+type HotelStreamParams = {
+  city: string;
+  checkin: string;
+  checkout: string;
+  adults: number;
+  rooms: number;
+  lang: Language;
+  stars?: number;
+  hotelId?: string | number;
+  brandQuery?: string;
+  fallbackCity?: string;
+};
+
+function chatHotelUrl(params: HotelStreamParams, hotel?: HotelOptionData): string {
+  const query = new URLSearchParams({
+    autoSearch: "1",
+    lang: params.lang,
+    city: params.city,
+    checkin: params.checkin,
+    checkout: params.checkout,
+    adults: String(params.adults),
+    rooms: String(params.rooms),
+  });
+  if (hotel?.id != null) query.set("hotelId", String(hotel.id));
+  if (params.brandQuery || hotel?.name) query.set("brandQuery", params.brandQuery || hotel!.name);
+  query.set("fallbackCity", params.fallbackCity || params.city);
+  return `https://dt-tour.com/hotels?${query.toString()}`;
+}
+
+function mapHotelStreamPayload(payload: any, params: HotelStreamParams): HotelOptionData {
+  const price = Number(payload?.pricePerNight ?? payload?.price ?? 0);
+  return {
+    id: payload?.id ?? payload?.hotelId,
+    name: String(payload?.name ?? params.brandQuery ?? params.city),
+    stars: Number(payload?.stars ?? 0),
+    location: String(payload?.location ?? params.city),
+    price: Number.isFinite(price) ? price.toFixed(3) : "0.000",
+    currency: String(payload?.currency ?? "KWD"),
+    nights: Number(payload?.nights ?? 0) || undefined,
+    bookUrl: chatHotelUrl(params, payload),
+    isRefundable: Boolean(payload?.isRefundable ?? payload?.refundable),
+  };
+}
+
+async function streamChatHotels(
+  apiBase: string,
+  params: HotelStreamParams,
+  onHotel?: (hotel: HotelOptionData) => void,
+): Promise<HotelOptionData[]> {
+  const query = new URLSearchParams({
+    city: params.city,
+    checkin: params.checkin,
+    checkout: params.checkout,
+    adults: String(params.adults),
+    rooms: String(params.rooms),
+    lang: params.lang,
+  });
+  if (params.stars) query.set("stars", String(params.stars));
+  if (params.hotelId != null) query.set("hotelId", String(params.hotelId));
+  if (params.brandQuery) query.set("brandQuery", params.brandQuery);
+  if (params.fallbackCity) query.set("fallbackCity", params.fallbackCity);
+  const response = await expoFetch(`${apiBase}/hotel-search-stream?${query.toString()}`);
+  if (!response.ok || !response.body) throw new Error("hotel stream unavailable");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const hotels: HotelOptionData[] = [];
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    const events = buffer.split(/\r?\n\r?\n/);
+    buffer = events.pop() ?? "";
+    for (const event of events) {
+      const dataLine = event.split(/\r?\n/).find((line) => line.startsWith("data:"));
+      if (!dataLine) continue;
+      try {
+        const payload = JSON.parse(dataLine.slice(5).trim());
+        if (event.includes("event: hotel")) {
+          const hotel = mapHotelStreamPayload(payload, params);
+          hotels.push(hotel);
+          onHotel?.(hotel);
+        }
+      } catch {
+        // Ignore heartbeat/progress and malformed individual events.
+      }
+    }
+    if (done) break;
+  }
+  return hotels;
 }
 
 // ── Itinerary Widget ──────────────────────────────────────────────────────────
@@ -668,15 +762,10 @@ function MultiPkgWidget({
       return;
     }
 
-    fetch(`${apiBase}/hotel-search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ city: leg.toLabel, checkin: leg.dep, checkout: leg.ret, stars: leg.stars ?? 0, adults: leg.adults, rooms }),
-    })
-      .then((r) => r.json())
-      .then((d: any) => {
-        if (d.ok && d.hotels?.length > 0) {
-          const best = [...d.hotels].sort((a: any, b: any) => parseFloat(a.price) - parseFloat(b.price))[0]!;
+    streamChatHotels(apiBase, { city: leg.toLabel, checkin: leg.dep, checkout: leg.ret, stars: leg.stars, adults: leg.adults, rooms, lang: isAr ? "ar" : "en" })
+      .then((hotels) => {
+        if (hotels.length > 0) {
+          const best = [...hotels].sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0]!;
           const pRN = parseFloat(best.price) || 0;
           setLegResults((prev) => {
             const n = [...prev];
@@ -688,7 +777,7 @@ function MultiPkgWidget({
         }
       })
       .catch(() => setLegResults((prev) => { const n = [...prev]; n[idx] = { ...n[idx]!, hotelTotal: 0 }; return n; }));
-  }, [apiBase, deviceId]);
+  }, [apiBase, deviceId, isAr]);
 
   const handleConfirmDistribution = () => {
     const legs = previewLegs;
@@ -2259,27 +2348,17 @@ function HotelInlineSearch({
     (async () => {
       try {
         if (!params?.checkin) { setStatus("fallback"); return; }
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 90_000);
-        const res = await fetch(`${apiBase}/hotel-search`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: ctrl.signal,
-          body: JSON.stringify({
-            city: params.city,
-            checkin: params.checkin,
-            checkout: params.checkout,
-            stars: params.stars ?? 0,
-          }),
+        const hotels = await streamChatHotels(apiBase, {
+          city: params.city, checkin: params.checkin, checkout: params.checkout,
+          stars: params.stars, adults: 2, rooms: 1, lang: isAr ? "ar" : "en",
+        }, (hotel) => {
+          setHotels((current) => current.some((item) => item.id === hotel.id)
+            ? current
+            : [...current, hotel]);
+          setStatus("done");
         });
-        clearTimeout(tid);
-        const data = (await res.json()) as {
-          ok: boolean; hotels?: HotelOptionData[];
-          starsMismatch?: boolean; error?: string;
-        };
-        if (data.ok && data.hotels && data.hotels.length > 0) {
-          setHotels(data.hotels);
-          setStarsMismatch(data.starsMismatch ?? false);
+        if (hotels.length > 0) {
+          setHotels(hotels);
           setStatus("done");
         } else {
           setStatus("fallback");
@@ -2290,7 +2369,10 @@ function HotelInlineSearch({
     })();
   }, []);
 
-  const openWebsite = () => openInApp("https://dt-tours.com/index.php/hotel");
+  const openWebsite = () => openInApp(chatHotelUrl({
+    city: params?.city ?? "", checkin: params?.checkin ?? "", checkout: params?.checkout ?? "",
+    adults: 2, rooms: 1, lang: isAr ? "ar" : "en",
+  }));
 
   if (status === "loading") {
     return <SearchLoadingCard isAr={isAr} elapsed={elapsed} label="hotel" />;
@@ -2329,7 +2411,7 @@ function HotelInlineSearch({
         <Pressable
           key={idx}
           style={({ pressed }) => [flightStyles.flightCard, pressed && { opacity: 0.85 }]}
-          onPress={() => openInApp(h.bookUrl || "https://dt-tours.com")}
+          onPress={() => openInApp(h.bookUrl)}
         >
           <View style={flightStyles.cardTopRow}>
             <View style={{ flex: 1, gap: 2 }}>
@@ -2827,7 +2909,7 @@ function HotelNameWidget({
   openInApp: (url: string) => void;
   onNavigateToLocks?: () => void;
 }) {
-  type HotelResult = { name: string; stars: number; price: string; bookUrl: string };
+  type HotelResult = { id?: string | number; name: string; stars: number; price: string; bookUrl: string };
   const [status, setStatus] = useState<"loading" | "found" | "not_found">("loading");
   const [hotels, setHotels] = useState<HotelResult[]>([]);
   const [elapsed, setElapsed] = useState(0);
@@ -2881,22 +2963,35 @@ function HotelNameWidget({
   useEffect(() => {
     let dead = false;
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
-    fetch(`${apiBase}/hotel-name-search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        hotelNames: params.hotelNames?.length ? params.hotelNames : [params.hotelName],
-        checkin: params.checkin,
-        checkout: params.checkout,
-        adults: params.adults,
-        rooms: params.rooms,
-      }),
-    })
-      .then((r) => r.json())
-      .then((d: any) => {
+    const names = params.hotelNames?.length ? params.hotelNames : [params.hotelName];
+    Promise.all(names.map((hotelName) => {
+      const streamParams: HotelStreamParams = {
+        city: hotelName, fallbackCity: hotelName, brandQuery: hotelName,
+        checkin: params.checkin, checkout: params.checkout, adults: params.adults,
+        rooms, lang: isAr ? "ar" : "en",
+      };
+      return streamChatHotels(apiBase, streamParams, (hotel) => {
+        const linkedHotel = { ...hotel, bookUrl: chatHotelUrl(streamParams, hotel) };
+        setHotels((current) => current.some((item) => item.id === linkedHotel.id)
+          ? current
+          : [...current, linkedHotel]);
+        setStatus("found");
+      });
+    }))
+      .then((hotelGroups) => {
         clearInterval(t);
         if (dead) return;
-        if (d.ok && d.hotels?.length > 0) { setHotels(d.hotels); setStatus("found"); }
+        const hotels = hotelGroups.flatMap((group, groupIndex) => group.map((hotel) => ({
+          ...hotel,
+          bookUrl: chatHotelUrl({
+            city: names[groupIndex] ?? params.hotelName,
+            fallbackCity: names[groupIndex] ?? params.hotelName,
+            brandQuery: names[groupIndex] ?? params.hotelName,
+            checkin: params.checkin, checkout: params.checkout, adults: params.adults, rooms,
+            lang: isAr ? "ar" : "en",
+          }, hotel),
+        })));
+        if (hotels.length > 0) { setHotels(hotels); setStatus("found"); }
         else setStatus("not_found");
       })
       .catch(() => { clearInterval(t); if (!dead) setStatus("not_found"); });
@@ -2974,7 +3069,7 @@ function HotelNameWidget({
         const total = ppn * nights * rooms;
         return (
           <View key={idx}>
-            <View style={hnStyles.hotelRow}>
+            <Pressable style={hnStyles.hotelRow} onPress={() => openInApp(h.bookUrl)}>
               {/* Left: name + stars */}
               <View style={{ flex: 1, gap: 2, paddingRight: 8 }}>
                 <Text style={hnStyles.hotelRowName} numberOfLines={2}>{h.name}</Text>
@@ -2986,7 +3081,7 @@ function HotelNameWidget({
                 <Text style={hnStyles.ppnLbl}>{isAr ? `/ ليلة${rooms > 1 ? " / غرفة" : ""}` : `/ night${rooms > 1 ? " / room" : ""}`}</Text>
                 <Text style={hnStyles.rowTotal}>= KWD {total.toFixed(3)}</Text>
               </View>
-            </View>
+            </Pressable>
             {idx < hotels.length - 1 && <View style={hnStyles.rowDivider} />}
           </View>
         );
@@ -3361,15 +3456,14 @@ function PackageBookingSection({
     }
 
     if (hotelParams.checkin) {
-      fetch(`${apiBase}/hotel-search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: hotelParams.city, checkin: hotelParams.checkin, checkout: hotelParams.checkout, stars: hotelParams.stars ?? 0, adults: parseInt(adults) || 1, rooms }),
+      streamChatHotels(apiBase, {
+        city: hotelParams.city, checkin: hotelParams.checkin, checkout: hotelParams.checkout,
+        stars: hotelParams.stars, adults: parseInt(adults) || 1, rooms,
+        lang: isAr ? "ar" : "en",
       })
-        .then((r) => r.json())
-        .then((data: any) => {
-          if (data.ok && data.hotels && data.hotels.length > 0) {
-            const cheap = [...data.hotels].sort((a: any, b: any) => parseFloat(a.price) - parseFloat(b.price))[0];
+        .then((hotels) => {
+          if (hotels.length > 0) {
+            const cheap = [...hotels].sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0]!;
             const perRoomPerNight = parseFloat(cheap.price) || 0;
             setSelectedHotel({ name: cheap.name ?? hotelParams.city, breakfast: hotelParams.breakfast, bookUrl: cheap.bookUrl, stars: cheap.stars, pricePerNight: perRoomPerNight * rooms });
             setHotelTotal(perRoomPerNight * rooms * nights);
@@ -4068,6 +4162,38 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [adminToken, setAdminToken] = useState("");
+
+  // The server embeds an absolute expiry in every admin token. Keep the visible
+  // admin state synchronized with that credential instead of leaving an
+  // expired session on screen until the next privileged command fails.
+  useEffect(() => {
+    if (!isAdminMode || !adminToken) return;
+
+    const expiresAt = getAdminTokenExpiry(adminToken);
+    if (expiresAt === null) return;
+
+    const expireSession = () => {
+      setAdminToken("");
+      setIsAdminMode(false);
+      setIsPremium(false);
+      setPromoTier(null);
+      setLanguage(null);
+      setUserName("");
+      setMessages([]);
+      setWelcomeCodeInput("");
+      setWelcomeCodeError("انتهت جلسة الأدمن. سجل دخول الأدمن مرة أخرى.");
+      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    };
+
+    const delay = expiresAt - Date.now();
+    if (delay <= 0) {
+      expireSession();
+      return;
+    }
+
+    const timer = setTimeout(expireSession, Math.min(delay, 2_147_483_647));
+    return () => clearTimeout(timer);
+  }, [adminToken, isAdminMode]);
   const [lastBookingList, setLastBookingList] = useState<Array<{ index: number; orderId: string; contactName: string; contactPhone: string; flightFrom: string; flightTo: string; dep: string; ret: string; airline: string; totalKWD: string; depositKWD: string; isPaid: boolean }>>([]);
   const [welcomeCodeInput, setWelcomeCodeInput] = useState("");
   const [welcomeCodeLoading, setWelcomeCodeLoading] = useState(false);
@@ -4270,6 +4396,8 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
       setPromoSuccess(false);
       setDeviceFp("");
       setActivationResult(null);
+      setIsAdminMode(false);
+      setAdminToken("");
     }
   }, [visible]);
 
@@ -4333,10 +4461,6 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
             // re-launches don't reset to 0 and misreport quota.
             if (sData.flightSearchesToday > 0) {
               setFlightSearchCount(sData.flightSearchesToday);
-            }
-            // Detect admin session (server stamps premiumExpiresAt far in the future)
-            if (sData.premiumExpiresAt && sData.premiumExpiresAt > Date.UTC(5001, 0)) {
-              setIsAdminMode(true);
             }
             // Store the specific tier (tamaiz / plus / platinum)
             if (sData.promoTier) setPromoTier(sData.promoTier);
@@ -4471,9 +4595,9 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
               headers: { "Content-Type": "application/json", "x-device-id": deviceFp },
               body: JSON.stringify({ key: raw }),
             });
-            const authData = (await authRes.json()) as { ok: boolean };
-            if (authData.ok) {
-              setAdminToken(raw);
+            const authData = (await authRes.json()) as { ok: boolean; token?: string };
+            if (authData.ok && authData.token) {
+              setAdminToken(authData.token);
               setIsAdminMode(true);
               setUserName("بوحسين");
               setLanguage("ar");
@@ -4512,8 +4636,8 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
     try {
       const res = await fetch(`${API_BASE}/chat/admin-create-code`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-device-id": deviceFp },
-        body: JSON.stringify({ key: adminToken, tier }),
+        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "x-admin-token": adminToken },
+        body: JSON.stringify({ tier }),
       });
       const data = (await res.json()) as { ok: boolean; code?: string; tierLabel?: string; error?: string };
       const tierLabels: Record<string, string> = { tamaiz: "تميز", plus: "تميز بلاس", platinum: "تميز بلاتينيوم" };
@@ -4568,7 +4692,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
       method: "POST",
       headers: { "Content-Type": "application/json", "x-device-id": deviceFp },
       body: JSON.stringify({ key: raw }),
-    }).then((r) => r.json() as Promise<{ ok: boolean }>).catch(() => ({ ok: false }));
+    }).then((r) => r.json() as Promise<{ ok: boolean; token?: string }>).catch((): { ok: boolean; token?: string } => ({ ok: false }));
 
     const redeemPromise = fetch(`${API_BASE}/chat/redeem`, {
       method: "POST",
@@ -4578,8 +4702,8 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
 
     // Check admin result first
     const authData = await adminPromise;
-    if (authData.ok) {
-      setAdminToken(raw);
+    if (authData.ok && authData.token) {
+      setAdminToken(authData.token);
       setIsAdminMode(true);
       setWelcomeCodeLoading(false);
       setUserName("بوحسين");
@@ -4846,7 +4970,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
     try {
       const res = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp },
+        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp, ...(adminToken ? { "x-admin-token": adminToken } : {}) },
         body: JSON.stringify({ messages: historyForApi, userName: userName.trim(), language: language ?? "ar", fingerprint: deviceFp }),
       });
       const data = (await res.json()) as { ok: boolean; content?: string; hotelParams?: { city: string; checkin: string; checkout: string; stars: number; breakfast?: boolean }; hotelNameParams?: { hotelName: string; hotelNames: string[]; checkin: string; checkout: string; adults: number; rooms: number } };
@@ -5082,7 +5206,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
         if (!arg) {
           // List all bookings
           const r = await fetch(`${API_BASE}/admin/bookings`, {
-            headers: { "x-admin-key": adminToken },
+            headers: { "x-admin-token": adminToken },
           });
           const data = await r.json() as { ok: boolean; total?: number; bookings?: typeof lastBookingList; error?: string };
           if (!data.ok || !data.bookings) throw new Error(data.error ?? "Failed");
@@ -5101,7 +5225,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
           }
           if (!orderId.startsWith("DAT-")) orderId = "DAT-" + orderId;
           const r = await fetch(`${API_BASE}/admin/bookings/${encodeURIComponent(orderId)}`, {
-            headers: { "x-admin-key": adminToken },
+            headers: { "x-admin-token": adminToken },
           });
           const data = await r.json() as { ok: boolean; booking?: { orderId: string; meta: Record<string, string>; isPaid: boolean; paidAt: string | null; createdAt: string }; error?: string };
           if (!data.ok || !data.booking) { throw new Error(data.error ?? "لم يُعثر على الحجز"); }
@@ -5292,7 +5416,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
     try {
       const res = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp },
+        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp, ...(adminToken ? { "x-admin-token": adminToken } : {}) },
         signal: controller.signal,
         body: JSON.stringify({
           messages: historyForApi,
@@ -5362,6 +5486,23 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
       const raw =
         data.content ??
         (isAr ? "عذراً، صار خطأ. حاول مرة ثانية!" : "Sorry, something went wrong. Please try again!");
+
+      // A rotated admin key invalidates the old signed token. Never leave the
+      // app displaying admin controls after the server has rejected that token:
+      // clear the false local session and return directly to admin login.
+      if (isAdminMode && isAdminSessionExpiredMessage(raw)) {
+        await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+        setAdminToken("");
+        setIsAdminMode(false);
+        setIsPremium(false);
+        setPromoTier(null);
+        setLanguage(null);
+        setUserName("");
+        setMessages([]);
+        setWelcomeCodeInput("");
+        setWelcomeCodeError("انتهت جلسة الأدمن. سجل دخول الأدمن مرة أخرى.");
+        return;
+      }
 
       const hasEscalation = raw.includes(WHATSAPP_SIGNAL);
       const hasGoodbye = raw.includes(GOODBYE_SIGNAL);
@@ -5609,7 +5750,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
             <View style={styles.sessionLoadingWrap}>
               <ActivityIndicator size="large" color={GOLD} />
             </View>
-          ) : chatBlocked ? (
+          ) : chatBlocked && !isAdminMode ? (
             /* ── Cooldown / Block screen ── */
             <ScrollView
               contentContainerStyle={styles.blockScreen}

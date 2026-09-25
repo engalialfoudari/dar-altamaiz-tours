@@ -74,34 +74,28 @@ describe("flight search handoff", () => {
     expect(validateFlightSearch({ ...multiCityValues, legs: [multiCityValues.legs[0], { ...multiCityValues.legs[1], departure: "2026-09-09" }] })).toBe("leg-order");
   });
 
-  it("lets each multi-city leg choose a complete ISO date from the calendar", () => {
+  it("hides multi-city and keeps optional special requests in the search draft", () => {
     const onValuesChange = jest.fn();
-    const initialValues: FlightSearchValues = {
-      ...values,
-      tripType: "multicity",
-      legs: [
-        { origin: values.origin, destination: values.destination, departure: isoAfter(7) },
-        { origin: values.destination, destination: { iata: "CDG", name: "Charles de Gaulle Airport", city: "Paris", country: "France" }, departure: isoAfter(10) },
-      ],
-    };
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId, getByText } = render(
       <FlightSearchScreen
         lang="en"
         onChangeLang={jest.fn()}
         onBack={jest.fn()}
         onSearch={jest.fn()}
-        initialValues={initialValues}
+        initialValues={{ ...values, tripType: "multicity", specialRequests: "Aisle seat" }}
         onValuesChange={onValuesChange}
       />,
     );
 
-    fireEvent.press(getByTestId("flight-leg-1-departure-input"));
-    fireEvent.press(getByTestId(`flight-calendar-day-${isoAfter(8)}`));
+    expect(queryByTestId("flight-trip-multicity")).toBeNull();
+    expect(queryByTestId("flight-multicity-legs")).toBeNull();
+    expect(getByText("Special requests (optional)")).toBeTruthy();
+    expect(getByTestId("flight-special-requests").props.value).toBe("Aisle seat");
+    fireEvent.changeText(getByTestId("flight-special-requests"), "Wheelchair assistance");
 
     const latestValues = onValuesChange.mock.calls.at(-1)?.[0] as FlightSearchValues;
-    expect(latestValues.legs[0].departure).toBe(isoAfter(8));
-    expect(latestValues.legs[0].departure).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(getByTestId("flight-leg-1-departure-value")).toBeTruthy();
+    expect(latestValues.tripType).toBe("roundtrip");
+    expect(latestValues.specialRequests).toBe("Wheelchair assistance");
   });
 
   it("opens a cabin dropdown and changes class only after an option is selected", () => {

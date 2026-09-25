@@ -290,7 +290,14 @@ export function buildHotelDealUrl(
   apiBase: string | undefined,
   isDevelopment: boolean,
   language: "en" | "ar",
-  deal: { scope: string; city?: string; targetHotel?: string; targetHotelId?: string }
+  deal: {
+    scope: string;
+    city?: string;
+    destinationCountry?: string;
+    destinationRegion?: string;
+    targetHotel?: string;
+    targetHotelId?: string;
+  }
 ): string {
   const baseUrl = hotelPortalUrlFor(apiBase, isDevelopment);
   const url = new URL(baseUrl);
@@ -313,6 +320,15 @@ export function buildHotelDealUrl(
   }
   if (deal.targetHotelId) {
     url.searchParams.set("hotelId", deal.targetHotelId);
+  }
+  if (deal.destinationCountry) {
+    url.searchParams.set("destinationCountry", deal.destinationCountry);
+  }
+  if (deal.destinationRegion) {
+    url.searchParams.set("destinationRegion", deal.destinationRegion);
+  }
+  if (deal.city) {
+    url.searchParams.set("destinationCity", deal.city);
   }
   url.searchParams.set("autoSearch", "0");
   url.searchParams.set("pickDates", "1");

@@ -18,7 +18,7 @@ import { HotelPortalIcon } from "@/components/HotelPortalIcon";
 import { AppHeader } from "@/components/AppHeader";
 import { InfoModal } from "@/components/InfoModal";
 import {
-  buildFlightRedirectUrl,
+  buildFlightApiUrl,
   SAMPLE_FLIGHT_PREVIEW_URL,
   type FlightAirport,
   type FlightLeg,
@@ -71,7 +71,8 @@ const COPY = {
     back: "Home",
     oneWay: "One-way",
     roundTrip: "Round-trip",
-    multiCity: "Multi-city",
+    specialRequests: "Special requests (optional)",
+    specialRequestsHint: "Add any requests for our team",
     from: "From",
     to: "To",
     originHint: "Origin city or airport",
@@ -110,7 +111,8 @@ const COPY = {
     back: "الرئيسية",
     oneWay: "ذهاب فقط",
     roundTrip: "ذهاب وعودة",
-    multiCity: "متعدد المدن",
+    specialRequests: "طلبات خاصة (اختياري)",
+    specialRequestsHint: "أضف أي طلبات لفريقنا",
     from: "من",
     to: "إلى",
     originHint: "مدينة أو مطار المغادرة",
@@ -500,7 +502,9 @@ export function FlightSearchScreen({
   const insets = useSafeAreaInsets();
   const isRtl = lang === "ar";
   const s = COPY[lang];
-  const [tripType, setTripType] = useState<FlightTripType>(initialValues?.tripType ?? "roundtrip");
+  const [tripType, setTripType] = useState<FlightTripType>(
+    initialValues?.tripType === "multicity" ? "roundtrip" : initialValues?.tripType ?? "roundtrip",
+  );
   const [origin, setOrigin] = useState<FlightAirport | null>(initialValues?.origin ?? null);
   const [destination, setDestination] = useState<FlightAirport | null>(initialValues?.destination ?? null);
   const [originText, setOriginText] = useState(initialValues?.origin?.label ?? (initialValues?.origin ? `${initialValues.origin.city} (${initialValues.origin.iata})` : ""));
@@ -519,6 +523,7 @@ export function FlightSearchScreen({
   const [passengerPickerOpen, setPassengerPickerOpen] = useState(false);
   const [cabinIndex, setCabinIndex] = useState(Math.max(0, initialValues ? CABINS.indexOf(initialValues.cabinClass) : 0));
   const [cabinPickerOpen, setCabinPickerOpen] = useState(false);
+  const [specialRequests, setSpecialRequests] = useState(initialValues?.specialRequests ?? "");
   const [error, setError] = useState("");
   const [isOpening, setIsOpening] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -559,7 +564,8 @@ export function FlightSearchScreen({
     children,
     infants,
     cabinClass: CABINS[cabinIndex],
-  }), [adults, cabinIndex, children, departure, destination, infants, legs, origin, returnDate, tripType]);
+    specialRequests,
+  }), [adults, cabinIndex, children, departure, destination, infants, legs, origin, returnDate, specialRequests, tripType]);
   useEffect(() => {
     onValuesChange?.(values);
   }, [onValuesChange, values]);
@@ -600,7 +606,7 @@ export function FlightSearchScreen({
     setIsOpening(true);
     setError("");
     onValuesChange?.(values);
-    onSearch(buildFlightRedirectUrl(API_BASE, values));
+    onSearch(buildFlightApiUrl(API_BASE, values));
   };
 
   const editAirport = (side: "origin" | "destination", text: string) => {
@@ -733,7 +739,6 @@ export function FlightSearchScreen({
             {([
               ["oneway", s.oneWay],
               ["roundtrip", s.roundTrip],
-              ["multicity", s.multiCity],
             ] as Array<[FlightTripType, string]>).map(([type, label]) => (
               <Pressable key={type} onPress={() => { setTripType(type); setActiveAirport(null); setSuggestions([]); setError(""); }} style={[styles.tripTab, tripType === type && styles.tripTabActive]} testID={`flight-trip-${type}`}>
                 <Text style={[styles.tripTabText, tripType === type && styles.tripTabTextActive]}>{label}</Text>
@@ -935,6 +940,21 @@ export function FlightSearchScreen({
             </View>
           )}
 
+          <View style={styles.requestsField}>
+            <Text style={[styles.fieldLabel, isRtl && styles.rtlText]}>{s.specialRequests}</Text>
+            <TextInput
+              value={specialRequests}
+              onChangeText={setSpecialRequests}
+              placeholder={s.specialRequestsHint}
+              placeholderTextColor={P.muted}
+              multiline
+              maxLength={500}
+              textAlignVertical="top"
+              style={[styles.requestsInput, isRtl && styles.rtlText]}
+              accessibilityLabel={s.specialRequests}
+              testID="flight-special-requests"
+            />
+          </View>
           {error ? <Text style={[styles.errorText, isRtl && styles.rtlText]} testID="flight-search-error">{error}</Text> : null}
           <Pressable onPress={submit} disabled={isOpening} style={({ pressed }) => [styles.searchButton, (pressed || isOpening) && styles.searchButtonPressed]} testID="flight-search-submit">
             {isOpening ? <ActivityIndicator color="#FFFFFF" /> : <HotelPortalIcon name="search" size={20} color="#FFFFFF" />}
@@ -1044,6 +1064,8 @@ const styles = StyleSheet.create({
   selectionField: { flex: 1, minHeight: 69, flexDirection: "row", alignItems: "center", borderRadius: 9, borderWidth: 1, borderColor: P.border, paddingHorizontal: 10, gap: 7 },
   passengerSummaryField: { minHeight: 64, flexDirection: "row", alignItems: "center", borderRadius: 9, borderWidth: 1, borderColor: P.border, paddingHorizontal: 12, gap: 10, marginBottom: 8 },
   cabinSelectionField: { minHeight: 64, flexDirection: "row", alignItems: "center", borderRadius: 9, borderWidth: 1, borderColor: P.border, paddingHorizontal: 12, gap: 10, marginBottom: 13 },
+  requestsField: { marginBottom: 13, gap: 6 },
+  requestsInput: { minHeight: 84, borderRadius: 9, borderWidth: 1, borderColor: P.border, padding: 12, color: P.ink, backgroundColor: P.card, fontSize: 14 },
   cabinPicker: { borderRadius: 9, borderWidth: 1, borderColor: "#C9D8F0", backgroundColor: "#FFFFFF", marginTop: -7, marginBottom: 13, overflow: "hidden" },
   cabinOption: { minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#D8E2F0" },
   cabinOptionSelected: { backgroundColor: P.paleBlue },

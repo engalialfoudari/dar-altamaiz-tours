@@ -33,6 +33,7 @@ export type FlightSearchValues = {
   children: number;
   infants: number;
   cabinClass: "Economy" | "Premium Economy" | "Business" | "First";
+  specialRequests?: string;
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -110,4 +111,22 @@ export function buildFlightRedirectUrl(apiBase: string, values: FlightSearchValu
 
   if (values.tripType === "roundtrip") params.set("ret", values.returnDate);
   return `${baseUrl}?${params.toString()}`;
+}
+
+export function buildFlightApiUrl(apiBase: string, values: FlightSearchValues): string {
+  if (validateFlightSearch(values) || values.tripType === "multicity") {
+    throw new Error("This flight search is not supported");
+  }
+  const params = new URLSearchParams({
+    origin: values.origin!.iata,
+    destination: values.destination!.iata,
+    departure: values.departure,
+    adults: String(values.adults),
+    children: String(values.children),
+    infants: String(values.infants),
+    cabin: values.cabinClass,
+    strict: "1",
+  });
+  if (values.tripType === "roundtrip") params.set("return", values.returnDate);
+  return `${apiBase.replace(/\/$/, "")}/flights?${params.toString()}`;
 }

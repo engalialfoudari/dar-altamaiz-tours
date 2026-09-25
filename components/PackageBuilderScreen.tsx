@@ -589,15 +589,28 @@ export function PackageBuilderScreen({
   const build = async () => {
     if (!fingerprint || !entitlement || entitlementLoading || entitlementError || !entitlement.allowed) return;
     const reqId = ++reqRef.current;
+    const requestKey = `package-${fingerprint}-${Date.now()}-${reqId}`;
     setLoading(true);
     setError(false);
     setResult(null);
     try {
-      const response = await fetch(`${API_BASE}/ai-package-estimate`, {
-      method: "POST",
-        headers: { "Content-Type": "application/json", "x-device-id": fingerprint },
-        body: JSON.stringify({ destination, nights, travelers, style, interests, lang, fingerprint }),
-      });
+      const request = () =>
+        fetch(`${API_BASE}/ai-package-estimate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-id": fingerprint,
+            "x-idempotency-key": requestKey,
+          },
+          body: JSON.stringify({ destination, nights, travelers, style, interests, lang, fingerprint }),
+        });
+      let response: Response;
+      try {
+        response = await request();
+      } catch {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = await request();
+      }
       const data = (await response.json()) as Estimate & {
         error?: string;
         blocked?: boolean;

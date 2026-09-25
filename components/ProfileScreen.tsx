@@ -169,13 +169,37 @@ interface Booking {
   totalKWD: string;
   cancelBefore?: string | null;
   canCancel?: boolean;
+  balanceReminder?: {
+    stage: "10" | "3";
+    sentAt: string;
+    balanceKWD: string;
+    deadline: string;
+  } | null;
 }
+type BalanceNotification = {
+  orderId: string;
+  hotelName: string;
+  checkin: string;
+  stage: "10" | "3";
+  sentAt: string;
+  balanceKWD: string;
+  deadline: string;
+};
 
 function formatExpiryDate(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("ar-KW");
+}
+
+function formatBalanceDeadline(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kuwait", day: "2-digit", month: "short",
+    year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(date)} (Kuwait time)`;
 }
 
 function formatBookingDate(value: string | null | undefined): string {
@@ -376,6 +400,7 @@ export function ProfileScreen({
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loyaltyBalance, setLoyaltyBalance] = useState<LoyaltyBalance | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [balanceNotifications, setBalanceNotifications] = useState<BalanceNotification[]>([]);
   // If Clerk's browser SDK cannot initialize, Account must still open instead
   // of waiting forever. Auth actions already report that sign-in is loading.
   const [loading, setLoading] = useState(isClerkLoaded);
@@ -508,6 +533,7 @@ export function ProfileScreen({
             loadedProfile = prof.user as UserProfile;
             setProfile(loadedProfile);
             setBookings(prof.bookings || []);
+            setBalanceNotifications(prof.notifications || []);
             await loadLocks(generation, controller.signal);
           }
           if (!isCurrentAccountGeneration(generation)) return null;
@@ -520,6 +546,7 @@ export function ProfileScreen({
           setProfile(null);
           setLoyaltyBalance(null);
           setBookings([]);
+          setBalanceNotifications([]);
           setLocks([]);
           return null;
         }
@@ -546,6 +573,7 @@ export function ProfileScreen({
     setProfile(null);
     setLoyaltyBalance(null);
     setBookings([]);
+    setBalanceNotifications([]);
     setLocks([]);
     setSelectedBooking(null);
     setDialog(null);
@@ -837,6 +865,7 @@ export function ProfileScreen({
     setProfile(null);
     setLoyaltyBalance(null);
     setBookings([]);
+    setBalanceNotifications([]);
     void onLoggedOut?.();
   };
 
@@ -1423,6 +1452,25 @@ export function ProfileScreen({
           </View>
         </View>
 
+      {balanceNotifications.length > 0 && (
+        <View style={s.section} testID="account-balance-notifications">
+          <View style={s.sectionHeadingRow}>
+            <Ionicons name="notifications-outline" size={18} color="#0A192F" />
+            <Text style={s.sectionTitle}>{isArabic ? "إشعارات الحجوزات" : "Booking notifications"}</Text>
+          </View>
+          {balanceNotifications.map((notice) => (
+            <View key={notice.orderId} style={s.policyHint}>
+              <Ionicons name="alert-circle-outline" size={18} color="#147A4B" />
+              <Text style={s.policyHintText}>
+                {isArabic
+                  ? `${notice.stage === "3" ? "التذكير الأخير" : "تذكير بسداد الرصيد"} · ${notice.hotelName}: ${notice.balanceKWD} د.ك قبل ${formatBalanceDeadline(notice.deadline)}. يجب السداد قبل الوصول بـ 48 ساعة أو قبل موعد الإلغاء المجاني إن كان أبكر. عدم السداد يؤدي إلى الإلغاء تلقائياً وعدم استرداد المبلغ المدفوع. افتح حجزك لسداد الرصيد.`
+                  : `${notice.stage === "3" ? "Final reminder" : "Balance reminder"} · ${notice.hotelName}: Pay KWD ${notice.balanceKWD} by ${formatBalanceDeadline(notice.deadline)}. The balance is due at least 48 hours before check-in or by the earlier free-cancellation deadline. If unpaid, the booking is cancelled automatically and payments become non-refundable. Open your booking to pay.`}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {expiringSoonPoints > 0 && (
         <View
           style={[
@@ -1625,6 +1673,17 @@ export function ProfileScreen({
                     </View>
                   ) : null}
 
+                  {b.balanceReminder ? (
+                    <View style={s.policyHint} accessibilityRole="alert" testID={`balance-reminder-${b.orderId}`}>
+                      <Ionicons name="notifications-outline" size={16} color="#147A4B" />
+                      <Text style={s.policyHintText}>
+                        {isArabic
+                          ? `${b.balanceReminder.stage === "3" ? "التذكير الأخير" : "تذكير بسداد الرصيد"}: ${b.balanceReminder.balanceKWD} د.ك قبل ${formatBalanceDeadline(b.balanceReminder.deadline)}`
+                          : `${b.balanceReminder.stage === "3" ? "Final reminder" : "Balance reminder"}: Pay KWD ${b.balanceReminder.balanceKWD} by ${formatBalanceDeadline(b.balanceReminder.deadline)}`}
+                      </Text>
+                    </View>
+                  ) : null}
+
                   {b.rhOrderId ? (
                     <View style={s.referenceRow}>
                       <View>
@@ -1805,7 +1864,7 @@ export function ProfileScreen({
       >
         <View style={s.dialogBackdrop}>
           {selectedBooking && (
-            <View style={s.bookingDetailsCard}>
+            <ScrollView style={s.bookingDetailsCard} contentContainerStyle={{ paddingBottom: 4 }}>
               <View style={s.bookingDetailsHeader}>
                 <Text style={[s.dialogTitle, isArabic && s.rtlText]}>{copy.bookingDetails}</Text>
                 <Pressable
@@ -1854,6 +1913,16 @@ export function ProfileScreen({
                   <Text style={s.bookingDetailsValue}>{selectedBooking.rhOrderId}</Text>
                 </View>
               ) : null}
+              {selectedBooking.balanceReminder ? (
+                <View style={s.policyHint} testID="booking-balance-reminder-terms">
+                  <Ionicons name="notifications-outline" size={16} color="#147A4B" />
+                  <Text style={s.policyHintText}>
+                    {isArabic
+                      ? `${selectedBooking.balanceReminder.stage === "3" ? "التذكير الأخير: " : "تذكير: "}الرصيد ${selectedBooking.balanceReminder.balanceKWD} د.ك مستحق قبل ${formatBalanceDeadline(selectedBooking.balanceReminder.deadline)}. يجب السداد بالكامل قبل الوصول بـ 48 ساعة على الأقل أو قبل موعد الإلغاء المجاني إن كان أبكر. عدم السداد في الموعد يؤدي إلى إلغاء الحجز تلقائياً وعدم استرداد المبالغ المدفوعة. ${selectedBooking.cancelBefore ? `الإلغاء المجاني وفق سياسة الفندق حتى ${formatExpiryDate(selectedBooking.cancelBefore)}.` : ""}`
+                      : `${selectedBooking.balanceReminder.stage === "3" ? "Final reminder: " : "Reminder: "}KWD ${selectedBooking.balanceReminder.balanceKWD} is due by ${formatBalanceDeadline(selectedBooking.balanceReminder.deadline)}. Pay in full at least 48 hours before check-in or by the earlier free-cancellation deadline. If unpaid, the reservation is cancelled automatically and amounts already paid become non-refundable. ${selectedBooking.cancelBefore ? `Free cancellation under hotel policy until ${formatExpiryDate(selectedBooking.cancelBefore)}.` : ""}`}
+                  </Text>
+                </View>
+              ) : null}
               <View style={s.bookingDetailsActions}>
                 <Pressable
                   style={s.dialogSupport}
@@ -1873,7 +1942,7 @@ export function ProfileScreen({
                   <Text style={s.dialogSecondaryText}>{copy.closeDetails}</Text>
                 </Pressable>
               </View>
-            </View>
+            </ScrollView>
           )}
         </View>
       </Modal>
@@ -2093,7 +2162,7 @@ const s = StyleSheet.create({
   dialogTitle:     { color: "#0A192F", fontSize: 17, lineHeight: 23, fontWeight: "900", textAlign: "center" },
   dialogMessage:   { color: "#64748B", fontSize: 12, lineHeight: 19, textAlign: "center", marginTop: 8 },
   dialogActions:   { width: "100%", marginTop: 20, gap: 9 },
-  bookingDetailsCard: { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22, shadowColor: "#000000", shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
+  bookingDetailsCard: { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22, maxHeight: "85%", shadowColor: "#000000", shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
   bookingDetailsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: 13 },
   bookingDetailsClose: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#F3F6FA", alignItems: "center", justifyContent: "center" },
   bookingDetailsHotel: { color: "#0A192F", fontSize: 18, lineHeight: 24, fontWeight: "900", marginBottom: 10 },

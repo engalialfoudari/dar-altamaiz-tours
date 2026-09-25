@@ -348,10 +348,19 @@ export function LuxuryHome({
     AsyncStorage.setItem("home_lang", l).catch(() => {});
   };
 
-  // Keep the native safe area intact. On web, reduce only vertical whitespace
-  // so the hero is about 15% shorter without shrinking the logo or controls.
+  const isStandaloneWeb = Platform.OS === "web"
+    && typeof window !== "undefined"
+    && (
+      window.matchMedia?.("(display-mode: standalone)").matches === true
+      || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    );
+  // iOS Home Screen apps use the whole display behind the status bar. Keep the
+  // compact browser header, but preserve the complete Dynamic Island safe area
+  // in standalone mode so the logo and language controls cannot be cropped.
   const headerTopPadding = Platform.OS === "web"
-    ? Math.round((Math.max(insets.top, 67) + 12) * 0.36)
+    ? isStandaloneWeb
+      ? Math.max(insets.top, 59) + 8
+      : Math.round((Math.max(insets.top, 67) + 12) * 0.36)
     : Math.round(((insets.top || 20) + 10) * 0.95);
   const navCardWidth = (width - 32 - 16) / 2;
 

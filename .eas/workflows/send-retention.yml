@@ -1,0 +1,11 @@
+name: Publish Android legacy OTA
+on:
+  workflow_dispatch:
+jobs:
+  update:
+    type: update
+    environment: production
+    params:
+      platform: android
+      branch: dttoursRetention
+      message: Verified legacy update

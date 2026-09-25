@@ -1,32 +1,102 @@
-import React, { useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import MapView, { Marker, Region } from "react-native-maps";
+import { WebView, WebViewMessageEvent } from "react-native-webview";
 import * as Location from "expo-location";
 import { HotelPortalIcon } from "@/components/HotelPortalIcon";
 
 export type DeliveryLocation = { latitude: number; longitude: number };
-const KUWAIT_REGION: Region = { latitude: 29.3117, longitude: 47.4818, latitudeDelta: 0.75, longitudeDelta: 0.75 };
+const KUWAIT_CENTER: DeliveryLocation = { latitude: 29.3117, longitude: 47.4818 };
+
+function createMapHtml(initial: DeliveryLocation) {
+  return `<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+      html,body,#map{height:100%;width:100%;margin:0;background:#eef2f6}
+      .leaflet-control-attribution{font-size:9px}
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const initial = [${initial.latitude}, ${initial.longitude}];
+      const map = L.map("map", { zoomControl: true }).setView(initial, 16);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+      const marker = L.marker(initial, { draggable: true }).addTo(map);
+      function send(latlng) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          latitude: latlng.lat,
+          longitude: latlng.lng
+        }));
+      }
+      function setPin(latitude, longitude, recenter) {
+        const point = L.latLng(latitude, longitude);
+        marker.setLatLng(point);
+        if (recenter) map.setView(point, 17);
+      }
+      map.on("click", event => {
+        setPin(event.latlng.lat, event.latlng.lng, false);
+        send(event.latlng);
+      });
+      marker.on("dragend", event => send(event.target.getLatLng()));
+      window.setPin = setPin;
+    </script>
+  </body>
+</html>`;
+}
 
 export function DeliveryLocationPicker({ value, lang, onChange }: { value: DeliveryLocation | null; lang: "en" | "ar"; onChange: (location: DeliveryLocation) => void }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<DeliveryLocation>(value ?? { latitude: KUWAIT_REGION.latitude, longitude: KUWAIT_REGION.longitude });
+  const [draft, setDraft] = useState<DeliveryLocation>(value ?? KUWAIT_CENTER);
+  const [mapHtml, setMapHtml] = useState(() => createMapHtml(value ?? KUWAIT_CENTER));
+  const mapRef = useRef<WebView>(null);
   const insets = useSafeAreaInsets();
   const rtl = lang === "ar";
 
   const useMyLocation = async () => {
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(rtl ? "الموقع غير متاح" : "Location unavailable", rtl ? "اسمح للتطبيق باستخدام موقعك، أو ضع الدبوس يدوياً." : "Allow location access, or place the pin manually.");
-      return;
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(rtl ? "الموقع غير متاح" : "Location unavailable", rtl ? "اسمح للتطبيق باستخدام موقعك، أو ضع الدبوس يدوياً." : "Allow location access, or place the pin manually.");
+        return;
+      }
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const next = { latitude: current.coords.latitude, longitude: current.coords.longitude };
+      setDraft(next);
+      mapRef.current?.injectJavaScript(`window.setPin(${next.latitude}, ${next.longitude}, true); true;`);
+    } catch {
+      Alert.alert(rtl ? "تعذر تحديد الموقع" : "Could not get location", rtl ? "ضع الدبوس يدوياً على الخريطة." : "Please place the pin manually on the map.");
     }
-    const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    setDraft({ latitude: current.coords.latitude, longitude: current.coords.longitude });
+  };
+
+  const openMap = () => {
+    const initial = value ?? draft;
+    setDraft(initial);
+    setMapHtml(createMapHtml(initial));
+    setOpen(true);
+  };
+
+  const handleMapMessage = (event: WebViewMessageEvent) => {
+    try {
+      const coordinate = JSON.parse(event.nativeEvent.data) as DeliveryLocation;
+      if (Number.isFinite(coordinate.latitude) && Number.isFinite(coordinate.longitude)) {
+        setDraft(coordinate);
+      }
+    } catch {
+      // Ignore malformed messages from map content.
+    }
   };
 
   return (
     <>
-      <Pressable style={[styles.selector, value && styles.selectorComplete, rtl && styles.rowRtl]} onPress={() => { setDraft(value ?? draft); setOpen(true); }}>
+      <Pressable style={[styles.selector, value && styles.selectorComplete, rtl && styles.rowRtl]} onPress={openMap}>
         <HotelPortalIcon name="location" size={20} color="#003580" />
         <View style={styles.selectorCopy}>
           <Text style={[styles.selectorTitle, rtl && styles.rtl]}>{rtl ? "حدد موقع التوصيل على الخريطة" : "Pin delivery location on map"}</Text>
@@ -44,15 +114,22 @@ export function DeliveryLocationPicker({ value, lang, onChange }: { value: Deliv
             <View style={styles.iconButton} />
           </View>
           <Text style={[styles.help, rtl && styles.rtl]}>{rtl ? "اضغط على الخريطة أو اسحب الدبوس إلى مدخل المبنى." : "Tap the map or drag the pin to your building entrance."}</Text>
-          <MapView
+          <WebView
+            ref={mapRef}
             style={styles.map}
-            initialRegion={{ ...KUWAIT_REGION, ...(value ?? {}) }}
-            region={{ ...draft, latitudeDelta: 0.012, longitudeDelta: 0.012 }}
-            onPress={event => setDraft(event.nativeEvent.coordinate)}
+            source={{ html: mapHtml, baseUrl: "https://unpkg.com" }}
+            originWhitelist={["https://*", "http://*"]}
+            javaScriptEnabled
+            domStorageEnabled
+            onMessage={handleMapMessage}
+          />
+          <View
+            style={[
+              styles.actions,
+              { paddingBottom: Platform.OS === "android" ? Math.max(insets.bottom, 48) : Math.max(insets.bottom, 14) },
+              rtl && styles.rowRtl,
+            ]}
           >
-            <Marker coordinate={draft} draggable onDragEnd={event => setDraft(event.nativeEvent.coordinate)} />
-          </MapView>
-          <View style={[styles.actions, rtl && styles.rowRtl]}>
             <Pressable style={styles.locationButton} onPress={useMyLocation}>
               <HotelPortalIcon name="location" size={18} color="#003580" />
               <Text style={styles.locationText}>{rtl ? "موقعي الحالي" : "Use my location"}</Text>

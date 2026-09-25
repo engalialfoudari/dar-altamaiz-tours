@@ -39,13 +39,21 @@ describe("hotelPortal URL builders", () => {
 
     it("builds correct URL for destination scope", () => {
       const url = buildHotelDealUrl(API_BASE, true, "en", {
-        scope: "destination", city: "London", targetHotel: "Ritz", targetHotelId: "hotel-7",
+        scope: "destination",
+        city: "London",
+        destinationCountry: "United Kingdom",
+        destinationRegion: "England",
+        targetHotel: "Ritz",
+        targetHotelId: "hotel-7",
       });
       const parsed = new URL(url);
       expect(parsed.searchParams.get("city")).toBe("London");
       expect(parsed.searchParams.get("brandQuery")).toBe("Ritz");
       expect(parsed.searchParams.get("hotelId")).toBe("hotel-7");
       expect(parsed.searchParams.get("fallbackCity")).toBe("London");
+      expect(parsed.searchParams.get("destinationCountry")).toBe("United Kingdom");
+      expect(parsed.searchParams.get("destinationRegion")).toBe("England");
+      expect(parsed.searchParams.get("destinationCity")).toBe("London");
       expect(parsed.searchParams.get("autoSearch")).toBe("0");
       expect(parsed.searchParams.get("pickDates")).toBe("1");
       expect(parsed.searchParams.get("lang")).toBe("en");

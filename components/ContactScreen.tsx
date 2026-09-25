@@ -398,7 +398,7 @@ export function ContactScreen({ lang, onStartRequest, onBack }: ContactScreenPro
           />
           <Text style={styles.contactIataText}>IATA 42228745</Text>
         </View>
-        <Text style={[styles.footer, isRtl && styles.rtlText]}>
+        <Text style={[styles.footer, isRtl && styles.footerRtl]}>
           {isRtl
             ? "© 2026 شركة ماكس للسياحة والسفر. جميع الحقوق محفوظة."
             : "© 2026 Max Travel & Tourism Co. All rights reserved."}
@@ -783,6 +783,9 @@ const styles = StyleSheet.create({
     marginTop: 9,
     opacity: 0.75,
     textAlign: "center",
+  },
+  footerRtl: {
+    writingDirection: "rtl",
   },
   contactIata: {
     alignItems: "center",

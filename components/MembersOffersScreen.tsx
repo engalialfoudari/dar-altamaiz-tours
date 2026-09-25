@@ -182,6 +182,8 @@ function OfferCard({
     const url = buildHotelDealUrl(API_BASE, __DEV__, lang, {
       scope: displayScope,
       city: offer.destinationCity || undefined,
+      destinationCountry: offer.destinationCountry || undefined,
+      destinationRegion: offer.destinationRegion || undefined,
       targetHotel: offer.targetHotelName || undefined,
       targetHotelId: offer.targetHotelId || undefined,
     });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, FlatList, Image, Platform, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, FlatList, Image, Platform, Linking, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StoreCategory, StoreProduct } from "@/lib/storeCatalog";
 import { useCart } from "@/lib/cartContext";
@@ -28,6 +28,7 @@ export function TravelStoreScreen({ onClose, lang, onOpenCart }: TravelStoreScre
   const rtl = lang === "ar";
   const [activeCategory, setActiveCategory] = useState<StoreCategory | "all">("all");
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<StoreProduct | null>(null);
   const apiBase = (process.env.EXPO_PUBLIC_API_BASE || "https://tours-dar-altamaiz--engalialfoudari.replit.app/api").replace(/\/$/, "");
   useEffect(() => {
     const controller = new AbortController();
@@ -69,7 +70,14 @@ export function TravelStoreScreen({ onClose, lang, onOpenCart }: TravelStoreScre
 
   const renderProduct = ({ item }: { item: StoreProduct }) => (
     <View style={styles.productCard}>
-      <Image source={item.imageUrl ? { uri: item.imageUrl } : item.image} style={styles.productImg} resizeMode="cover" />
+      <Pressable
+        style={({ pressed }) => [styles.productImageFrame, pressed && styles.productImagePressed]}
+        onPress={() => setPreviewProduct(item)}
+        accessibilityRole="button"
+        accessibilityLabel={rtl ? `فتح صورة ${item.name.ar}` : `Open image of ${item.name.en}`}
+      >
+        <Image source={item.imageUrl ? { uri: item.imageUrl } : item.image} style={styles.productImg} resizeMode="contain" />
+      </Pressable>
       <View style={styles.productBody}>
         <Text style={[styles.productName, rtl && styles.rtlText]} numberOfLines={2}>
           {item.name[lang]}
@@ -85,15 +93,6 @@ export function TravelStoreScreen({ onClose, lang, onOpenCart }: TravelStoreScre
                 : (rtl ? "عرض تفاصيل المنتج" : "View product details")}
             </Text>
           </Pressable>
-        )}
-        {expandedProductId === item.id && (
-          <View style={styles.purchaseInfo}>
-            <Text style={[styles.purchaseInfoText, rtl && styles.rtlText]}>
-              {rtl
-                ? "السعر والمخزون موضحان قبل الدفع. يمكن طلب الاسترجاع خلال 14 يوماً إذا كان المنتج غير مستخدم وكاملاً وفي تغليفه الأصلي، مع مراعاة الاستثناءات الموضحة في شروط خدمة تجهيز المسافر."
-                : "Price and stock are shown before payment. Returns may be requested within 14 days when the item is unused, complete, and in its original packaging, subject to the exceptions in the Travel Prep Service Terms."}
-            </Text>
-          </View>
         )}
         {__DEV__ && stockByProductId[item.id] !== undefined && (
           <Text style={[styles.stockText, rtl && styles.rtlText, stockByProductId[item.id] === 0 && styles.outOfStockText]}>
@@ -226,6 +225,35 @@ export function TravelStoreScreen({ onClose, lang, onOpenCart }: TravelStoreScre
         }
         showsVerticalScrollIndicator={false}
       />
+      <Modal
+        visible={previewProduct !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setPreviewProduct(null)}
+      >
+        <View style={styles.previewBackdrop}>
+          <Pressable
+            style={styles.previewDismissArea}
+            onPress={() => setPreviewProduct(null)}
+            accessibilityRole="button"
+            accessibilityLabel={rtl ? "إغلاق معاينة الصورة" : "Close image preview"}
+          />
+          {previewProduct && (
+            <View style={styles.previewCard}>
+              <Image
+                source={previewProduct.imageUrl ? { uri: previewProduct.imageUrl } : previewProduct.image}
+                style={styles.previewImage}
+                resizeMode="contain"
+              />
+              <Text style={[styles.previewTitle, rtl && styles.rtlText]}>{previewProduct.name[lang]}</Text>
+              <Pressable style={styles.previewCloseButton} onPress={() => setPreviewProduct(null)}>
+                <Text style={styles.previewCloseText}>{rtl ? "إغلاق" : "Close"}</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -336,13 +364,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  productImg: { width: "100%", height: 180, backgroundColor: "#E2E8F0" },
+  productImageFrame: {
+    height: 162,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  productImagePressed: { opacity: 0.9 },
+  productImg: { width: "100%", height: "100%" },
   productBody: { padding: 16 },
   productName: { fontSize: 16, fontWeight: "800", color: C.navy, marginBottom: 4 },
   productDesc: { fontSize: 13, color: "#64748B", marginBottom: 12 },
   detailsLink: { color: C.navy, fontSize: 12, fontWeight: "800", textDecorationLine: "underline", marginTop: -5, marginBottom: 10 },
-  purchaseInfo: { backgroundColor: "#F4F8F5", borderLeftWidth: 3, borderLeftColor: "#16803C", borderRadius: 7, padding: 9, marginBottom: 10 },
-  purchaseInfoText: { color: "#475569", fontSize: 11, lineHeight: 17 },
   stockText: { fontSize: 12, color: "#15803D", fontWeight: "700", marginBottom: 8 },
   outOfStockText: { color: "#B91C1C" },
   disabledBtn: { backgroundColor: "#94A3B8" },
@@ -362,4 +397,32 @@ const styles = StyleSheet.create({
   quantityButtonDisabled: { backgroundColor: "#F1F5F9" },
   quantityValue: { minWidth: 34, height: 34, alignItems: "center", justifyContent: "center", backgroundColor: "#16803C" },
   quantityText: { color: "#FFF", fontSize: 14, fontWeight: "900" },
+  previewBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  previewDismissArea: { ...StyleSheet.absoluteFillObject },
+  previewCard: {
+    width: "100%",
+    maxWidth: 420,
+    maxHeight: "88%",
+    backgroundColor: "#FFF",
+    borderRadius: 18,
+    padding: 14,
+  },
+  previewImage: { width: "100%", height: 440, maxHeight: "72%" },
+  previewTitle: { color: C.navy, fontSize: 16, fontWeight: "800", marginTop: 10, textAlign: "center" },
+  previewCloseButton: {
+    alignSelf: "center",
+    minWidth: 96,
+    marginTop: 14,
+    borderRadius: 18,
+    backgroundColor: C.navy,
+    paddingHorizontal: 24,
+    paddingVertical: 9,
+  },
+  previewCloseText: { color: "#FFF", fontSize: 14, fontWeight: "800", textAlign: "center" },
 });

@@ -1,0 +1,11 @@
+name: Publish Android preview OTA
+on:
+  workflow_dispatch:
+jobs:
+  update:
+    type: update
+    environment: production
+    params:
+      platform: android
+      channel: preview
+      message: Verified preview candidate
