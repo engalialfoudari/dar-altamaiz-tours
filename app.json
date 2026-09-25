@@ -31,7 +31,7 @@
       "bundleIdentifier": "com.dttours.app"
     },
     "android": {
-      "versionCode": 11,
+      "versionCode": 12,
       "googleServicesFile": "./google-services.json",
       "statusBar": {
         "hidden": true,
