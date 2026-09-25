@@ -7,7 +7,8 @@
       "channel": "preview",
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "sdk-54"
       },
       "ios": {
         "simulator": false
@@ -21,7 +22,8 @@
     "production": {
       "channel": "production",
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "sdk-54"
       },
       "env": {
         "ORG_GRADLE_PROJECT_newArchEnabled": "true",
