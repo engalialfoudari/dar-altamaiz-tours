@@ -7,3 +7,7 @@ jobs:
     params:
       platform: android
       profile: production
+    hooks:
+      before_install_node_modules:
+        - name: Provide Android Google services configuration
+          run: test -f "$GOOGLE_SERVICES_JSON" && cp "$GOOGLE_SERVICES_JSON" ./google-services.json
