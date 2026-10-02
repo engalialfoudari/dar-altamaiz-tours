@@ -21,8 +21,9 @@ import { useSignInWithGoogle } from "@clerk/expo/google";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { linkPushTokenAfterAuth } from "@/utils/pushTokenLink";
 import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
+import { isEsimReleased } from "@/lib/esimRelease";
 import { useAccountRequestGuard } from "@/hooks/useAccountRequestGuard";
-import { useColors } from "@/hooks/useColors";
+import { AccountEsimPurchases } from "./AccountEsimPurchases";
 import {
   DEFAULT_HOTEL_DISPLAY_PREFERENCES,
   formatHotelDisplayPrice,
@@ -131,14 +132,14 @@ const TIER_LABELS: Record<string, string> = {
   gold: "متميز ذهبي",
 };
 const TIER_COLORS: Record<string, string> = {
-  new: "#6b7280",
-  silver: "#94a3b8",
-  gold: "#D4AF37",
+  new: "#64748B",
+  silver: "#475569",
+  gold: "#0F766E",
 };
-const TIER_EMOJIS: Record<string, string> = {
-  new: "🆕",
-  silver: "🥈",
-  gold: "🥇",
+const TIER_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  new: "sparkles-outline",
+  silver: "ribbon-outline",
+  gold: "trophy-outline",
 };
 
 interface UserProfile {
@@ -224,22 +225,26 @@ type AccountDialog = {
 
 export function ProfileScreen({
   onClose,
+  visible = true,
   onLoginSuccess,
   onAuthenticated,
   onLoggedOut,
   onOpenHotelPortal,
   onOpenCart,
+  onOpenEsims,
   sessionRefreshVersion = 0,
   language = "en",
   hotelDisplayPreferences = DEFAULT_HOTEL_DISPLAY_PREFERENCES,
   onHotelDisplayPreferencesChange,
 }: {
   onClose?: () => void;
+  visible?: boolean;
   onLoginSuccess?: () => void;
   onAuthenticated?: () => void | Promise<void>;
   onLoggedOut?: () => void | Promise<void>;
   onOpenHotelPortal?: (url: string) => void;
   onOpenCart?: () => void;
+  onOpenEsims?: (orderId?: string) => void;
   sessionRefreshVersion?: number;
   language?: "en" | "ar";
   hotelDisplayPreferences?: HotelDisplayPreferences;
@@ -258,7 +263,6 @@ export function ProfileScreen({
     sessionId,
     userId,
   } = useAuth();
-  const theme = useColors();
   const isArabic = language === "ar";
   const copy = isArabic
     ? {
@@ -592,9 +596,9 @@ export function ProfileScreen({
   }, []);
 
   useEffect(() => {
-    if (!isClerkLoaded) return;
+    if (!isClerkLoaded || !visible) return;
     void loadProfile();
-  }, [accountKey, isClerkLoaded, loadProfile, sessionRefreshVersion]);
+  }, [accountKey, isClerkLoaded, loadProfile, sessionRefreshVersion, visible]);
 
   const notifiedPortalUserRef = useRef<number | null>(null);
   useEffect(() => {
@@ -1080,16 +1084,18 @@ export function ProfileScreen({
     }
   };
 
+  if (!visible) return null;
+
   if (loading) {
     return (
       <View style={[s.center, { paddingTop: insets.top }]}>
         {onClose && (
           <Pressable onPress={onClose} style={[s.closeButton, s.closeButtonFloating]} accessibilityRole="button" accessibilityLabel="Back">
-            <HotelPortalIcon name="arrow-back" size={20} color="#003580" />
+            <HotelPortalIcon name="arrow-back" size={20} color="#0F766E" />
              <Text style={s.closeButtonText}>{isArabic ? "رجوع" : "Back"}</Text>
           </Pressable>
         )}
-        <ActivityIndicator color="#003580" size="large" />
+        <ActivityIndicator color="#0F766E" size="large" />
       </View>
     );
   }
@@ -1099,7 +1105,7 @@ export function ProfileScreen({
       <ScrollView style={[s.authContainer, { paddingTop: insets.top + 12 }]} contentContainerStyle={s.authContent}>
         {onClose && (
           <Pressable onPress={onClose} style={s.authCloseButton} accessibilityRole="button" accessibilityLabel="Back">
-            <HotelPortalIcon name="arrow-back" size={20} color="#003580" />
+            <HotelPortalIcon name="arrow-back" size={20} color="#0F766E" />
              <Text style={s.authCloseButtonText}>{isArabic ? "رجوع" : "Back"}</Text>
           </Pressable>
         )}
@@ -1309,7 +1315,7 @@ export function ProfileScreen({
             accessibilityLabel={isArabic ? "العودة إلى حسابي" : "Back to My Account"}
             testID="account-settings-back"
           >
-            <HotelPortalIcon name="arrow-back" size={21} color="#003580" />
+            <HotelPortalIcon name="arrow-back" size={21} color="#0F766E" />
           </Pressable>
           <Text style={s.settingsTitle}>{isArabic ? "الإعدادات" : "Settings"}</Text>
           <View style={s.settingsHeaderSpacer} />
@@ -1405,7 +1411,7 @@ export function ProfileScreen({
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
-            <HotelPortalIcon name="arrow-back" size={18} color="#003580" />
+            <HotelPortalIcon name="arrow-back" size={18} color="#0F766E" />
             <Text style={s.closeButtonText}>{isArabic ? "رجوع" : "Back"}</Text>
           </Pressable>
         )}
@@ -1414,7 +1420,7 @@ export function ProfileScreen({
           <View style={s.heroTopLine}>
             <Text style={s.heroEyebrow}>{copy.eyebrow}</Text>
             <View style={s.heroShield}>
-              <HotelPortalIcon name="check" size={14} color="#D4AF37" />
+              <HotelPortalIcon name="check" size={14} color="#0F766E" />
             </View>
           </View>
           <View style={s.heroIdentity}>
@@ -1424,9 +1430,9 @@ export function ProfileScreen({
             <View style={s.heroCopy}>
               <Text style={s.profileName} numberOfLines={1}>{profile.name}</Text>
               <Text style={s.profileEmail} numberOfLines={1}>{profile.email}</Text>
-              <View style={[s.tierBadge, { borderColor: TIER_COLORS[tier] || "#D4AF37" }]}>
-                <Text style={[s.tierText, { color: TIER_COLORS[tier] || "#D4AF37" }]}>
-                  {TIER_EMOJIS[tier] || "•"}  {tierLabel}
+              <View style={[s.tierBadge, { borderColor: TIER_COLORS[tier] || "#0F766E" }]}>
+                <Text style={[s.tierText, { color: TIER_COLORS[tier] || "#0F766E" }]}>
+                  <Ionicons name={TIER_ICONS[tier] || "ribbon-outline"} size={12} color={TIER_COLORS[tier] || "#0F766E"} /> {tierLabel}
                 </Text>
               </View>
             </View>
@@ -1445,7 +1451,7 @@ export function ProfileScreen({
           </View>
           <View style={s.summaryDivider} />
           <View style={s.summaryItem}>
-            <Text style={[s.summaryValue, { color: TIER_COLORS[tier] || "#D4AF37" }]}>
+            <Text style={[s.summaryValue, { color: TIER_COLORS[tier] || "#0F766E" }]}>
                {tierLabel}
             </Text>
              <Text style={s.summaryLabel}>{copy.currentLevel}</Text>
@@ -1455,7 +1461,7 @@ export function ProfileScreen({
       {balanceNotifications.length > 0 && (
         <View style={s.section} testID="account-balance-notifications">
           <View style={s.sectionHeadingRow}>
-            <Ionicons name="notifications-outline" size={18} color="#0A192F" />
+            <Ionicons name="notifications-outline" size={18} color="#1F2937" />
             <Text style={s.sectionTitle}>{isArabic ? "إشعارات الحجوزات" : "Booking notifications"}</Text>
           </View>
           {balanceNotifications.map((notice) => (
@@ -1476,22 +1482,22 @@ export function ProfileScreen({
           style={[
             s.expiryBanner,
             {
-              backgroundColor: theme.warningBackground,
-              borderColor: theme.warningBorder,
+              backgroundColor: "#F0F8F6",
+              borderColor: "#CDE5E0",
             },
           ]}
           testID="loyalty-expiry-warning"
           accessibilityRole="alert"
         >
-          <Ionicons name="time-outline" size={22} color={theme.warningForeground} />
+          <Ionicons name="time-outline" size={22} color="#0F766E" />
           <View style={s.expiryCopy}>
-              <Text style={[s.expiryTitle, { color: theme.warningForeground }]}>
+              <Text style={[s.expiryTitle, { color: "#0F766E" }]}>
                {isArabic
                  ? `${expiringSoonPoints.toLocaleString()} نقطة ستنتهي قريباً`
                  : `${expiringSoonPoints.toLocaleString()} points expiring soon`}
             </Text>
             {expiryDate ? (
-              <Text style={[s.expirySub, { color: theme.warningMutedForeground }]}>
+              <Text style={[s.expirySub, { color: "#526760" }]}>
                  {isArabic
                    ? `أقرب تاريخ انتهاء: ${expiryDate} — استخدمها قبل انتهاء صلاحيتها`
                    : `Earliest expiry: ${expiryDate} — use them before they expire`}
@@ -1501,6 +1507,15 @@ export function ProfileScreen({
         </View>
       )}
 
+        {isEsimReleased && <AccountEsimPurchases
+          apiBase={API_BASE}
+          accountKey={accountKey}
+          request={clerkFetch}
+          language={language}
+          refreshVersion={sessionRefreshVersion}
+          onOpenOrders={onOpenEsims}
+        />}
+
         <Pressable
           style={({ pressed }) => [s.settingsEntry, pressed && s.settingsEntryPressed, { marginBottom: 16 }]}
           onPress={() => onOpenCart?.()}
@@ -1509,7 +1524,7 @@ export function ProfileScreen({
           testID="account-cart-entry"
         >
           <View style={s.settingsEntryIcon}>
-            <Ionicons name="cart-outline" size={18} color="#003580" />
+            <Ionicons name="cart-outline" size={18} color="#0F766E" />
           </View>
           <View style={s.settingsEntryCopy}>
             <Text style={[s.settingsEntryTitle, isArabic && s.rtlText]}>
@@ -1530,7 +1545,7 @@ export function ProfileScreen({
           testID="account-settings-entry"
         >
           <View style={s.settingsEntryIcon}>
-            <Ionicons name="settings-outline" size={18} color="#003580" />
+            <Ionicons name="settings-outline" size={18} color="#0F766E" />
           </View>
           <View style={s.settingsEntryCopy}>
             <Text style={[s.settingsEntryTitle, isArabic && s.rtlText]}>
@@ -1552,7 +1567,7 @@ export function ProfileScreen({
           <View style={s.section}>
             <View style={s.sectionHeadingRow}>
               <View style={s.sectionHeadingIcon}>
-                <Ionicons name="lock-closed-outline" size={16} color="#003580" />
+                <Ionicons name="lock-closed-outline" size={16} color="#0F766E" />
               </View>
               <View style={s.sectionHeadingCopy}>
                  <Text style={s.sectionTitle}>{copy.savedBookings}</Text>
@@ -1573,16 +1588,16 @@ export function ProfileScreen({
                 >
                   <View style={s.bookingCardHeader}>
                     <View style={s.hotelIdentity}>
-                      <View style={s.hotelIcon}><HotelPortalIcon name="building" size={18} color="#003580" /></View>
+                      <View style={s.hotelIcon}><HotelPortalIcon name="building" size={18} color="#0F766E" /></View>
                        <Text style={s.lockHotelName} numberOfLines={2}>{lock.hotelName || copy.priceHeld}</Text>
                     </View>
-                    {cd ? <View style={s.lockCdBadge}><Ionicons name="time-outline" size={13} color="#003580" /><Text style={s.lockCdText}>{cd}</Text></View> : null}
+                    {cd ? <View style={s.lockCdBadge}><Ionicons name="time-outline" size={13} color="#0F766E" /><Text style={s.lockCdText}>{cd}</Text></View> : null}
                   </View>
                   {lock.roomName ? <Text style={s.lockMeta}>{lock.roomName}</Text> : null}
                   <Text style={s.lockMeta}>{formatBookingDate(lock.checkin)} → {formatBookingDate(lock.checkout)}</Text>
                   <View style={s.lockBottomRow}>
                      <Text style={s.lockPrice}>{lock.lockedPriceKwd ? `KWD ${parseFloat(lock.lockedPriceKwd).toFixed(3)}` : copy.priceHeld}</Text>
-                     <Text style={s.lockAction}>{copy.continue} <Ionicons name="arrow-forward" size={12} color="#003580" /></Text>
+                     <Text style={s.lockAction}>{copy.continue} <Ionicons name="arrow-forward" size={12} color="#0F766E" /></Text>
                   </View>
                    {cd ? <Text style={s.lockExpiry}>{copy.priceProtectedFor(cd)}</Text> : null}
                 </Pressable>
@@ -1595,7 +1610,7 @@ export function ProfileScreen({
         <View style={s.section}>
           <View style={[s.sectionHeadingRow, s.bookingSectionHeading]}>
             <View style={[s.sectionHeadingIcon, s.bookingSectionHeadingIcon]}>
-              <Ionicons name="briefcase-outline" size={16} color="#0A192F" />
+              <Ionicons name="briefcase-outline" size={16} color="#0F766E" />
             </View>
             <View style={s.sectionHeadingCopy}>
                  <Text style={[s.sectionTitle, s.bookingSectionTitle]}>{copy.myBookings}</Text>
@@ -1616,8 +1631,8 @@ export function ProfileScreen({
           ) : bookings.map((b, index) => {
             const isConfirmed = b.status === "confirmed";
             const isCancelled = b.status === "cancelled";
-            const statusBg = isConfirmed ? "#E8F7EF" : isCancelled ? "#FEF0F0" : "#FFF7DD";
-            const statusColor = isConfirmed ? "#147A4B" : isCancelled ? "#B42318" : "#9A6700";
+            const statusBg = isConfirmed ? "#E8F7EF" : isCancelled ? "#FEF0F0" : "#E6F4F1";
+            const statusColor = isConfirmed ? "#147A4B" : isCancelled ? "#B42318" : "#0F766E";
              const statusLabel = isConfirmed
                ? (isArabic ? "مؤكد" : "Confirmed")
                : isCancelled
@@ -1637,7 +1652,7 @@ export function ProfileScreen({
                 >
                   <View style={s.bookingCardHeader}>
                     <View style={s.hotelIdentity}>
-                      <View style={s.hotelIcon}><HotelPortalIcon name="building" size={18} color="#003580" /></View>
+                      <View style={s.hotelIcon}><HotelPortalIcon name="building" size={18} color="#0F766E" /></View>
                       <View style={{ flex: 1 }}>
                         <Text style={s.bookingHotelName} numberOfLines={2}>{b.hotelName || (isArabic ? "حجز فندق" : "Hotel booking")}</Text>
                         <Text style={s.bookingCreated}>{copy.booked} {formatBookingDate(b.createdAt.slice(0, 10))}</Text>
@@ -1698,7 +1713,7 @@ export function ProfileScreen({
                         <Text style={s.referenceLabel}>{copy.hotelConfirmation}</Text>
                         <Text style={s.referencePending}>{copy.confirmingWithHotel}</Text>
                       </View>
-                      <Ionicons name="sync-outline" size={20} color="#9A6700" />
+                      <Ionicons name="sync-outline" size={20} color="#0F766E" />
                     </View>
                   ) : null}
 
@@ -1751,7 +1766,7 @@ export function ProfileScreen({
         <View style={s.section} testID="privacy-requests-section">
           <View style={s.sectionHeadingRow}>
             <View style={s.sectionHeadingIcon}>
-              <Ionicons name="shield-checkmark-outline" size={16} color="#003580" />
+              <Ionicons name="shield-checkmark-outline" size={16} color="#0F766E" />
             </View>
             <View style={s.sectionHeadingCopy}>
               <Text style={[s.sectionTitle, isArabic && s.rtlText]}>{copy.privacyTitle}</Text>
@@ -1765,14 +1780,14 @@ export function ProfileScreen({
             accessibilityRole="button"
             testID="privacy-request-export"
           >
-            <Ionicons name="download-outline" size={18} color="#003580" />
+            <Ionicons name="download-outline" size={18} color="#0F766E" />
             <View style={s.infoRowCopy}>
               <Text style={[s.infoRowTitle, isArabic && s.rtlText]}>{privacyExporting ? copy.privacyExportLoading : copy.privacyAccess}</Text>
               <Text style={[s.infoRowText, isArabic && s.rtlText]}>{copy.privacyAccessHint}</Text>
             </View>
           </Pressable>
           <Pressable style={s.privacyRow} onPress={requestPrivacyCorrection} disabled={privacyCorrecting} accessibilityRole="button" testID="privacy-request-correction">
-            <Ionicons name="create-outline" size={18} color="#003580" />
+            <Ionicons name="create-outline" size={18} color="#0F766E" />
             <View style={s.infoRowCopy}>
               <Text style={[s.infoRowTitle, isArabic && s.rtlText]}>{copy.privacyCorrect}</Text>
               <Text style={[s.infoRowText, isArabic && s.rtlText]}>{copy.privacyCorrectHint}</Text>
@@ -1798,7 +1813,7 @@ export function ProfileScreen({
 
         <View style={s.importantCard}>
           <View style={[s.sectionHeadingRow, s.importantHeadingRow]}>
-            <View style={[s.sectionHeadingIcon, s.importantHeadingIcon]}><Ionicons name="information-outline" size={16} color="#003580" /></View>
+            <View style={[s.sectionHeadingIcon, s.importantHeadingIcon]}><Ionicons name="information-outline" size={16} color="#0F766E" /></View>
             <Text style={[s.sectionTitle, s.importantSectionTitle, isArabic && s.rtlText]}>{copy.importantTitle}</Text>
           </View>
           <View style={s.infoRow}>
@@ -1809,19 +1824,19 @@ export function ProfileScreen({
             </View>
           </View>
           <View style={s.infoRow}>
-            <View style={s.infoRowIcon}><Ionicons name="time-outline" size={18} color="#9A6700" /></View>
+            <View style={s.infoRowIcon}><Ionicons name="time-outline" size={18} color="#0F766E" /></View>
             <View style={s.infoRowCopy}>
               <Text style={[s.infoRowTitle, isArabic && s.rtlText]}>{copy.cancellationTitle}</Text>
               <Text style={[s.infoRowText, isArabic && s.rtlText]}>{copy.cancellationBody}</Text>
             </View>
           </View>
           <Pressable style={s.supportRow} onPress={() => openSupport()} accessibilityRole="button" testID="account-support">
-            <View style={s.infoRowIcon}><Ionicons name="chatbubble-ellipses-outline" size={18} color="#003580" /></View>
+            <View style={s.infoRowIcon}><Ionicons name="chatbubble-ellipses-outline" size={18} color="#0F766E" /></View>
             <View style={s.infoRowCopy}>
               <Text style={[s.infoRowTitle, isArabic && s.rtlText]}>{copy.helpTitle}</Text>
               <Text style={[s.supportLink, isArabic && s.rtlText]}>{copy.supportLink}</Text>
             </View>
-            <Ionicons name="arrow-forward" size={17} color="#003580" />
+            <Ionicons name="arrow-forward" size={17} color="#0F766E" />
           </Pressable>
         </View>
 
@@ -1834,12 +1849,12 @@ export function ProfileScreen({
           { key: "gold",   label: isArabic ? "متميز ذهبي" : "Gold Tamayuz", cashback: "3.0%", req: isArabic ? "15 حجزاً / 1500 د.ك" : "15 bookings / 1500 KWD" },
         ].map((t) => (
           <View key={t.key} style={[s.tierRow, t.key === tier && s.tierRowActive]}>
-            <Text style={s.tierRowEmoji}>{TIER_EMOJIS[t.key]}</Text>
+            <View style={s.tierRowEmoji}><Ionicons name={TIER_ICONS[t.key] || "ribbon-outline"} size={20} color={TIER_COLORS[t.key] || "#0F766E"} /></View>
             <View style={{ flex: 1 }}>
               <Text style={[s.tierRowLabel, t.key === tier && { color: TIER_COLORS[t.key] }]}>{t.label}</Text>
               <Text style={s.tierRowSub}>{copy.cashback(t.cashback)} · {t.req}</Text>
             </View>
-            {t.key === tier && <Text style={{ color: TIER_COLORS[t.key], fontSize: 11, fontWeight: "700" }}>✓ {copy.active}</Text>}
+            {t.key === tier && <Text style={{ color: TIER_COLORS[t.key], fontSize: 11, fontWeight: "700" }}>{copy.active}</Text>}
           </View>
         ))}
       </View>
@@ -1960,7 +1975,7 @@ export function ProfileScreen({
               <Ionicons
                 name={dialog?.kind === "confirm" ? "help-outline" : dialog?.showSupport ? "alert-outline" : "checkmark-outline"}
                 size={26}
-                color={dialog?.kind === "confirm" ? "#9A6700" : dialog?.showSupport ? "#B42318" : "#147A4B"}
+                color={dialog?.kind === "confirm" ? "#0F766E" : dialog?.showSupport ? "#B42318" : "#147A4B"}
               />
             </View>
             <Text style={s.dialogTitle}>{dialog?.title}</Text>
@@ -2024,9 +2039,9 @@ const s = StyleSheet.create({
   authContent:     { paddingHorizontal: 24, paddingBottom: 40, flexGrow: 1 },
   closeButton:     { minHeight: 40, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e2e6ed", marginBottom: 12 },
   closeButtonFloating: { position: "absolute", top: 12, left: 16, zIndex: 1 },
-  closeButtonText: { color: "#003580", fontSize: 13, fontWeight: "800" },
+  closeButtonText: { color: "#0F766E", fontSize: 13, fontWeight: "800" },
   authCloseButton: { minHeight: 40, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, borderRadius: 8, backgroundColor: "#fff", borderWidth: 1, borderColor: "#d9e2ec", marginBottom: 28 },
-  authCloseButtonText: { color: "#003580", fontSize: 13, fontWeight: "700" },
+  authCloseButtonText: { color: "#0F766E", fontSize: 13, fontWeight: "700" },
   authHeading:     { marginBottom: 24 },
   authLogoFrame:   { width: 196, height: 42, overflow: "hidden", position: "relative", alignSelf: "center", marginBottom: 10 },
   authLogo:        { position: "absolute", width: 204, height: 204, left: -7, top: -84 },
@@ -2037,17 +2052,17 @@ const s = StyleSheet.create({
   modeTab:         { flex: 1, paddingVertical: 10, borderRadius: 6, alignItems: "center" },
   modeTabActive:   { backgroundColor: "#fff", shadowColor: "#1a1f36", shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
   modeTabText:     { color: "#5a6473", fontSize: 12, fontWeight: "700" },
-  modeTabTextActive:{ color: "#003580" },
+  modeTabTextActive:{ color: "#0F766E" },
   fieldLabel:      { color: "#1a1f36", fontSize: 12, fontWeight: "700", marginBottom: 7 },
   input:           { backgroundColor: "#fff", borderWidth: 1, borderColor: "#aeb9c5", borderRadius: 8, paddingHorizontal: 13, paddingVertical: 12, color: "#1a1f36", marginBottom: 15, fontSize: 14 },
   errorText:       { color: "#c62828", fontSize: 12, marginBottom: 10, textAlign: "center" },
   forgotHint:     { color: "#5a6473", fontSize: 13, lineHeight: 21, textAlign: "center", marginBottom: 16 },
   forgotLink:     { alignSelf: "flex-end", marginTop: -7, marginBottom: 13 },
-  forgotLinkText: { color: "#003580", fontSize: 12, fontWeight: "800" },
+  forgotLinkText: { color: "#0F766E", fontSize: 12, fontWeight: "800" },
   resetMessage:   { color: "#16794C", fontSize: 12, lineHeight: 19, marginBottom: 10, textAlign: "center" },
   backToLogin:    { alignItems: "center", marginTop: 14, paddingVertical: 3 },
-  backToLoginText:{ color: "#003580", fontSize: 12, fontWeight: "800" },
-  submitBtn:       { backgroundColor: "#003580", borderRadius: 8, padding: 15, alignItems: "center", marginTop: 3 },
+  backToLoginText:{ color: "#0F766E", fontSize: 12, fontWeight: "800" },
+  submitBtn:       { backgroundColor: "#0F766E", borderRadius: 8, padding: 15, alignItems: "center", marginTop: 3 },
   submitBtnText:   { color: "#fff", fontWeight: "800", fontSize: 15 },
   authDivider:     { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 16 },
   authDividerLine: { flex: 1, height: 1, backgroundColor: "#d9e2ec" },
@@ -2055,42 +2070,42 @@ const s = StyleSheet.create({
   googleBtn:       { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: "#aeb9c5", backgroundColor: "#fff", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   googleBtnText:   { color: "#1a1f36", fontSize: 14, fontWeight: "800" },
   authNote:        { marginTop: 20, color: "#5a6473", fontSize: 12, lineHeight: 20, textAlign: "center", paddingHorizontal: 8 },
-  profileHero:     { marginHorizontal: 16, marginTop: 4, borderRadius: 24, padding: 20, backgroundColor: "#0A192F", shadowColor: "#0A192F", shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
+  profileHero:     { marginHorizontal: 16, marginTop: 4, borderRadius: 24, padding: 20, backgroundColor: "#F2F9F7", borderWidth: 1, borderColor: "#CDE5E0", shadowColor: "#1F2937", shadowOpacity: 0.05, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
   heroTopLine:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
-  heroEyebrow:     { color: "#D4AF37", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
-  heroShield:      { width: 28, height: 28, borderRadius: 14, backgroundColor: "rgba(212,175,55,0.13)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(212,175,55,0.28)" },
+  heroEyebrow:     { color: "#0F766E", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
+  heroShield:      { width: 28, height: 28, borderRadius: 14, backgroundColor: "#E6F4F1", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#A8D5CC" },
   heroIdentity:    { flexDirection: "row", alignItems: "center" },
   heroCopy:        { flex: 1, marginLeft: 14 },
-  avatarCircle:    { width: 64, height: 64, borderRadius: 20, backgroundColor: "#11315A", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(212,175,55,0.45)" },
-  avatarText:      { fontSize: 26, color: "#FFFFFF", fontWeight: "900" },
-  profileName:     { fontSize: 21, fontWeight: "900", color: "#FFFFFF", marginBottom: 3 },
-  profileEmail:    { fontSize: 12, color: "#B8C4D8", marginBottom: 10 },
-  tierBadge:       { alignSelf: "flex-start", borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "rgba(255,255,255,0.05)" },
+  avatarCircle:    { width: 64, height: 64, borderRadius: 20, backgroundColor: "#E6F4F1", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#A8D5CC" },
+  avatarText:      { fontSize: 26, color: "#0F766E", fontWeight: "900" },
+  profileName:     { fontSize: 21, fontWeight: "900", color: "#1F2937", marginBottom: 3 },
+  profileEmail:    { fontSize: 12, color: "#64748B", marginBottom: 10 },
+  tierBadge:       { alignSelf: "flex-start", borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#FFFFFF" },
   tierText:        { fontWeight: "800", fontSize: 11 },
-  summaryCard:     { marginHorizontal: 16, marginTop: 12, backgroundColor: "#FFFFFF", borderRadius: 18, paddingVertical: 16, flexDirection: "row", borderWidth: 1, borderColor: "#E3E8F2", shadowColor: "#0A192F", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  summaryCard:     { marginHorizontal: 16, marginTop: 12, backgroundColor: "#FFFFFF", borderRadius: 18, paddingVertical: 16, flexDirection: "row", borderWidth: 1, borderColor: "#E3E8F2", shadowColor: "#1F2937", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   summaryItem:     { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
-  summaryValue:    { fontSize: 17, fontWeight: "900", color: "#0A192F", textAlign: "center", marginBottom: 4 },
+  summaryValue:    { fontSize: 17, fontWeight: "900", color: "#1F2937", textAlign: "center", marginBottom: 4 },
   summaryLabel:    { fontSize: 9.5, lineHeight: 13, color: "#64748B", textAlign: "center" },
   summaryDivider:  { width: 1, backgroundColor: "#E8EDF4", marginVertical: 3 },
   expiryBanner:    { marginHorizontal: 16, marginBottom: 16, borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: "row-reverse", alignItems: "flex-start", gap: 9 },
   expiryCopy:      { flex: 1, alignItems: "flex-end" },
   expiryTitle:     { fontSize: 13, fontWeight: "800", textAlign: "right", lineHeight: 19 },
   expirySub:       { fontSize: 11, marginTop: 3, textAlign: "right", lineHeight: 17 },
-  section:         { marginHorizontal: 16, marginTop: 14, backgroundColor: "#FFFFFF", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "#E3E8F2", shadowColor: "#0A192F", shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
+  section:         { marginHorizontal: 16, marginTop: 14, backgroundColor: "#FFFFFF", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "#E3E8F2", shadowColor: "#1F2937", shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
   sectionHeadingRow:  { flexDirection: "row", alignItems: "center", marginBottom: 15 },
-  sectionHeadingIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: "#EEF4FF", alignItems: "center", justifyContent: "center", marginRight: 10 },
+  sectionHeadingIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: "#E6F4F1", alignItems: "center", justifyContent: "center", marginRight: 10 },
   sectionHeadingCopy: { flex: 1 },
-  sectionTitle:       { fontSize: 15, fontWeight: "900", color: "#0A192F" },
+  sectionTitle:       { fontSize: 15, fontWeight: "900", color: "#1F2937" },
   sectionSubtitle:    { color: "#718096", fontSize: 10.5, marginTop: 2 },
-  countBadge:         { minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: 13, backgroundColor: "#0A192F", alignItems: "center", justifyContent: "center" },
+  countBadge:         { minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: 13, backgroundColor: "#1F2937", alignItems: "center", justifyContent: "center" },
   countBadgeText:     { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
   bookingCard:        { paddingHorizontal: 12, paddingVertical: 16, marginBottom: 10, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 14 },
-  bookingSectionHeading: { backgroundColor: "#0A192F", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 9, marginBottom: 15 },
-  bookingSectionHeadingIcon: { backgroundColor: "#D4AF37" },
-  bookingSectionTitle: { fontSize: 16.5, color: "#FFFFFF" },
-  bookingSectionSubtitle: { color: "#B8C4D8" },
-  bookingSectionCountBadge: { backgroundColor: "#D4AF37" },
-  bookingSectionCountText: { color: "#0A192F" },
+  bookingSectionHeading: { backgroundColor: "#E6F4F1", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 9, marginBottom: 15 },
+  bookingSectionHeadingIcon: { backgroundColor: "#FFFFFF" },
+  bookingSectionTitle: { fontSize: 16.5, color: "#1F2937" },
+  bookingSectionSubtitle: { color: "#64748B" },
+  bookingSectionCountBadge: { backgroundColor: "#0F766E" },
+  bookingSectionCountText: { color: "#FFFFFF" },
   bookingListDivider: { borderBottomWidth: 1, borderBottomColor: "#CBD5E1" },
   bookingDetailsArea: { borderRadius: 12 },
   bookingDetailsPressed: { opacity: 0.78, backgroundColor: "#F8FAFC" },
@@ -2109,15 +2124,15 @@ const s = StyleSheet.create({
   bookingInfoValue:   { color: "#334155", fontSize: 11.5, fontWeight: "800" },
   detailLine:         { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 11, paddingHorizontal: 2 },
   detailLineText:     { flex: 1, color: "#64748B", fontSize: 10.5, lineHeight: 15 },
-  referenceRow:       { marginTop: 11, borderRadius: 12, padding: 11, backgroundColor: "#EEF4FF", borderWidth: 1, borderColor: "#D7E5FA", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  referenceRow:       { marginTop: 11, borderRadius: 12, padding: 11, backgroundColor: "#E6F4F1", borderWidth: 1, borderColor: "#CDE5E0", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   referenceLabel:     { color: "#64748B", fontSize: 9.5, fontWeight: "700", marginBottom: 3 },
-  referenceValue:     { color: "#003580", fontSize: 14, fontWeight: "900", letterSpacing: 0.6 },
-  referencePending:   { color: "#9A6700", fontSize: 11, fontWeight: "700" },
+  referenceValue:     { color: "#0F766E", fontSize: 14, fontWeight: "900", letterSpacing: 0.6 },
+  referencePending:   { color: "#0F766E", fontSize: 11, fontWeight: "700" },
   policyHint:         { marginTop: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: "#ECFDF3", flexDirection: "row", alignItems: "center", gap: 7 },
   policyHintCancelled:{ marginTop: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: "#F0FDF4", flexDirection: "row", alignItems: "center", gap: 7 },
   policyHintText:     { flex: 1, color: "#38664F", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
   bookingInternalRef:{ color: "#94A3B8", fontSize: 9, marginTop: 9 },
-  primaryAction:      { minHeight: 44, marginTop: 12, borderRadius: 12, paddingHorizontal: 14, backgroundColor: "#D97706", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  primaryAction:      { minHeight: 44, marginTop: 12, borderRadius: 12, paddingHorizontal: 14, backgroundColor: "#0F766E", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   primaryActionText:  { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
   cancelAction:       { minHeight: 42, marginTop: 8, borderRadius: 12, paddingHorizontal: 14, backgroundColor: "#FFF7F7", borderWidth: 1, borderColor: "#F5C2C0", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
   cancelActionText:   { color: "#B42318", fontSize: 11.5, fontWeight: "900" },
@@ -2137,37 +2152,37 @@ const s = StyleSheet.create({
   infoRowTitle:       { color: "#253247", fontSize: 11.5, fontWeight: "900", lineHeight: 16 },
   infoRowText:        { color: "#718096", fontSize: 10, lineHeight: 15, marginTop: 3 },
   supportRow:         { flexDirection: "row", alignItems: "center", paddingTop: 12 },
-  supportLink:        { color: "#003580", fontSize: 10, fontWeight: "800", marginTop: 3 },
+  supportLink:        { color: "#0F766E", fontSize: 10, fontWeight: "800", marginTop: 3 },
   tierRow:         { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 10, marginBottom: 6 },
-  tierRowActive:   { backgroundColor: "#eef4ff", borderWidth: 1, borderColor: "#b9d2f7" },
-  tierRowEmoji:    { fontSize: 20, marginRight: 12 },
+  tierRowActive:   { backgroundColor: "#E6F4F1", borderWidth: 1, borderColor: "#A8D5CC" },
+  tierRowEmoji:    { marginRight: 12, width: 24, alignItems: "center" },
   tierRowLabel:    { color: "#1a1a1a", fontWeight: "700", fontSize: 14 },
   tierRowSub:      { color: "#6b7280", fontSize: 11, marginTop: 2 },
   logoutBtn:       { minHeight: 44, marginHorizontal: 16, marginTop: 16, backgroundColor: "#FFF8F8", borderRadius: 13, paddingHorizontal: 14, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 7, borderWidth: 1, borderColor: "#F4D3D1" },
   logoutText:      { color: "#B42318", fontWeight: "900", fontSize: 12 },
   lockCard:        { paddingVertical: 14 },
   lockHotelName:   { color: "#0F172A", fontWeight: "900", fontSize: 13, lineHeight: 18, flex: 1 },
-  lockCdBadge:     { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#EEF4FF", borderRadius: 9, borderWidth: 1, borderColor: "#D7E5FA", paddingHorizontal: 8, paddingVertical: 5, flexShrink: 0 },
-  lockCdText:      { color: "#003580", fontSize: 10, fontWeight: "900" },
+  lockCdBadge:     { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#E6F4F1", borderRadius: 9, borderWidth: 1, borderColor: "#CDE5E0", paddingHorizontal: 8, paddingVertical: 5, flexShrink: 0 },
+  lockCdText:      { color: "#0F766E", fontSize: 10, fontWeight: "900" },
   lockMeta:        { color: "#64748B", fontSize: 10.5, lineHeight: 15, marginTop: 3, marginLeft: 46 },
   lockBottomRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 11, marginLeft: 46 },
-  lockPrice:       { color: "#0A192F", fontSize: 14, fontWeight: "900" },
-  lockAction:      { color: "#003580", fontSize: 10.5, fontWeight: "900" },
-  lockExpiry:      { color: "#9A6700", fontSize: 9.5, marginTop: 5, marginLeft: 46, fontWeight: "700" },
+  lockPrice:       { color: "#1F2937", fontSize: 14, fontWeight: "900" },
+  lockAction:      { color: "#0F766E", fontSize: 10.5, fontWeight: "900" },
+  lockExpiry:      { color: "#0F766E", fontSize: 9.5, marginTop: 5, marginLeft: 46, fontWeight: "700" },
   dialogBackdrop:  { flex: 1, backgroundColor: "rgba(10,25,47,0.62)", justifyContent: "center", padding: 24 },
   dialogCard:      { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22, alignItems: "center", shadowColor: "#000000", shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
   dialogIcon:      { width: 54, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 15 },
-  dialogIconWarning:{ backgroundColor: "#FFF7DD" },
+  dialogIconWarning:{ backgroundColor: "#E6F4F1" },
   dialogIconSuccess:{ backgroundColor: "#ECFDF3" },
-  dialogTitle:     { color: "#0A192F", fontSize: 17, lineHeight: 23, fontWeight: "900", textAlign: "center" },
+  dialogTitle:     { color: "#1F2937", fontSize: 17, lineHeight: 23, fontWeight: "900", textAlign: "center" },
   dialogMessage:   { color: "#64748B", fontSize: 12, lineHeight: 19, textAlign: "center", marginTop: 8 },
   dialogActions:   { width: "100%", marginTop: 20, gap: 9 },
   bookingDetailsCard: { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22, maxHeight: "85%", shadowColor: "#000000", shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
   bookingDetailsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: 13 },
   bookingDetailsClose: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#F3F6FA", alignItems: "center", justifyContent: "center" },
-  bookingDetailsHotel: { color: "#0A192F", fontSize: 18, lineHeight: 24, fontWeight: "900", marginBottom: 10 },
-  bookingDetailsStatus: { alignSelf: "flex-start", backgroundColor: "#FFF7DD", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 12 },
-  bookingDetailsStatusText: { color: "#9A6700", fontSize: 11, fontWeight: "900" },
+  bookingDetailsHotel: { color: "#1F2937", fontSize: 18, lineHeight: 24, fontWeight: "900", marginBottom: 10 },
+  bookingDetailsStatus: { alignSelf: "flex-start", backgroundColor: "#E6F4F1", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 12 },
+  bookingDetailsStatusText: { color: "#0F766E", fontSize: 11, fontWeight: "900" },
   bookingDetailsRow: { borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 10, gap: 3 },
   bookingDetailsLabel: { color: "#94A3B8", fontSize: 10, fontWeight: "700" },
   bookingDetailsValue: { color: "#334155", fontSize: 12, fontWeight: "800" },
@@ -2179,32 +2194,32 @@ const s = StyleSheet.create({
   dialogSupport:   { minHeight: 45, borderRadius: 12, backgroundColor: "#147A4B", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
   dialogSupportText:{ color: "#FFFFFF", fontSize: 11.5, fontWeight: "900" },
   privacyRow:      { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
-  privacyEmail:    { color: "#003580", fontSize: 12, fontWeight: "700", marginTop: 12 },
+  privacyEmail:    { color: "#0F766E", fontSize: 12, fontWeight: "700", marginTop: 12 },
   settingsEntry: { marginHorizontal: 16, marginTop: 14, minHeight: 72, paddingHorizontal: 16, backgroundColor: "#FFFFFF", borderRadius: 18, borderWidth: 1, borderColor: "#E3E8F2", flexDirection: "row", alignItems: "center" },
   settingsEntryPressed: { opacity: 0.75 },
-  settingsEntryIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#EEF4FF", alignItems: "center", justifyContent: "center", marginRight: 12 },
+  settingsEntryIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#E6F4F1", alignItems: "center", justifyContent: "center", marginRight: 12 },
   settingsEntryCopy: { flex: 1 },
-  settingsEntryTitle: { color: "#0A192F", fontSize: 14, fontWeight: "900" },
+  settingsEntryTitle: { color: "#1F2937", fontSize: 14, fontWeight: "900" },
   settingsEntryValue: { color: "#718096", fontSize: 11, marginTop: 4 },
   settingsScreen: { flex: 1, backgroundColor: "#F7F8FA" },
   settingsHeader: { minHeight: 58, paddingHorizontal: 16, backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#E5E7EB", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   settingsBackButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   settingsHeaderSpacer: { width: 40 },
-  settingsTitle: { color: "#0A192F", fontSize: 18, fontWeight: "900" },
+  settingsTitle: { color: "#1F2937", fontSize: 18, fontWeight: "900" },
   settingsContent: { padding: 16 },
   settingsCard: { backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: "#E3E8F2", overflow: "hidden" },
   settingsOption: { padding: 16 },
   settingsOptionCopy: { marginBottom: 13 },
-  settingsOptionTitle: { color: "#0A192F", fontSize: 14, fontWeight: "800" },
+  settingsOptionTitle: { color: "#1F2937", fontSize: 14, fontWeight: "800" },
   settingsOptionHint: { color: "#718096", fontSize: 10.5, marginTop: 4, lineHeight: 15 },
   settingsChoices: { flexDirection: "row", gap: 8 },
-  settingsChoice: { flex: 1, minHeight: 42, borderWidth: 1, borderColor: "#D7E5FA", borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
-  settingsChoiceActive: { backgroundColor: "#003580", borderColor: "#003580" },
+  settingsChoice: { flex: 1, minHeight: 42, borderWidth: 1, borderColor: "#CDE5E0", borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  settingsChoiceActive: { backgroundColor: "#0F766E", borderColor: "#0F766E" },
   settingsChoiceText: { color: "#334155", fontSize: 11, fontWeight: "800" },
   settingsChoiceTextActive: { color: "#FFFFFF" },
   settingsDivider: { height: 1, backgroundColor: "#E5E7EB", marginHorizontal: 16 },
-  settingsPreviewCard: { marginTop: 14, padding: 16, backgroundColor: "#EEF4FF", borderRadius: 16, borderWidth: 1, borderColor: "#D7E5FA" },
+  settingsPreviewCard: { marginTop: 14, padding: 16, backgroundColor: "#E6F4F1", borderRadius: 16, borderWidth: 1, borderColor: "#CDE5E0" },
   settingsPreviewLabel: { color: "#64748B", fontSize: 10.5, fontWeight: "800" },
-  settingsPreviewValue: { color: "#003580", fontSize: 22, fontWeight: "900", marginTop: 7 },
+  settingsPreviewValue: { color: "#0F766E", fontSize: 22, fontWeight: "900", marginTop: 7 },
   settingsPreviewHint: { color: "#64748B", fontSize: 10.5, marginTop: 4 },
 });

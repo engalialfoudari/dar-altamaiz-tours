@@ -179,7 +179,7 @@ describe("hotel portal navigation hosts", () => {
     expect(returnHome).toContain("setNativeScreen(null)");
   });
 
-  it("keeps Account mounted so profile data preloads before the tab is tapped", () => {
+  it("keeps Account mounted but defers its hidden web work until the tab is tapped", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../app/(tabs)/index.tsx"),
       "utf8",
@@ -187,6 +187,7 @@ describe("hotel portal navigation hosts", () => {
 
     expect(source.match(/<ProfileScreen/g)).toHaveLength(2);
     expect(source.match(/display: showProfile \? "flex" : "none"/g)).toHaveLength(2);
+    expect(source).toContain("<ProfileScreen visible={showProfile}");
     expect(source).not.toContain("{showProfile && (");
   });
 

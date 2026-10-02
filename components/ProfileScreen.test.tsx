@@ -157,6 +157,9 @@ function installFetchMock() {
     if (url.endsWith("/loyalty/balance")) {
       return Promise.resolve(response({ ok: true, expiringSoonPoints: 0 }));
     }
+    if (url.endsWith("/esim/orders")) {
+      return Promise.resolve(response({ orders: [] }));
+    }
     if (url.endsWith("/my-price-locks")) {
       return Promise.resolve(response({
         ok: true,
@@ -262,6 +265,16 @@ describe("ProfileScreen Account actions", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it("does not fetch or render a hidden web Account", () => {
+    mockIsSignedIn = true;
+    mockSessionId = "session-test";
+    mockUserId = "user-test";
+    mockGetToken.mockResolvedValue("test-token");
+    const view = render(<ProfileScreen language="en" visible={false} />);
+    expect(view.toJSON()).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("opens the Account login screen when Clerk JS has not loaded", () => {

@@ -5,6 +5,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { Ionicons } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { setBaseUrl } from "@workspace/api-client-react";
 import { CartProvider } from "@/lib/cartContext";
 import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
@@ -53,6 +54,11 @@ const bundledClerkProxyUrl =
   process.env.EXPO_PUBLIC_CLERK_PROXY_URL ?? "";
 
 const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://dt-tour.com/api").replace(/\/$/, "");
+// Generated client paths already begin with /api. Native fetch requires an
+// absolute origin, while web must retain same-origin relative requests.
+if (Platform.OS !== "web") {
+  setBaseUrl(API_BASE.replace(/\/api\/?$/, ""));
+}
 const WEB_PAGE_TITLE = "DT Tours App - Your next trip starts here !";
 
 function reportError(errorType: string, message: string, stack?: string, context?: Record<string, unknown>): void {

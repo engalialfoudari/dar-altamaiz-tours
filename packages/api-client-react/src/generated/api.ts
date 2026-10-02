@@ -6,24 +6,61 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
+  AdminEsimReconcileResponse,
+  AdminEsimRecoveryOrdersResponse,
+  AdminEsimStockImportResponse,
+  AdminEsimStockInput,
+  AdminEsimStockResponse,
+  ApiError,
+  EsimBillingProfileResponse,
+  EsimCatalogResponse,
+  EsimCheckoutResponse,
+  EsimDestinationResponse,
+  EsimEmailReviewInput,
+  EsimEmailReviewResult,
+  EsimGuestRecoveryAcknowledgement,
+  EsimGuestRecoveryDocumentProof,
+  EsimGuestRecoveryEmail,
+  EsimGuestRecoveryOrders,
+  EsimGuestRecoveryProof,
+  EsimMarkupInput,
+  EsimMarkupResponse,
+  EsimOrderInput,
+  EsimOrderListResponse,
+  EsimOrderStatusResponse,
+  EsimPaymentRecoveryInput,
+  EsimPrivateGuestCodeInput,
+  EsimPromoCode,
+  EsimPromoCodeInput,
+  EsimPromoCodeUpdate,
+  EsimPromoCodesResponse,
+  EsimQuoteInput,
+  EsimQuoteResponse,
+  EsimReconcileResponse,
   GetHotelDealsParams,
   HealthStatus,
   HotelDealsResponse,
+  ReviewAdminEsimPayment200,
+  SendEsimPrivateGuestCode200,
   TrendingDestinationsResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -56,6 +93,7 @@ export const getHealthCheckUrl = () => {
 
   return `/api/healthz`
 }
+
 /**
  * Returns server health status
  * @summary Health check
@@ -119,6 +157,7 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
 
 
 
@@ -267,3 +306,2053 @@ export function useGetHotelDeals<TData = Awaited<ReturnType<typeof getHotelDeals
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export const getGetEsimCatalogUrl = () => {
+
+
+
+
+  return `/api/esim/catalog`
+}
+
+/**
+ * Browse customer-facing eSIM minimum KWD prices. Supplier cost fields and purchase actions are not exposed.
+ * @summary List eSIM destinations
+ */
+export const getEsimCatalog = async ( options?: Parameters<typeof customFetch>[1]): Promise<EsimCatalogResponse> => {
+
+  return customFetch<EsimCatalogResponse>(getGetEsimCatalogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEsimCatalogQueryKey = () => {
+    return [
+    `/api/esim/catalog`
+    ] as const;
+    }
+
+
+export const getGetEsimCatalogQueryOptions = <TData = Awaited<ReturnType<typeof getEsimCatalog>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimCatalog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEsimCatalogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEsimCatalog>>> = ({ signal }) => getEsimCatalog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEsimCatalog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEsimCatalogQueryResult = NonNullable<Awaited<ReturnType<typeof getEsimCatalog>>>
+export type GetEsimCatalogQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary List eSIM destinations
+ */
+
+export function useGetEsimCatalog<TData = Awaited<ReturnType<typeof getEsimCatalog>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimCatalog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEsimCatalogQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEsimCatalogDestinationUrl = (slug: string,) => {
+
+
+
+
+  return `/api/esim/catalog/${slug}`
+}
+
+/**
+ * Browse customer-facing package prices and available coverage metadata. Supplier cost fields and purchase actions are not exposed.
+ * @summary Get eSIM packages for a destination
+ */
+export const getEsimCatalogDestination = async (slug: string, options?: Parameters<typeof customFetch>[1]): Promise<EsimDestinationResponse> => {
+
+  return customFetch<EsimDestinationResponse>(getGetEsimCatalogDestinationUrl(slug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEsimCatalogDestinationQueryKey = (slug: string,) => {
+    return [
+    `/api/esim/catalog/${slug}`
+    ] as const;
+    }
+
+
+export const getGetEsimCatalogDestinationQueryOptions = <TData = Awaited<ReturnType<typeof getEsimCatalogDestination>>, TError = ErrorType<ApiError>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimCatalogDestination>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEsimCatalogDestinationQueryKey(slug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEsimCatalogDestination>>> = ({ signal }) => getEsimCatalogDestination(slug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: slug !== null && slug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEsimCatalogDestination>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEsimCatalogDestinationQueryResult = NonNullable<Awaited<ReturnType<typeof getEsimCatalogDestination>>>
+export type GetEsimCatalogDestinationQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Get eSIM packages for a destination
+ */
+
+export function useGetEsimCatalogDestination<TData = Awaited<ReturnType<typeof getEsimCatalogDestination>>, TError = ErrorType<ApiError>>(
+ slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimCatalogDestination>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEsimCatalogDestinationQueryOptions(slug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEsimMarkupUrl = () => {
+
+
+
+
+  return `/api/admin/esim/markup`
+}
+
+/**
+ * @summary Get eSIM markup setting
+ */
+export const getEsimMarkup = async ( options?: Parameters<typeof customFetch>[1]): Promise<EsimMarkupResponse> => {
+
+  return customFetch<EsimMarkupResponse>(getGetEsimMarkupUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEsimMarkupQueryKey = () => {
+    return [
+    `/api/admin/esim/markup`
+    ] as const;
+    }
+
+
+export const getGetEsimMarkupQueryOptions = <TData = Awaited<ReturnType<typeof getEsimMarkup>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimMarkup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEsimMarkupQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEsimMarkup>>> = ({ signal }) => getEsimMarkup({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEsimMarkup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEsimMarkupQueryResult = NonNullable<Awaited<ReturnType<typeof getEsimMarkup>>>
+export type GetEsimMarkupQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get eSIM markup setting
+ */
+
+export function useGetEsimMarkup<TData = Awaited<ReturnType<typeof getEsimMarkup>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimMarkup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEsimMarkupQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetEsimMarkupUrl = () => {
+
+
+
+
+  return `/api/admin/esim/markup`
+}
+
+/**
+ * @summary Set eSIM markup percentage
+ */
+export const setEsimMarkup = async (esimMarkupInput: EsimMarkupInput, options?: Parameters<typeof customFetch>[1]): Promise<EsimMarkupResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimMarkupResponse>(getSetEsimMarkupUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimMarkupInput)
+  }
+);}
+
+
+
+
+
+export const getSetEsimMarkupMutationKey = () => ['setEsimMarkup'] as const;
+
+export const getSetEsimMarkupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setEsimMarkup>>, TError,SetEsimMarkupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setEsimMarkup>>, TError,SetEsimMarkupMutationVariables, TContext> => {
+
+const mutationKey = getSetEsimMarkupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setEsimMarkup>>, SetEsimMarkupMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  setEsimMarkup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetEsimMarkupMutationResult = NonNullable<Awaited<ReturnType<typeof setEsimMarkup>>>
+    export type SetEsimMarkupMutationBody = BodyType<EsimMarkupInput>
+    export type SetEsimMarkupMutationError = ErrorType<void>
+    export type SetEsimMarkupMutationVariables = {data: BodyType<EsimMarkupInput>}
+
+    /**
+ * @summary Set eSIM markup percentage
+ */
+export const useSetEsimMarkup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setEsimMarkup>>, TError,SetEsimMarkupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setEsimMarkup>>,
+        TError,
+        SetEsimMarkupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetEsimMarkupMutationOptions(options));
+    }
+
+export const getListAdminEsimStockUrl = () => {
+
+
+
+
+  return `/api/admin/esim/stock`
+}
+
+/**
+ * @summary List available, reserved, assigned, and expired prepaid ordinary eSIM units
+ */
+export const listAdminEsimStock = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminEsimStockResponse> => {
+
+  return customFetch<AdminEsimStockResponse>(getListAdminEsimStockUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminEsimStockQueryKey = () => {
+    return [
+    `/api/admin/esim/stock`
+    ] as const;
+    }
+
+
+export const getListAdminEsimStockQueryOptions = <TData = Awaited<ReturnType<typeof listAdminEsimStock>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminEsimStock>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminEsimStockQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminEsimStock>>> = ({ signal }) => listAdminEsimStock({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminEsimStock>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminEsimStockQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminEsimStock>>>
+export type ListAdminEsimStockQueryError = ErrorType<void>
+
+
+/**
+ * @summary List available, reserved, assigned, and expired prepaid ordinary eSIM units
+ */
+
+export function useListAdminEsimStock<TData = Awaited<ReturnType<typeof listAdminEsimStock>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminEsimStock>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminEsimStockQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getImportAdminEsimStockUrl = () => {
+
+
+
+
+  return `/api/admin/esim/stock/import`
+}
+
+/**
+ * Read-only supplier lookup. This endpoint never purchases stock; staff must confirm the activation deadline from supplier evidence before importing.
+ * @summary Import one already-purchased ordinary Airalo eSIM
+ */
+export const importAdminEsimStock = async (adminEsimStockInput: AdminEsimStockInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminEsimStockImportResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AdminEsimStockImportResponse>(getImportAdminEsimStockUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminEsimStockInput)
+  }
+);}
+
+
+
+
+
+export const getImportAdminEsimStockMutationKey = () => ['importAdminEsimStock'] as const;
+
+export const getImportAdminEsimStockMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importAdminEsimStock>>, TError,ImportAdminEsimStockMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importAdminEsimStock>>, TError,ImportAdminEsimStockMutationVariables, TContext> => {
+
+const mutationKey = getImportAdminEsimStockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importAdminEsimStock>>, ImportAdminEsimStockMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importAdminEsimStock(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportAdminEsimStockMutationResult = NonNullable<Awaited<ReturnType<typeof importAdminEsimStock>>>
+    export type ImportAdminEsimStockMutationBody = BodyType<AdminEsimStockInput>
+    export type ImportAdminEsimStockMutationError = ErrorType<void>
+    export type ImportAdminEsimStockMutationVariables = {data: BodyType<AdminEsimStockInput>}
+
+    /**
+ * @summary Import one already-purchased ordinary Airalo eSIM
+ */
+export const useImportAdminEsimStock = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importAdminEsimStock>>, TError,ImportAdminEsimStockMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importAdminEsimStock>>,
+        TError,
+        ImportAdminEsimStockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportAdminEsimStockMutationOptions(options));
+    }
+
+export const getListEsimPromoCodesUrl = () => {
+
+
+
+
+  return `/api/admin/esim/promo-codes`
+}
+
+/**
+ * @summary List eSIM promo codes
+ */
+export const listEsimPromoCodes = async ( options?: Parameters<typeof customFetch>[1]): Promise<EsimPromoCodesResponse> => {
+
+  return customFetch<EsimPromoCodesResponse>(getListEsimPromoCodesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEsimPromoCodesQueryKey = () => {
+    return [
+    `/api/admin/esim/promo-codes`
+    ] as const;
+    }
+
+
+export const getListEsimPromoCodesQueryOptions = <TData = Awaited<ReturnType<typeof listEsimPromoCodes>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEsimPromoCodes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEsimPromoCodesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEsimPromoCodes>>> = ({ signal }) => listEsimPromoCodes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEsimPromoCodes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEsimPromoCodesQueryResult = NonNullable<Awaited<ReturnType<typeof listEsimPromoCodes>>>
+export type ListEsimPromoCodesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List eSIM promo codes
+ */
+
+export function useListEsimPromoCodes<TData = Awaited<ReturnType<typeof listEsimPromoCodes>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEsimPromoCodes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEsimPromoCodesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEsimPromoCodeUrl = () => {
+
+
+
+
+  return `/api/admin/esim/promo-codes`
+}
+
+/**
+ * Discounts apply only to configured markup and cannot reduce a quote below Airalo's retail minimum.
+ * @summary Create an eSIM promo code
+ */
+export const createEsimPromoCode = async (esimPromoCodeInput: EsimPromoCodeInput, options?: Parameters<typeof customFetch>[1]): Promise<EsimPromoCode> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimPromoCode>(getCreateEsimPromoCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimPromoCodeInput)
+  }
+);}
+
+
+
+
+
+export const getCreateEsimPromoCodeMutationKey = () => ['createEsimPromoCode'] as const;
+
+export const getCreateEsimPromoCodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEsimPromoCode>>, TError,CreateEsimPromoCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEsimPromoCode>>, TError,CreateEsimPromoCodeMutationVariables, TContext> => {
+
+const mutationKey = getCreateEsimPromoCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEsimPromoCode>>, CreateEsimPromoCodeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createEsimPromoCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEsimPromoCodeMutationResult = NonNullable<Awaited<ReturnType<typeof createEsimPromoCode>>>
+    export type CreateEsimPromoCodeMutationBody = BodyType<EsimPromoCodeInput>
+    export type CreateEsimPromoCodeMutationError = ErrorType<void>
+    export type CreateEsimPromoCodeMutationVariables = {data: BodyType<EsimPromoCodeInput>}
+
+    /**
+ * @summary Create an eSIM promo code
+ */
+export const useCreateEsimPromoCode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEsimPromoCode>>, TError,CreateEsimPromoCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEsimPromoCode>>,
+        TError,
+        CreateEsimPromoCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateEsimPromoCodeMutationOptions(options));
+    }
+
+export const getUpdateEsimPromoCodeUrl = (code: string,) => {
+
+
+
+
+  return `/api/admin/esim/promo-codes/${code}`
+}
+
+/**
+ * @summary Update an eSIM promo code or its active status
+ */
+export const updateEsimPromoCode = async (code: string,
+    esimPromoCodeUpdate: EsimPromoCodeUpdate, options?: Parameters<typeof customFetch>[1]): Promise<EsimPromoCode> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimPromoCode>(getUpdateEsimPromoCodeUrl(code),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimPromoCodeUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateEsimPromoCodeMutationKey = () => ['updateEsimPromoCode'] as const;
+
+export const getUpdateEsimPromoCodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEsimPromoCode>>, TError,UpdateEsimPromoCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEsimPromoCode>>, TError,UpdateEsimPromoCodeMutationVariables, TContext> => {
+
+const mutationKey = getUpdateEsimPromoCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEsimPromoCode>>, UpdateEsimPromoCodeMutationVariables> = (props) => {
+          const {code,data} = props ?? {};
+
+          return  updateEsimPromoCode(code,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEsimPromoCodeMutationResult = NonNullable<Awaited<ReturnType<typeof updateEsimPromoCode>>>
+    export type UpdateEsimPromoCodeMutationBody = BodyType<EsimPromoCodeUpdate>
+    export type UpdateEsimPromoCodeMutationError = ErrorType<void>
+    export type UpdateEsimPromoCodeMutationVariables = {code: string;data: BodyType<EsimPromoCodeUpdate>}
+
+    /**
+ * @summary Update an eSIM promo code or its active status
+ */
+export const useUpdateEsimPromoCode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEsimPromoCode>>, TError,UpdateEsimPromoCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEsimPromoCode>>,
+        TError,
+        UpdateEsimPromoCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateEsimPromoCodeMutationOptions(options));
+    }
+
+export const getDisableEsimPromoCodeUrl = (code: string,) => {
+
+
+
+
+  return `/api/admin/esim/promo-codes/${code}`
+}
+
+/**
+ * @summary Disable an eSIM promo code
+ */
+export const disableEsimPromoCode = async (code: string, options?: Parameters<typeof customFetch>[1]): Promise<EsimPromoCode> => {
+
+  return customFetch<EsimPromoCode>(getDisableEsimPromoCodeUrl(code),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisableEsimPromoCodeMutationKey = () => ['disableEsimPromoCode'] as const;
+
+export const getDisableEsimPromoCodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableEsimPromoCode>>, TError,DisableEsimPromoCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disableEsimPromoCode>>, TError,DisableEsimPromoCodeMutationVariables, TContext> => {
+
+const mutationKey = getDisableEsimPromoCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disableEsimPromoCode>>, DisableEsimPromoCodeMutationVariables> = (props) => {
+          const {code} = props ?? {};
+
+          return  disableEsimPromoCode(code,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisableEsimPromoCodeMutationResult = NonNullable<Awaited<ReturnType<typeof disableEsimPromoCode>>>
+
+    export type DisableEsimPromoCodeMutationError = ErrorType<void>
+    export type DisableEsimPromoCodeMutationVariables = {code: string}
+
+    /**
+ * @summary Disable an eSIM promo code
+ */
+export const useDisableEsimPromoCode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableEsimPromoCode>>, TError,DisableEsimPromoCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disableEsimPromoCode>>,
+        TError,
+        DisableEsimPromoCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDisableEsimPromoCodeMutationOptions(options));
+    }
+
+export const getListAdminEsimRecoveryOrdersUrl = () => {
+
+
+
+
+  return `/api/admin/esim/orders`
+}
+
+/**
+ * Lists pending_review and stale checkout or fulfillment orders plus completed orders whose delivery email claim needs manual review.
+ * @summary List eSIM orders requiring operational review
+ */
+export const listAdminEsimRecoveryOrders = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminEsimRecoveryOrdersResponse> => {
+
+  return customFetch<AdminEsimRecoveryOrdersResponse>(getListAdminEsimRecoveryOrdersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminEsimRecoveryOrdersQueryKey = () => {
+    return [
+    `/api/admin/esim/orders`
+    ] as const;
+    }
+
+
+export const getListAdminEsimRecoveryOrdersQueryOptions = <TData = Awaited<ReturnType<typeof listAdminEsimRecoveryOrders>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminEsimRecoveryOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminEsimRecoveryOrdersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminEsimRecoveryOrders>>> = ({ signal }) => listAdminEsimRecoveryOrders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminEsimRecoveryOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminEsimRecoveryOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminEsimRecoveryOrders>>>
+export type ListAdminEsimRecoveryOrdersQueryError = ErrorType<void>
+
+
+/**
+ * @summary List eSIM orders requiring operational review
+ */
+
+export function useListAdminEsimRecoveryOrders<TData = Awaited<ReturnType<typeof listAdminEsimRecoveryOrders>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminEsimRecoveryOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminEsimRecoveryOrdersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReconcileAdminEsimOrderUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/admin/esim/orders/${orderId}/reconcile`
+}
+
+/**
+ * Checks stored UPayment references and looks up Airalo by the exact internal order description only. Never creates a charge or supplier order; unresolved results require human action.
+ * @summary Safely inspect an eSIM order for human recovery
+ */
+export const reconcileAdminEsimOrder = async (orderId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminEsimReconcileResponse> => {
+
+  return customFetch<AdminEsimReconcileResponse>(getReconcileAdminEsimOrderUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileAdminEsimOrderMutationKey = () => ['reconcileAdminEsimOrder'] as const;
+
+export const getReconcileAdminEsimOrderMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileAdminEsimOrder>>, TError,ReconcileAdminEsimOrderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileAdminEsimOrder>>, TError,ReconcileAdminEsimOrderMutationVariables, TContext> => {
+
+const mutationKey = getReconcileAdminEsimOrderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileAdminEsimOrder>>, ReconcileAdminEsimOrderMutationVariables> = (props) => {
+          const {orderId} = props ?? {};
+
+          return  reconcileAdminEsimOrder(orderId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileAdminEsimOrderMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileAdminEsimOrder>>>
+
+    export type ReconcileAdminEsimOrderMutationError = ErrorType<void>
+    export type ReconcileAdminEsimOrderMutationVariables = {orderId: string}
+
+    /**
+ * @summary Safely inspect an eSIM order for human recovery
+ */
+export const useReconcileAdminEsimOrder = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileAdminEsimOrder>>, TError,ReconcileAdminEsimOrderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileAdminEsimOrder>>,
+        TError,
+        ReconcileAdminEsimOrderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileAdminEsimOrderMutationOptions(options));
+    }
+
+export const getReviewAdminEsimPaymentUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/admin/esim/orders/${orderId}/payment-review`
+}
+
+/**
+ * Staff must first locate the transaction by merchant order reference in UPayment and supply its track ID. The server checks exact merchant reference, KWD and amount through the gateway before storing the ID and reconciling. No new charge, refund or void is issued. Without an authoritative transaction ID the order stays in manual review; absence from a search is not proof of failure.
+ * @summary Resolve a lost UPayment response using a verified gateway transaction ID
+ */
+export const reviewAdminEsimPayment = async (orderId: string,
+    esimPaymentRecoveryInput: EsimPaymentRecoveryInput, options?: Parameters<typeof customFetch>[1]): Promise<ReviewAdminEsimPayment200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<ReviewAdminEsimPayment200>(getReviewAdminEsimPaymentUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimPaymentRecoveryInput)
+  }
+);}
+
+
+
+
+
+export const getReviewAdminEsimPaymentMutationKey = () => ['reviewAdminEsimPayment'] as const;
+
+export const getReviewAdminEsimPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAdminEsimPayment>>, TError,ReviewAdminEsimPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewAdminEsimPayment>>, TError,ReviewAdminEsimPaymentMutationVariables, TContext> => {
+
+const mutationKey = getReviewAdminEsimPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewAdminEsimPayment>>, ReviewAdminEsimPaymentMutationVariables> = (props) => {
+          const {orderId,data} = props ?? {};
+
+          return  reviewAdminEsimPayment(orderId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewAdminEsimPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof reviewAdminEsimPayment>>>
+    export type ReviewAdminEsimPaymentMutationBody = BodyType<EsimPaymentRecoveryInput>
+    export type ReviewAdminEsimPaymentMutationError = ErrorType<void>
+    export type ReviewAdminEsimPaymentMutationVariables = {orderId: string;data: BodyType<EsimPaymentRecoveryInput>}
+
+    /**
+ * @summary Resolve a lost UPayment response using a verified gateway transaction ID
+ */
+export const useReviewAdminEsimPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAdminEsimPayment>>, TError,ReviewAdminEsimPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewAdminEsimPayment>>,
+        TError,
+        ReviewAdminEsimPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewAdminEsimPaymentMutationOptions(options));
+    }
+
+export const getReviewAdminEsimEmailUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/admin/esim/orders/${orderId}/email-review`
+}
+
+/**
+ * @summary Reconcile an uncertain customer delivery email
+ */
+export const reviewAdminEsimEmail = async (orderId: string,
+    esimEmailReviewInput: EsimEmailReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<EsimEmailReviewResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimEmailReviewResult>(getReviewAdminEsimEmailUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimEmailReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewAdminEsimEmailMutationKey = () => ['reviewAdminEsimEmail'] as const;
+
+export const getReviewAdminEsimEmailMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAdminEsimEmail>>, TError,ReviewAdminEsimEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewAdminEsimEmail>>, TError,ReviewAdminEsimEmailMutationVariables, TContext> => {
+
+const mutationKey = getReviewAdminEsimEmailMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewAdminEsimEmail>>, ReviewAdminEsimEmailMutationVariables> = (props) => {
+          const {orderId,data} = props ?? {};
+
+          return  reviewAdminEsimEmail(orderId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewAdminEsimEmailMutationResult = NonNullable<Awaited<ReturnType<typeof reviewAdminEsimEmail>>>
+    export type ReviewAdminEsimEmailMutationBody = BodyType<EsimEmailReviewInput>
+    export type ReviewAdminEsimEmailMutationError = ErrorType<void>
+    export type ReviewAdminEsimEmailMutationVariables = {orderId: string;data: BodyType<EsimEmailReviewInput>}
+
+    /**
+ * @summary Reconcile an uncertain customer delivery email
+ */
+export const useReviewAdminEsimEmail = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAdminEsimEmail>>, TError,ReviewAdminEsimEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewAdminEsimEmail>>,
+        TError,
+        ReviewAdminEsimEmailMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewAdminEsimEmailMutationOptions(options));
+    }
+
+export const getQuoteEsimPackageUrl = () => {
+
+
+
+
+  return `/api/esim/quote`
+}
+
+/**
+ * @summary Get an authoritative eSIM checkout quote
+ */
+export const quoteEsimPackage = async (esimQuoteInput: EsimQuoteInput, options?: Parameters<typeof customFetch>[1]): Promise<EsimQuoteResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimQuoteResponse>(getQuoteEsimPackageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimQuoteInput)
+  }
+);}
+
+
+
+
+
+export const getQuoteEsimPackageMutationKey = () => ['quoteEsimPackage'] as const;
+
+export const getQuoteEsimPackageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof quoteEsimPackage>>, TError,QuoteEsimPackageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof quoteEsimPackage>>, TError,QuoteEsimPackageMutationVariables, TContext> => {
+
+const mutationKey = getQuoteEsimPackageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof quoteEsimPackage>>, QuoteEsimPackageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  quoteEsimPackage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type QuoteEsimPackageMutationResult = NonNullable<Awaited<ReturnType<typeof quoteEsimPackage>>>
+    export type QuoteEsimPackageMutationBody = BodyType<EsimQuoteInput>
+    export type QuoteEsimPackageMutationError = ErrorType<void>
+    export type QuoteEsimPackageMutationVariables = {data: BodyType<EsimQuoteInput>}
+
+    /**
+ * @summary Get an authoritative eSIM checkout quote
+ */
+export const useQuoteEsimPackage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof quoteEsimPackage>>, TError,QuoteEsimPackageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof quoteEsimPackage>>,
+        TError,
+        QuoteEsimPackageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getQuoteEsimPackageMutationOptions(options));
+    }
+
+export const getSendEsimPrivateGuestCodeUrl = () => {
+
+
+
+
+  return `/api/esim/private-test/guest-code`
+}
+
+/**
+ * @summary Send a development-only private guest checkout code
+ */
+export const sendEsimPrivateGuestCode = async (esimPrivateGuestCodeInput: EsimPrivateGuestCodeInput, options?: Parameters<typeof customFetch>[1]): Promise<SendEsimPrivateGuestCode200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<SendEsimPrivateGuestCode200>(getSendEsimPrivateGuestCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimPrivateGuestCodeInput)
+  }
+);}
+
+
+
+
+
+export const getSendEsimPrivateGuestCodeMutationKey = () => ['sendEsimPrivateGuestCode'] as const;
+
+export const getSendEsimPrivateGuestCodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEsimPrivateGuestCode>>, TError,SendEsimPrivateGuestCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendEsimPrivateGuestCode>>, TError,SendEsimPrivateGuestCodeMutationVariables, TContext> => {
+
+const mutationKey = getSendEsimPrivateGuestCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendEsimPrivateGuestCode>>, SendEsimPrivateGuestCodeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendEsimPrivateGuestCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendEsimPrivateGuestCodeMutationResult = NonNullable<Awaited<ReturnType<typeof sendEsimPrivateGuestCode>>>
+    export type SendEsimPrivateGuestCodeMutationBody = BodyType<EsimPrivateGuestCodeInput>
+    export type SendEsimPrivateGuestCodeMutationError = ErrorType<void>
+    export type SendEsimPrivateGuestCodeMutationVariables = {data: BodyType<EsimPrivateGuestCodeInput>}
+
+    /**
+ * @summary Send a development-only private guest checkout code
+ */
+export const useSendEsimPrivateGuestCode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEsimPrivateGuestCode>>, TError,SendEsimPrivateGuestCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendEsimPrivateGuestCode>>,
+        TError,
+        SendEsimPrivateGuestCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendEsimPrivateGuestCodeMutationOptions(options));
+    }
+
+export const getCreateEsimOrderUrl = () => {
+
+
+
+
+  return `/api/esim/orders`
+}
+
+/**
+ * The expected amount must match a fresh server quote. Existing idempotent orders retain their original frozen quote. Guests must use a client-generated, cryptographically random request key with at least 128 bits of entropy (at least 22 characters); guest keys are globally unique and replay is bound to the original billing snapshot. The optional emailAcknowledged field carries the customer's confirmation that their checkout email is correct; it is not mailbox verification and does not grant order, activation, or recovery access.
+ * @summary Create an eSIM payment checkout after price confirmation
+ */
+export const createEsimOrder = async (esimOrderInput: EsimOrderInput, options?: Parameters<typeof customFetch>[1]): Promise<EsimCheckoutResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimCheckoutResponse>(getCreateEsimOrderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimOrderInput)
+  }
+);}
+
+
+
+
+
+export const getCreateEsimOrderMutationKey = () => ['createEsimOrder'] as const;
+
+export const getCreateEsimOrderMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEsimOrder>>, TError,CreateEsimOrderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEsimOrder>>, TError,CreateEsimOrderMutationVariables, TContext> => {
+
+const mutationKey = getCreateEsimOrderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEsimOrder>>, CreateEsimOrderMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createEsimOrder(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEsimOrderMutationResult = NonNullable<Awaited<ReturnType<typeof createEsimOrder>>>
+    export type CreateEsimOrderMutationBody = BodyType<EsimOrderInput>
+    export type CreateEsimOrderMutationError = ErrorType<void>
+    export type CreateEsimOrderMutationVariables = {data: BodyType<EsimOrderInput>}
+
+    /**
+ * @summary Create an eSIM payment checkout after price confirmation
+ */
+export const useCreateEsimOrder = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEsimOrder>>, TError,CreateEsimOrderMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEsimOrder>>,
+        TError,
+        CreateEsimOrderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateEsimOrderMutationOptions(options));
+    }
+
+export const getListMyEsimOrdersUrl = () => {
+
+
+
+
+  return `/api/esim/orders`
+}
+
+/**
+ * @summary List the authenticated customer's eSIM orders
+ */
+export const listMyEsimOrders = async ( options?: Parameters<typeof customFetch>[1]): Promise<EsimOrderListResponse> => {
+
+  return customFetch<EsimOrderListResponse>(getListMyEsimOrdersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyEsimOrdersQueryKey = () => {
+    return [
+    `/api/esim/orders`
+    ] as const;
+    }
+
+
+export const getListMyEsimOrdersQueryOptions = <TData = Awaited<ReturnType<typeof listMyEsimOrders>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyEsimOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyEsimOrdersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyEsimOrders>>> = ({ signal }) => listMyEsimOrders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyEsimOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyEsimOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof listMyEsimOrders>>>
+export type ListMyEsimOrdersQueryError = ErrorType<void>
+
+
+/**
+ * @summary List the authenticated customer's eSIM orders
+ */
+
+export function useListMyEsimOrders<TData = Awaited<ReturnType<typeof listMyEsimOrders>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyEsimOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyEsimOrdersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendEsimGuestRecoveryCodeUrl = () => {
+
+
+
+
+  return `/api/esim/guest-recovery/code`
+}
+
+/**
+ * @summary Email a short-lived recovery code to a guest purchaser
+ */
+export const sendEsimGuestRecoveryCode = async (esimGuestRecoveryEmail: EsimGuestRecoveryEmail, options?: Parameters<typeof customFetch>[1]): Promise<EsimGuestRecoveryAcknowledgement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimGuestRecoveryAcknowledgement>(getSendEsimGuestRecoveryCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimGuestRecoveryEmail)
+  }
+);}
+
+
+
+
+
+export const getSendEsimGuestRecoveryCodeMutationKey = () => ['sendEsimGuestRecoveryCode'] as const;
+
+export const getSendEsimGuestRecoveryCodeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEsimGuestRecoveryCode>>, TError,SendEsimGuestRecoveryCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendEsimGuestRecoveryCode>>, TError,SendEsimGuestRecoveryCodeMutationVariables, TContext> => {
+
+const mutationKey = getSendEsimGuestRecoveryCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendEsimGuestRecoveryCode>>, SendEsimGuestRecoveryCodeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendEsimGuestRecoveryCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendEsimGuestRecoveryCodeMutationResult = NonNullable<Awaited<ReturnType<typeof sendEsimGuestRecoveryCode>>>
+    export type SendEsimGuestRecoveryCodeMutationBody = BodyType<EsimGuestRecoveryEmail>
+    export type SendEsimGuestRecoveryCodeMutationError = ErrorType<void>
+    export type SendEsimGuestRecoveryCodeMutationVariables = {data: BodyType<EsimGuestRecoveryEmail>}
+
+    /**
+ * @summary Email a short-lived recovery code to a guest purchaser
+ */
+export const useSendEsimGuestRecoveryCode = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEsimGuestRecoveryCode>>, TError,SendEsimGuestRecoveryCodeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendEsimGuestRecoveryCode>>,
+        TError,
+        SendEsimGuestRecoveryCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendEsimGuestRecoveryCodeMutationOptions(options));
+    }
+
+export const getRecoverEsimGuestOrdersUrl = () => {
+
+
+
+
+  return `/api/esim/guest-recovery/orders`
+}
+
+/**
+ * @summary Retrieve completed guest eSIMs after email verification
+ */
+export const recoverEsimGuestOrders = async (esimGuestRecoveryProof: EsimGuestRecoveryProof, options?: Parameters<typeof customFetch>[1]): Promise<EsimGuestRecoveryOrders> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<EsimGuestRecoveryOrders>(getRecoverEsimGuestOrdersUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimGuestRecoveryProof)
+  }
+);}
+
+
+
+
+
+export const getRecoverEsimGuestOrdersMutationKey = () => ['recoverEsimGuestOrders'] as const;
+
+export const getRecoverEsimGuestOrdersMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverEsimGuestOrders>>, TError,RecoverEsimGuestOrdersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recoverEsimGuestOrders>>, TError,RecoverEsimGuestOrdersMutationVariables, TContext> => {
+
+const mutationKey = getRecoverEsimGuestOrdersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recoverEsimGuestOrders>>, RecoverEsimGuestOrdersMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recoverEsimGuestOrders(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecoverEsimGuestOrdersMutationResult = NonNullable<Awaited<ReturnType<typeof recoverEsimGuestOrders>>>
+    export type RecoverEsimGuestOrdersMutationBody = BodyType<EsimGuestRecoveryProof>
+    export type RecoverEsimGuestOrdersMutationError = ErrorType<void>
+    export type RecoverEsimGuestOrdersMutationVariables = {data: BodyType<EsimGuestRecoveryProof>}
+
+    /**
+ * @summary Retrieve completed guest eSIMs after email verification
+ */
+export const useRecoverEsimGuestOrders = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverEsimGuestOrders>>, TError,RecoverEsimGuestOrdersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recoverEsimGuestOrders>>,
+        TError,
+        RecoverEsimGuestOrdersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecoverEsimGuestOrdersMutationOptions(options));
+    }
+
+export const getDownloadEsimGuestDocumentUrl = () => {
+
+
+
+
+  return `/api/esim/guest-recovery/document`
+}
+
+/**
+ * @summary Download a completed guest order document after email verification
+ */
+export const downloadEsimGuestDocument = async (esimGuestRecoveryDocumentProof: EsimGuestRecoveryDocumentProof, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<string>(getDownloadEsimGuestDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimGuestRecoveryDocumentProof)
+  }
+);}
+
+
+
+
+
+export const getDownloadEsimGuestDocumentMutationKey = () => ['downloadEsimGuestDocument'] as const;
+
+export const getDownloadEsimGuestDocumentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof downloadEsimGuestDocument>>, TError,DownloadEsimGuestDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof downloadEsimGuestDocument>>, TError,DownloadEsimGuestDocumentMutationVariables, TContext> => {
+
+const mutationKey = getDownloadEsimGuestDocumentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof downloadEsimGuestDocument>>, DownloadEsimGuestDocumentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  downloadEsimGuestDocument(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DownloadEsimGuestDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof downloadEsimGuestDocument>>>
+    export type DownloadEsimGuestDocumentMutationBody = BodyType<EsimGuestRecoveryDocumentProof>
+    export type DownloadEsimGuestDocumentMutationError = ErrorType<void>
+    export type DownloadEsimGuestDocumentMutationVariables = {data: BodyType<EsimGuestRecoveryDocumentProof>}
+
+    /**
+ * @summary Download a completed guest order document after email verification
+ */
+export const useDownloadEsimGuestDocument = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof downloadEsimGuestDocument>>, TError,DownloadEsimGuestDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof downloadEsimGuestDocument>>,
+        TError,
+        DownloadEsimGuestDocumentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDownloadEsimGuestDocumentMutationOptions(options));
+    }
+
+export const getGetMyEsimBillingProfileUrl = () => {
+
+
+
+
+  return `/api/esim/billing-profile`
+}
+
+/**
+ * Returns the immutable billing snapshot from the latest pending or completed order owned by the authenticated customer.
+ * @summary Get the latest eSIM billing details for checkout autofill
+ */
+export const getMyEsimBillingProfile = async ( options?: Parameters<typeof customFetch>[1]): Promise<EsimBillingProfileResponse> => {
+
+  return customFetch<EsimBillingProfileResponse>(getGetMyEsimBillingProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyEsimBillingProfileQueryKey = () => {
+    return [
+    `/api/esim/billing-profile`
+    ] as const;
+    }
+
+
+export const getGetMyEsimBillingProfileQueryOptions = <TData = Awaited<ReturnType<typeof getMyEsimBillingProfile>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyEsimBillingProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyEsimBillingProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyEsimBillingProfile>>> = ({ signal }) => getMyEsimBillingProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyEsimBillingProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyEsimBillingProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getMyEsimBillingProfile>>>
+export type GetMyEsimBillingProfileQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get the latest eSIM billing details for checkout autofill
+ */
+
+export function useGetMyEsimBillingProfile<TData = Awaited<ReturnType<typeof getMyEsimBillingProfile>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyEsimBillingProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyEsimBillingProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyEsimOrderUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/esim/orders/${orderId}`
+}
+
+/**
+ * @summary Get an owned eSIM order status and activation details when fulfilled
+ */
+export const getMyEsimOrder = async (orderId: string, options?: Parameters<typeof customFetch>[1]): Promise<EsimOrderStatusResponse> => {
+
+  return customFetch<EsimOrderStatusResponse>(getGetMyEsimOrderUrl(orderId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyEsimOrderQueryKey = (orderId: string,) => {
+    return [
+    `/api/esim/orders/${orderId}`
+    ] as const;
+    }
+
+
+export const getGetMyEsimOrderQueryOptions = <TData = Awaited<ReturnType<typeof getMyEsimOrder>>, TError = ErrorType<void>>(orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyEsimOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyEsimOrderQueryKey(orderId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyEsimOrder>>> = ({ signal }) => getMyEsimOrder(orderId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyEsimOrder>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyEsimOrderQueryResult = NonNullable<Awaited<ReturnType<typeof getMyEsimOrder>>>
+export type GetMyEsimOrderQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get an owned eSIM order status and activation details when fulfilled
+ */
+
+export function useGetMyEsimOrder<TData = Awaited<ReturnType<typeof getMyEsimOrder>>, TError = ErrorType<void>>(
+ orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyEsimOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyEsimOrderQueryOptions(orderId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDownloadMyEsimDocumentUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/esim/orders/${orderId}/document`
+}
+
+/**
+ * Returns a downloadable HTML invoice and installation document only after confirmed payment and persisted Airalo activation.
+ * @summary Download the authenticated customer's fulfilled eSIM document
+ */
+export const downloadMyEsimDocument = async (orderId: string, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getDownloadMyEsimDocumentUrl(orderId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadMyEsimDocumentQueryKey = (orderId: string,) => {
+    return [
+    `/api/esim/orders/${orderId}/document`
+    ] as const;
+    }
+
+
+export const getDownloadMyEsimDocumentQueryOptions = <TData = Awaited<ReturnType<typeof downloadMyEsimDocument>>, TError = ErrorType<void>>(orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadMyEsimDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadMyEsimDocumentQueryKey(orderId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadMyEsimDocument>>> = ({ signal }) => downloadMyEsimDocument(orderId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadMyEsimDocument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadMyEsimDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof downloadMyEsimDocument>>>
+export type DownloadMyEsimDocumentQueryError = ErrorType<void>
+
+
+/**
+ * @summary Download the authenticated customer's fulfilled eSIM document
+ */
+
+export function useDownloadMyEsimDocument<TData = Awaited<ReturnType<typeof downloadMyEsimDocument>>, TError = ErrorType<void>>(
+ orderId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadMyEsimDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadMyEsimDocumentQueryOptions(orderId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReconcileEsimPaymentUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/esim/orders/${orderId}/reconcile`
+}
+
+/**
+ * Public trigger suitable for payment return redirects; only server-stored payment references are used for verification. The response exposes only a sanitized status; fulfilled guest installation details are delivered by email and are never available from this endpoint.
+ * @summary Independently verify an eSIM payment and advance fulfillment
+ */
+export const reconcileEsimPayment = async (orderId: string, options?: Parameters<typeof customFetch>[1]): Promise<EsimReconcileResponse> => {
+
+  return customFetch<EsimReconcileResponse>(getReconcileEsimPaymentUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileEsimPaymentMutationKey = () => ['reconcileEsimPayment'] as const;
+
+export const getReconcileEsimPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileEsimPayment>>, TError,ReconcileEsimPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileEsimPayment>>, TError,ReconcileEsimPaymentMutationVariables, TContext> => {
+
+const mutationKey = getReconcileEsimPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileEsimPayment>>, ReconcileEsimPaymentMutationVariables> = (props) => {
+          const {orderId} = props ?? {};
+
+          return  reconcileEsimPayment(orderId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileEsimPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileEsimPayment>>>
+
+    export type ReconcileEsimPaymentMutationError = ErrorType<void>
+    export type ReconcileEsimPaymentMutationVariables = {orderId: string}
+
+    /**
+ * @summary Independently verify an eSIM payment and advance fulfillment
+ */
+export const useReconcileEsimPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileEsimPayment>>, TError,ReconcileEsimPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileEsimPayment>>,
+        TError,
+        ReconcileEsimPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileEsimPaymentMutationOptions(options));
+    }
+
+export const getGetEsimPaymentReturnPageUrl = () => {
+
+
+
+
+  return `/api/esim/payment-return`
+}
+
+/**
+ * @summary Payment return status page
+ */
+export const getEsimPaymentReturnPage = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetEsimPaymentReturnPageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEsimPaymentReturnPageQueryKey = () => {
+    return [
+    `/api/esim/payment-return`
+    ] as const;
+    }
+
+
+export const getGetEsimPaymentReturnPageQueryOptions = <TData = Awaited<ReturnType<typeof getEsimPaymentReturnPage>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimPaymentReturnPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEsimPaymentReturnPageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEsimPaymentReturnPage>>> = ({ signal }) => getEsimPaymentReturnPage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEsimPaymentReturnPage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEsimPaymentReturnPageQueryResult = NonNullable<Awaited<ReturnType<typeof getEsimPaymentReturnPage>>>
+export type GetEsimPaymentReturnPageQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Payment return status page
+ */
+
+export function useGetEsimPaymentReturnPage<TData = Awaited<ReturnType<typeof getEsimPaymentReturnPage>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEsimPaymentReturnPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEsimPaymentReturnPageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+

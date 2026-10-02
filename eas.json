@@ -1,15 +1,11 @@
 {
-  "cli": {
-    "version": ">= 10.0.0",
-    "appVersionSource": "local"
-  },
+  "cli": { "version": ">= 10.0.0" },
   "build": {
     "preview": {
       "channel": "preview",
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "image": "sdk-54"
+        "buildType": "apk"
       },
       "ios": {
         "simulator": false
@@ -17,20 +13,20 @@
       "env": {
         "ORG_GRADLE_PROJECT_newArchEnabled": "true",
         "EXPO_PUBLIC_API_BASE": "https://tours-dar-tamaiz--engalialfoudari.replit.app/api"
-      },
-      "node": "22.14.0"
+      }
     },
     "production": {
       "channel": "production",
+      "node": "22.14.0",
       "android": {
         "buildType": "app-bundle",
         "image": "sdk-54"
       },
       "env": {
         "ORG_GRADLE_PROJECT_newArchEnabled": "true",
-        "EXPO_PUBLIC_API_BASE": "https://tours-dar-tamaiz--engalialfoudari.replit.app/api"
-      },
-      "node": "22.14.0"
+        "EXPO_PUBLIC_API_BASE": "https://dt-tour.com/api",
+        "EXPO_PUBLIC_DOMAIN": "dt-tour.com"
+      }
     }
   }
 }

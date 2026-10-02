@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import colors from "@/constants/colors";
 import { buildHotelDestinationUrl, buildHotelDealUrl } from "@/lib/hotelPortal";
+import { isEsimReleased } from "@/lib/esimRelease";
 
 // Match the active dt-tour.com/hotels portal palette without changing the
 // appearance of unrelated mobile screens.
@@ -122,10 +123,17 @@ const STR = {
   },
 };
 
-type IconName = "airplane" | "bed" | "sparkles" | "compass" | "pricetag" | "shield-check" | "headset" | "user";
+type IconName = "airplane" | "bed" | "sparkles" | "compass" | "pricetag" | "shield-check" | "headset" | "user" | "esim";
 
 function VectorIcon({ name, size = 24, color = "#000" }: { name: IconName; size?: number; color?: string }) {
   switch (name) {
+    case "esim":
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" />
+          <Path d="M14 2v5h5M8 12h7M8 16h7" />
+        </Svg>
+      );
     case "airplane":
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
@@ -274,6 +282,7 @@ export function LuxuryHome({
   onAIBuilder,
   onWhereToGo,
   onTravelStore,
+  onEsimCatalog,
   onOpenUrl,
   onOpenHotelPortalUrl,
   onExplore,
@@ -287,6 +296,7 @@ export function LuxuryHome({
   onAIBuilder: () => void;
   onWhereToGo: () => void;
   onTravelStore?: () => void;
+  onEsimCatalog: () => void;
   onOpenUrl: (url: string) => void;
   onOpenHotelPortalUrl?: (url: string) => void;
   onExplore: () => void;
@@ -433,6 +443,7 @@ export function LuxuryHome({
           <View style={styles.grid}>
             <NavCard icon="airplane" title={s.flights} sub={s.flightsSub} onPress={onFlights} testID="nav-flights" width={navCardWidth} rtl={rtl} />
             <NavCard icon="bed" title={s.hotels} sub={s.hotelsSub} onPress={onHotels} testID="nav-hotels" width={navCardWidth} rtl={rtl} />
+            {isEsimReleased && <NavCard icon="esim" title={lang === "ar" ? "شرائح eSIM للسفر" : "Travel eSIM"} sub={lang === "ar" ? "تغطية لوجهتك القادمة" : "Coverage for your next trip"} onPress={onEsimCatalog} testID="nav-esim-catalog" width={navCardWidth} rtl={rtl} />}
             <NavCard icon="sparkles" title={s.ai} sub={s.aiSub} onPress={onAIBuilder} testID="nav-ai" width={navCardWidth} rtl={rtl} />
             <NavCard icon="compass" title={s.where} sub={s.whereSub} onPress={onWhereToGo} testID="nav-where" width={navCardWidth} rtl={rtl} />
             <NavCard icon="pricetag" title={lang === "ar" ? "خدمة تجهيز المسافر" : "Traveler Preparation Service"} sub={lang === "ar" ? "مستلزمات السفر المختارة لك" : "Travel essentials selected for you"} onPress={() => onTravelStore?.()} testID="nav-store" width={navCardWidth} rtl={rtl} />

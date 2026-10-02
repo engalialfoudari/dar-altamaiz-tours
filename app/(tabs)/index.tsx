@@ -2,7 +2,7 @@ import NetInfo from "@react-native-community/netinfo";
 import { useAuth, useClerk } from "@clerk/expo";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { scheduleRetentionNotifications } from "@/utils/notifications";
-import { usesNativeDashboard } from "@/utils/home-navigation";
+import { resolveEsimDeepLink, usesNativeDashboard } from "@/utils/home-navigation";
 import {
   Animated,
   Alert,
@@ -38,6 +38,9 @@ import { PackageBuilderScreen } from "@/components/PackageBuilderScreen";
 import { ContactScreen } from "@/components/ContactScreen";
 import { PackagesScreen } from "@/components/PackagesScreen";
 import { TravelStoreScreen } from "@/components/TravelStoreScreen";
+import { ConnectedEsimCatalogScreen } from "@/components/ConnectedEsimCatalogScreen";
+import { isEsimReleased } from "@/lib/esimRelease";
+import { parseEsimPaymentReturnUrl, validateEsimPaymentOrderId } from "@/lib/esimPaymentReturn";
 import { MembersOffersScreen } from "@/components/MembersOffersScreen";
 import { useCart } from "@/lib/cartContext";
 import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
@@ -481,6 +484,7 @@ export function WebShell({
   hotelDisplayPreferences,
   onHotelDisplayPreferencesChange,
   onOpenCart,
+  onOpenEsims,
 }: {
   initialUrl?: string;
   externalNavigation?: { url: string; seq: number } | null;
@@ -503,6 +507,7 @@ export function WebShell({
   hotelDisplayPreferences: HotelDisplayPreferences;
   onHotelDisplayPreferencesChange: (preferences: HotelDisplayPreferences) => void;
   onOpenCart?: () => void;
+  onOpenEsims?: (orderId?: string) => void;
 }) {
   const { getToken, isSignedIn, sessionId } = useAuth();
   const { addItems } = useCart();
@@ -1163,7 +1168,7 @@ export function WebShell({
           { backgroundColor: "#0A1628", zIndex: 20, display: showProfile ? "flex" : "none" },
         ]}
       >
-            <ProfileScreen sessionRefreshVersion={nativeSessionVersion} language={activeLang} hotelDisplayPreferences={hotelDisplayPreferences} onHotelDisplayPreferencesChange={onHotelDisplayPreferencesChange} onOpenCart={onOpenCart} onClose={() => {
+            <ProfileScreen sessionRefreshVersion={nativeSessionVersion} language={activeLang} hotelDisplayPreferences={hotelDisplayPreferences} onHotelDisplayPreferencesChange={onHotelDisplayPreferencesChange} onOpenCart={onOpenCart} onOpenEsims={onOpenEsims} onClose={() => {
             setShowProfile(false);
             setActiveTab("home");
             setShowNativeHome(true);
@@ -1236,6 +1241,7 @@ export function WebIframeShell({
   hotelDisplayPreferences,
   onHotelDisplayPreferencesChange,
   onOpenCart,
+  onOpenEsims,
 }: {
   initialUrl?: string;
   externalNavigation?: { url: string; seq: number } | null;
@@ -1257,6 +1263,7 @@ export function WebIframeShell({
   hotelDisplayPreferences: HotelDisplayPreferences;
   onHotelDisplayPreferencesChange: (preferences: HotelDisplayPreferences) => void;
   onOpenCart?: () => void;
+  onOpenEsims?: (orderId?: string) => void;
 }) {
   const { getToken, isSignedIn, sessionId } = useAuth();
   const { addItems } = useCart();
@@ -1585,7 +1592,7 @@ export function WebIframeShell({
           { backgroundColor: "#0A1628", zIndex: 20, display: showProfile ? "flex" : "none" },
         ]}
       >
-          <ProfileScreen language={activeLang} hotelDisplayPreferences={hotelDisplayPreferences} onHotelDisplayPreferencesChange={onHotelDisplayPreferencesChange} onOpenCart={onOpenCart} onClose={() => {
+          <ProfileScreen visible={showProfile} language={activeLang} hotelDisplayPreferences={hotelDisplayPreferences} onHotelDisplayPreferencesChange={onHotelDisplayPreferencesChange} onOpenCart={onOpenCart} onOpenEsims={onOpenEsims} onClose={() => {
             setShowProfile(false);
             setActiveTab("home");
             setShowNativeHome(true);
@@ -1612,6 +1619,7 @@ export default function HomeScreen() {
   const paymentRouteParams = useLocalSearchParams<{
     hotelPaymentOrderId?: string | string[];
     hotelPaymentStatus?: string | string[];
+    esimPaymentOrderId?: string | string[];
     postAuth?: string | string[];
     portalAuth?: string | string[];
   }>();
@@ -1659,7 +1667,15 @@ export default function HomeScreen() {
   const [builderPrefill, setBuilderPrefill] = useState<{ destination: string; nights: number } | null>(null);
   const [subscriptionRequest, setSubscriptionRequest] = useState(0);
   const [showBookingChoice, setShowBookingChoice] = useState(false);
-  const [nativeScreen, setNativeScreen] = useState<"flights" | "packages" | "contact" | "store" | "cart" | "members-offers" | null>(null);
+  const [nativeScreen, setNativeScreen] = useState<"flights" | "packages" | "contact" | "store" | "cart" | "members-offers" | "esim" | null>(null);
+  const [esimDestinationSlug, setEsimDestinationSlug] = useState<string | null>(null);
+  const [esimShowOrders, setEsimShowOrders] = useState(false);
+  const [esimInitialOrderId, setEsimInitialOrderId] = useState<string | null>(null);
+  const [esimPaymentReturnSeq, setEsimPaymentReturnSeq] = useState(0);
+  const [esimPaymentReturnOrderId, setEsimPaymentReturnOrderId] = useState<string | null>(null);
+  const [esimPaymentReturnRecovery, setEsimPaymentReturnRecovery] = useState(false);
+  const [privateEsimLink, setPrivateEsimLink] = useState(false);
+  const canOpenEsim = isEsimReleased || privateEsimLink;
   const [showHotelPortal, setShowHotelPortal] = useState(false);
   const [hotelPaymentReturn, setHotelPaymentReturn] = useState<{
     orderId: string;
@@ -1667,6 +1683,7 @@ export default function HomeScreen() {
     seq: number;
   } | null>(null);
   const handledPaymentRoute = useRef("");
+  const handledEsimPaymentReturn = useRef("");
   const [flightResultsUrl, setFlightResultsUrl] = useState<string | null>(null);
   const [flightSearchDraft, setFlightSearchDraft] = useState<FlightSearchValues | null>(null);
 
@@ -1764,6 +1781,21 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const esimLink = resolveEsimDeepLink(
+      window.location.search,
+      isEsimReleased,
+      process.env.EXPO_PUBLIC_ESIM_PRIVATE_TEST === "true",
+    );
+    if (!esimLink.open) return;
+    setPrivateEsimLink(esimLink.privateTest);
+    setEsimDestinationSlug(esimLink.destination);
+    setEsimShowOrders(false);
+    setNativeScreen("esim");
+    transitionToShell(TABS[0].url);
+  }, []);
+
+  useEffect(() => {
     if (Platform.OS === "web") return;
     const handlePaymentReturn = ({ url }: { url: string }) => {
       const parsed = parseHotelPaymentReturnUrl(url);
@@ -1782,6 +1814,46 @@ export default function HomeScreen() {
       .catch(() => {});
     return () => subscription.remove();
   }, [phase]);
+
+  const handleEsimPaymentReturn = (orderId: string) => {
+    if (!canOpenEsim || handledEsimPaymentReturn.current === orderId) return;
+    handledEsimPaymentReturn.current = orderId;
+    setEsimDestinationSlug(null);
+    setEsimInitialOrderId(null);
+    setEsimShowOrders(true);
+    setEsimPaymentReturnOrderId(orderId);
+    setEsimPaymentReturnRecovery(true);
+    setEsimPaymentReturnSeq((sequence) => sequence + 1);
+    setNativeScreen("esim");
+    setShowHotelPortal(false);
+    if (phase !== "shell") transitionToShell(TABS[0].url);
+  };
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const handlePaymentReturn = ({ url }: { url: string }) => {
+      const parsed = parseEsimPaymentReturnUrl(url);
+      if (parsed) handleEsimPaymentReturn(parsed.orderId);
+    };
+    const subscription = Linking.addEventListener("url", handlePaymentReturn);
+    Linking.getInitialURL()
+      .then((url) => {
+        if (url) handlePaymentReturn({ url });
+      })
+      .catch(() => {});
+    return () => subscription.remove();
+  }, [phase, canOpenEsim]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const rawOrderId = Array.isArray(paymentRouteParams.esimPaymentOrderId)
+      ? paymentRouteParams.esimPaymentOrderId.length === 1
+        ? paymentRouteParams.esimPaymentOrderId[0]
+        : undefined
+      : paymentRouteParams.esimPaymentOrderId;
+    const orderId = validateEsimPaymentOrderId(rawOrderId);
+    if (orderId) handleEsimPaymentReturn(orderId);
+  }, [paymentRouteParams.esimPaymentOrderId, phase, canOpenEsim]);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -1825,6 +1897,7 @@ export default function HomeScreen() {
     if (phase !== "shell") transitionToShell(TABS[0].url);
   };
   const openNativeScreen = (screen: NonNullable<typeof nativeScreen>) => {
+    if (screen === "esim" && !canOpenEsim) return;
     if (screen === "cart" && !CompatibleCartScreen) {
       Alert.alert(
         homeLang === "ar" ? "يتطلب تحديث التطبيق" : "App update required",
@@ -1834,10 +1907,19 @@ export default function HomeScreen() {
       );
       return;
     }
+    if (screen === "esim") {
+      setEsimDestinationSlug(null);
+      setEsimInitialOrderId(null);
+      setEsimShowOrders(false);
+      setEsimPaymentReturnRecovery(false);
+    }
     setNativeScreen(screen);
     if (phase !== "shell") transitionToShell(TABS[0].url);
   };
   const closeNativeScreen = () => {
+    setEsimDestinationSlug(null);
+    setEsimInitialOrderId(null);
+    setEsimShowOrders(false);
     setNativeScreen(null);
     navigateFromDashboard(TABS[0].url);
   };
@@ -1927,11 +2009,15 @@ export default function HomeScreen() {
         setNativeScreen("flights");
         return true;
       }
+      if (nativeScreen === "esim" && esimDestinationSlug) {
+        setEsimDestinationSlug(null);
+        return true;
+      }
       closeNativeScreen();
       return true;
     });
     return () => subscription.remove();
-  }, [flightResultsUrl, nativeScreen, phase]);
+  }, [flightResultsUrl, nativeScreen, esimDestinationSlug, phase]);
   const changeHomeLanguage = (nextLang: HomeLang) => {
     setHomeLang(nextLang);
     AsyncStorage.setItem("home_lang", nextLang).catch(() => {});
@@ -1976,6 +2062,7 @@ export default function HomeScreen() {
       }}
       onWhereToGo={() => setShowWhereToGo(true)}
       onTravelStore={() => openNativeScreen("store")}
+      onEsimCatalog={() => openNativeScreen("esim")}
       onMembersOffers={() => openNativeScreen("members-offers")}
       onOpenUrl={navigateFromDashboard}
       onExplore={handleExplore}
@@ -2024,6 +2111,11 @@ export default function HomeScreen() {
               hotelDisplayPreferences={hotelDisplayPreferences}
               onHotelDisplayPreferencesChange={updateHotelDisplayPreferences}
               onOpenCart={() => openNativeScreen("cart")}
+              onOpenEsims={(orderId) => {
+                openNativeScreen("esim");
+                setEsimShowOrders(true);
+                setEsimInitialOrderId(orderId ?? null);
+              }}
             />
           ) : (
             <WebShell
@@ -2048,6 +2140,11 @@ export default function HomeScreen() {
               onHotelDisplayPreferencesChange={updateHotelDisplayPreferences}
               hotelPaymentReturn={hotelPaymentReturn}
               onOpenCart={() => openNativeScreen("cart")}
+              onOpenEsims={(orderId) => {
+                openNativeScreen("esim");
+                setEsimShowOrders(true);
+                setEsimInitialOrderId(orderId ?? null);
+              }}
             />
           )}
         </View>
@@ -2121,6 +2218,20 @@ export default function HomeScreen() {
                 lang={homeLang}
                 onClose={closeNativeScreen}
                 onOpenCart={() => openNativeScreen("cart")}
+              />
+            )}
+            {canOpenEsim && nativeScreen === "esim" && (
+              <ConnectedEsimCatalogScreen
+                lang={homeLang}
+                privateTest={privateEsimLink}
+                onClose={closeNativeScreen}
+                selectedSlug={esimDestinationSlug}
+                onSelectDestination={setEsimDestinationSlug}
+                initialShowOrders={esimShowOrders}
+                initialOrderId={esimShowOrders ? esimInitialOrderId : null}
+                paymentReturnSeq={esimPaymentReturnSeq}
+                paymentReturnOrderId={esimPaymentReturnOrderId}
+                paymentReturnRecovery={esimPaymentReturnRecovery}
               />
             )}
             {nativeScreen === "cart" && CompatibleCartScreen && (

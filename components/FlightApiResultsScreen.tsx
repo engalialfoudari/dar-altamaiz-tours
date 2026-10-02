@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppHeader } from "@/components/AppHeader";
@@ -11,6 +11,7 @@ import { dateIsValid, type FlightSearchValues } from "@/lib/flightSearch";
 const P = {
   navy: "#002B7F", canvas: "#F4F6F9", card: "#FFFFFF", ink: "#18263D",
   muted: "#697586", border: "#D8DEE8", paleBlue: "#EAF1FC",
+  green: "#16794C", paleGreen: "#EAF6EF", red: "#B42318", paleRed: "#FDEDEC",
 };
 
 type Flight = {
@@ -118,6 +119,42 @@ export function baggageDetails(bag: FareBagAllowance | undefined, ar: boolean): 
   return parts.length ? parts.join(" · ") : null;
 }
 
+type BagStatus = "included" | "excluded" | "unknown";
+type StopsFilter = "any" | "direct" | "one";
+type SortMode = "recommended" | "cheapest" | "fastest" | "earliest";
+
+export function checkedBagStatus(flight: Pick<Flight, "checkedBagIncluded" | "checkedBaggage">): BagStatus {
+  if (flight.checkedBagIncluded === false) return "excluded";
+  if (flight.checkedBagIncluded === true || baggageDetails(flight.checkedBaggage, false)) return "included";
+  return "unknown";
+}
+
+function durationMinutes(duration: string): number {
+  const hours = /(\d+)\s*h/i.exec(duration);
+  const minutes = /(\d+)\s*m/i.exec(duration);
+  return hours || minutes ? Number(hours?.[1] ?? 0) * 60 + Number(minutes?.[1] ?? 0) : Number.POSITIVE_INFINITY;
+}
+
+export function filterFlightResults(
+  flights: Flight[],
+  filters: { stops: StopsFilter; baggage: BagStatus | "any"; airline: string; maxPrice: string; sort: SortMode },
+): Flight[] {
+  const maxPrice = filters.maxPrice === "" ? null : Number(filters.maxPrice);
+  return flights.filter((flight) => {
+    if (filters.stops === "direct" && flight.stops !== 0) return false;
+    if (filters.stops === "one" && flight.stops > 1) return false;
+    if (filters.baggage !== "any" && checkedBagStatus(flight) !== filters.baggage) return false;
+    if (filters.airline && flight.airline !== filters.airline) return false;
+    if (maxPrice !== null && (!Number.isFinite(maxPrice) || Number(flight.price) > maxPrice)) return false;
+    return true;
+  }).sort((a, b) => {
+    if (filters.sort === "cheapest") return Number(a.price) - Number(b.price);
+    if (filters.sort === "fastest") return durationMinutes(a.duration) - durationMinutes(b.duration);
+    if (filters.sort === "earliest") return a.departure.localeCompare(b.departure);
+    return 0;
+  });
+}
+
 export function FlightApiResultsScreen({
   url, values, lang, onBack, onClose,
 }: {
@@ -138,10 +175,26 @@ export function FlightApiResultsScreen({
   const [showInfo, setShowInfo] = useState(false);
   const [detailsFlight, setDetailsFlight] = useState<Flight | null>(null);
   const [openPassportTypeFor, setOpenPassportTypeFor] = useState<number | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [stopsFilter, setStopsFilter] = useState<StopsFilter>("any");
+  const [bagFilter, setBagFilter] = useState<BagStatus | "any">("any");
+  const [sortMode, setSortMode] = useState<SortMode>("recommended");
+  const [airlineFilter, setAirlineFilter] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+
+  const airlines = useMemo(() => [...new Set(flights.map((flight) => flight.airline))].sort(), [flights]);
+  const visibleFlights = useMemo(() => filterFlightResults(flights, {
+    stops: stopsFilter, baggage: bagFilter, airline: airlineFilter, maxPrice, sort: sortMode,
+  }), [flights, stopsFilter, bagFilter, airlineFilter, maxPrice, sortMode]);
+  const clearFilters = () => {
+    setStopsFilter("any"); setBagFilter("any"); setSortMode("recommended");
+    setAirlineFilter(""); setMaxPrice("");
+  };
 
   useEffect(() => {
     const controller = new AbortController();
     setStatus("loading");
+    clearFilters();
     fetch(url, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Flight search returned ${response.status}`);
@@ -257,6 +310,35 @@ export function FlightApiResultsScreen({
         : ar ? `${stops ?? "—"} توقف · تفاصيل الترانزيت غير متوفرة` : `${stops ?? "—"} stop(s) · Transit details unavailable`}</Text>}
     </View>
   );
+  const filterChoices = <T extends string>(choices: { value: T; en: string; ar: string }[], selectedValue: T, onChange: (value: T) => void, prefix: string) => (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChoices}>
+      {choices.map(({ value, en, ar: labelAr }) => (
+        <Pressable key={value} onPress={() => onChange(value)} style={[styles.filterChip, selectedValue === value && styles.filterChipActive]}
+          accessibilityRole="button" accessibilityState={{ selected: selectedValue === value }} testID={`flight-filter-${prefix}-${value}`}>
+          <Text style={[styles.filterChipText, selectedValue === value && styles.filterChipTextActive]}>{ar ? labelAr : en}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+  const bagLabel = (flight: Flight) => {
+    const bagStatus = checkedBagStatus(flight);
+    return (
+      <View style={[styles.bagBadge, bagStatus === "included" ? styles.bagIncluded : bagStatus === "excluded" ? styles.bagExcluded : styles.bagUnknown]}
+        testID={`flight-baggage-${flight.id}`}>
+        <Text style={[styles.bagText, bagStatus === "included" ? styles.bagTextIncluded : bagStatus === "excluded" ? styles.bagTextExcluded : styles.bagTextUnknown]}>
+          {bagStatus === "included" ? (ar ? "الأمتعة المسجلة مشمولة" : "Checked bags included")
+            : bagStatus === "excluded" ? (ar ? "بدون أمتعة مسجلة" : "No checked bags included")
+              : (ar ? "الأمتعة المسجلة غير مؤكدة" : "Checked baggage not confirmed")}
+        </Text>
+        {bagStatus === "included" && (
+          <Text style={[styles.bagText, styles.bagTextIncluded]}>
+            {ar ? "العدد" : "Bags"}: {baggageDetails({ pieces: flight.checkedBaggage?.pieces }, ar) ?? (ar ? "غير محدد" : "Not specified")}
+            {"  ·  "}{ar ? "الوزن" : "Weight"}: {baggageDetails({ weight: flight.checkedBaggage?.weight }, ar) ?? (ar ? "غير محدد" : "Not specified")}
+          </Text>
+        )}
+      </View>
+    );
+  };
   return (
     <View style={styles.root}>
       <AppHeader onBack={onBack} canGoBack onInfo={() => setShowInfo(true)} />
@@ -298,7 +380,52 @@ export function FlightApiResultsScreen({
         {status === "ready" && !selected && (
           <>
             <Text style={[styles.note, ar && styles.rtl]}>{ar ? "الأسعار والتوفر قابلة للتغيير حتى يؤكدها فريقنا." : "Fares and availability are subject to confirmation by our team."}</Text>
-            {flights.map((flight, index) => (
+            <View style={styles.filters}>
+              <Pressable onPress={() => setFiltersOpen((open) => !open)} style={[styles.filterBar, ar && styles.reverse]}
+                accessibilityRole="button" accessibilityState={{ expanded: filtersOpen }} testID="flight-filters-toggle">
+                <Text style={styles.filterBarText}>{ar ? "تصفية وترتيب الرحلات" : "Filter & sort flights"}</Text>
+                <View style={styles.filterBarEnd}>
+                  <Text style={styles.filterCount} testID="flight-filter-count">{visibleFlights.length} / {flights.length}</Text>
+                  <HotelPortalIcon name={filtersOpen ? "chevron-up" : "chevron-down"} size={17} color={P.navy} />
+                </View>
+              </Pressable>
+              {filtersOpen && <View style={styles.filterPanel}>
+                <Text style={[styles.filterHeading, ar && styles.rtl]}>{ar ? "الترتيب" : "Sort by"}</Text>
+                {filterChoices<SortMode>([
+                  { value: "recommended", en: "Recommended", ar: "المقترح" }, { value: "cheapest", en: "Lowest price", ar: "الأقل سعراً" },
+                  { value: "fastest", en: "Shortest trip", ar: "الأقصر مدة" }, { value: "earliest", en: "Earliest departure", ar: "الأبكر مغادرة" },
+                ], sortMode, setSortMode, "sort")}
+                <Text style={[styles.filterHeading, ar && styles.rtl]}>{ar ? "التوقفات" : "Stops"}</Text>
+                {filterChoices<StopsFilter>([
+                  { value: "any", en: "Any", ar: "الكل" }, { value: "direct", en: "Nonstop", ar: "مباشرة" },
+                  { value: "one", en: "Up to 1 stop", ar: "حتى توقف واحد" },
+                ], stopsFilter, setStopsFilter, "stops")}
+                <Text style={[styles.filterHeading, ar && styles.rtl]}>{ar ? "الأمتعة المسجلة" : "Checked baggage"}</Text>
+                {filterChoices<BagStatus | "any">([
+                  { value: "any", en: "Any", ar: "الكل" }, { value: "included", en: "With bags", ar: "مع أمتعة" },
+                  { value: "excluded", en: "No checked bags", ar: "بدون أمتعة" },
+                ], bagFilter, setBagFilter, "baggage")}
+                {airlines.length > 1 && <>
+                  <Text style={[styles.filterHeading, ar && styles.rtl]}>{ar ? "شركة الطيران" : "Airline"}</Text>
+                  {filterChoices([{ value: "", en: "All airlines", ar: "جميع الشركات" }, ...airlines.map((name) => ({ value: name, en: name, ar: name }))], airlineFilter, setAirlineFilter, "airline")}
+                </>}
+                <Text style={[styles.filterHeading, ar && styles.rtl]}>{ar ? "الحد الأقصى للسعر (د.ك)" : "Maximum price (KWD)"}</Text>
+                <TextInput value={maxPrice} onChangeText={(text) => { if (/^\d{0,6}(?:\.\d{0,3})?$/.test(text)) setMaxPrice(text); }}
+                  keyboardType="decimal-pad" placeholder={ar ? "بدون حد" : "No limit"} placeholderTextColor={P.muted}
+                  style={[styles.filterPriceInput, ar && styles.rtl]} accessibilityLabel={ar ? "الحد الأقصى للسعر بالدينار الكويتي" : "Maximum price in KWD"}
+                  testID="flight-filter-max-price" />
+                <Pressable onPress={clearFilters} style={styles.clearFilters} accessibilityRole="button" testID="flight-filters-clear">
+                  <Text style={styles.clearFiltersText}>{ar ? "إعادة ضبط التصفية" : "Clear all filters"}</Text>
+                </Pressable>
+              </View>}
+            </View>
+            {visibleFlights.length === 0 && <View style={styles.noMatches}>
+              <Text style={[styles.note, ar && styles.rtl]}>{ar ? "لا توجد رحلات تطابق التصفية الحالية." : "No flights match these filters."}</Text>
+              <Pressable onPress={clearFilters} style={styles.clearFilters} testID="flight-no-matches-clear">
+                <Text style={styles.clearFiltersText}>{ar ? "عرض جميع الرحلات" : "Show all flights"}</Text>
+              </Pressable>
+            </View>}
+            {visibleFlights.map((flight, index) => (
               <View style={styles.card} key={`${flight.id}-${index}`} testID={`flight-result-${index}`}>
                 <View style={[styles.row, ar && styles.reverse]}>
                   <Pressable onPress={() => setDetailsFlight(flight)} style={styles.airlineGroup} accessibilityRole="button" accessibilityLabel={`${flight.airline} · ${ar ? "تفاصيل الرحلة" : "Flight details"}`}>
@@ -314,6 +441,7 @@ export function FlightApiResultsScreen({
                 {values.tripType === "roundtrip" && (flight.returnDeparture || flight.returnArrival) && (
                   <Text style={[styles.route, ar && styles.rtl]}>{values.destination?.iata} {flight.returnDeparture} → {values.origin?.iata} {flight.returnArrival}{flight.returnFlightNumbers ? ` · ${flight.returnFlightNumbers}` : ""}</Text>
                 )}
+                {bagLabel(flight)}
                 <Pressable onPress={() => setDetailsFlight(flight)} style={styles.detailsLink} accessibilityRole="button" testID={`flight-details-${index}`}>
                   <Text style={styles.detailsLinkText}>{ar ? "تفاصيل الرحلة والأمتعة ›" : "Flight & baggage details ›"}</Text>
                 </Pressable>
@@ -332,6 +460,7 @@ export function FlightApiResultsScreen({
               <Text style={styles.airline}>{selected.airline} · {selected.currency} {selected.price}</Text>
               <Text style={styles.meta}>{values.origin?.iata} {selected.departure} → {values.destination?.iata} {selected.arrival} · {values.departure}</Text>
               {values.tripType === "roundtrip" && <Text style={styles.meta}>{ar ? "العودة" : "Return"}: {values.returnDate}</Text>}
+              {bagLabel(selected)}
               {!!values.specialRequests?.trim() && (
                 <Text style={[styles.meta, ar && styles.rtl]}>
                   {ar ? "طلبات خاصة" : "Special requests"}: {values.specialRequests.trim()}
@@ -435,6 +564,30 @@ const styles = StyleSheet.create({
   price: { color: P.navy, fontWeight: "900", fontSize: 17 },
   route: { color: P.ink, fontWeight: "800", fontSize: 15, marginTop: 5 },
   meta: { color: P.muted, fontSize: 12, lineHeight: 18 },
+  filters: { marginBottom: 14, borderWidth: 1, borderColor: P.border, borderRadius: 12, backgroundColor: P.card, overflow: "hidden" },
+  filterBar: { minHeight: 50, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  filterBarText: { color: P.navy, fontSize: 14, fontWeight: "800" },
+  filterBarEnd: { flexDirection: "row", alignItems: "center", gap: 8 },
+  filterCount: { color: P.muted, fontSize: 12, fontWeight: "700" },
+  filterPanel: { borderTopWidth: 1, borderTopColor: P.border, padding: 13, gap: 8 },
+  filterHeading: { fontSize: 12, color: P.ink, fontWeight: "800", marginTop: 4 },
+  filterChoices: { gap: 7, paddingVertical: 3, paddingRight: 10 },
+  filterChip: { borderWidth: 1, borderColor: P.border, borderRadius: 20, minHeight: 36, paddingHorizontal: 12, alignItems: "center", justifyContent: "center", backgroundColor: P.card },
+  filterChipActive: { backgroundColor: P.navy, borderColor: P.navy },
+  filterChipText: { color: P.ink, fontSize: 12, fontWeight: "700" },
+  filterChipTextActive: { color: P.card },
+  filterPriceInput: { height: 44, borderWidth: 1, borderColor: P.border, borderRadius: 8, paddingHorizontal: 12, color: P.ink, fontSize: 14 },
+  clearFilters: { alignSelf: "flex-start", minHeight: 36, justifyContent: "center", paddingHorizontal: 4 },
+  clearFiltersText: { color: P.navy, fontSize: 12, fontWeight: "800", textDecorationLine: "underline" },
+  noMatches: { padding: 18, alignItems: "center" },
+  bagBadge: { borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, gap: 2, marginTop: 4 },
+  bagIncluded: { backgroundColor: P.paleGreen },
+  bagExcluded: { backgroundColor: P.paleRed },
+  bagUnknown: { backgroundColor: P.canvas },
+  bagText: { fontSize: 12, lineHeight: 17, fontWeight: "700" },
+  bagTextIncluded: { color: P.green },
+  bagTextExcluded: { color: P.red },
+  bagTextUnknown: { color: P.muted },
   detailsLink: { alignSelf: "flex-start", minHeight: 28, justifyContent: "center" },
   detailsLinkText: { color: P.navy, fontSize: 12, fontWeight: "700", textDecorationLine: "underline" },
   modalRoot: { flex: 1, justifyContent: "center", paddingHorizontal: 20, backgroundColor: "rgba(0,0,0,0.48)" },

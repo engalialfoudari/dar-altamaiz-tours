@@ -1,4 +1,4 @@
-name: Build Android Play Store AAB
+name: Build DT Tours Play Store AAB
 on:
   workflow_dispatch: {}
 jobs:
@@ -9,5 +9,5 @@ jobs:
       profile: production
     hooks:
       before_install_node_modules:
-        - name: Provide Android Google services configuration
+        - name: Provide protected Google services configuration
           run: test -f "$GOOGLE_SERVICES_JSON" && cp "$GOOGLE_SERVICES_JSON" ./google-services.json

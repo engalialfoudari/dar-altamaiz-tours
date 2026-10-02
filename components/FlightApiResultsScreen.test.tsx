@@ -1,7 +1,7 @@
 import { buildFlightApiUrl, type FlightSearchValues } from "@/lib/flightSearch";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Linking } from "react-native";
-import { FlightApiResultsScreen, baggageDetails, flightWhatsAppMessage, validateFlightPassengers } from "./FlightApiResultsScreen";
+import { FlightApiResultsScreen, baggageDetails, checkedBagStatus, filterFlightResults, flightWhatsAppMessage, validateFlightPassengers } from "./FlightApiResultsScreen";
 
 jest.mock("@/components/AppHeader", () => ({ AppHeader: () => null }));
 jest.mock("@/components/InfoModal", () => ({ InfoModal: () => null }));
@@ -65,6 +65,49 @@ describe("flight API and WhatsApp checkout handoff", () => {
     expect(baggageDetails({ pieces: 1 }, true)).toBe("1 حقيبة");
     expect(baggageDetails({ weight: "15lb" }, false)).toBe("15lb");
     expect(baggageDetails({ pieces: 0, weight: "23" }, false)).toBeNull();
+    expect(checkedBagStatus({ checkedBagIncluded: false })).toBe("excluded");
+    expect(checkedBagStatus({ checkedBagIncluded: true })).toBe("included");
+    expect(checkedBagStatus({})).toBe("unknown");
+  });
+
+  it("filters fares without classifying unknown baggage as bag-free, and sorts actual results", () => {
+    const flights = [
+      { id: "unknown", airline: "A", stops: 0, price: "80.000", duration: "2h 30m", departure: "12:00" },
+      { id: "bags", airline: "B", stops: 1, price: "60.000", duration: "3h", departure: "08:00", checkedBagIncluded: true, checkedBaggage: { pieces: 2, weight: "23kg" } },
+      { id: "no-bags", airline: "A", stops: 0, price: "40.000", duration: "4h", departure: "14:00", checkedBagIncluded: false },
+    ];
+    const all = { stops: "any" as const, baggage: "any" as const, airline: "", maxPrice: "", sort: "recommended" as const };
+    expect(filterFlightResults(flights as Parameters<typeof filterFlightResults>[0], { ...all, baggage: "excluded" }).map(f => f.id)).toEqual(["no-bags"]);
+    expect(filterFlightResults(flights as Parameters<typeof filterFlightResults>[0], { ...all, baggage: "included", maxPrice: "65" }).map(f => f.id)).toEqual(["bags"]);
+    expect(filterFlightResults(flights as Parameters<typeof filterFlightResults>[0], { ...all, stops: "direct", airline: "A", sort: "cheapest" }).map(f => f.id)).toEqual(["no-bags", "unknown"]);
+    expect(filterFlightResults(flights as Parameters<typeof filterFlightResults>[0], { ...all, sort: "fastest" }).map(f => f.id)).toEqual(["unknown", "bags", "no-bags"]);
+  });
+
+  it("shows red/green fare-specific bag labels and lets customers apply and clear filters", async () => {
+    const request = jest.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ configured: true, flights: [
+        { id: "with-bag", airline: "Kuwait Airways", airlineCode: "KU", departure: "08:00", arrival: "12:00", depDate: "05/10/2026", duration: "4h", stops: 0, price: "80.000", currency: "KWD", checkedBagIncluded: true, checkedBaggage: { pieces: 2, weight: "23kg" } },
+        { id: "without-bag", airline: "Pegasus", airlineCode: "PC", departure: "06:00", arrival: "12:00", depDate: "05/10/2026", duration: "6h", stops: 1, price: "50.000", currency: "KWD", checkedBagIncluded: false },
+        { id: "unconfirmed", airline: "Other", airlineCode: "OT", departure: "13:00", arrival: "17:00", depDate: "05/10/2026", duration: "4h", stops: 0, price: "70.000", currency: "KWD" },
+      ] }),
+    } as Response);
+    const screen = render(<FlightApiResultsScreen url="https://example.com/api/flights" values={values} lang="en" onBack={jest.fn()} onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("Checked bags included")).toBeTruthy());
+    expect(screen.getByText(/Bags: 2 bags/)).toBeTruthy();
+    expect(screen.getByText("No checked bags included")).toBeTruthy();
+    expect(screen.getByText("Checked baggage not confirmed")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("flight-filters-toggle"));
+    fireEvent.press(screen.getByTestId("flight-filter-baggage-included"));
+    expect(screen.getByText("1 / 3")).toBeTruthy();
+    expect(screen.queryByText("No checked bags included")).toBeNull();
+    fireEvent.changeText(screen.getByTestId("flight-filter-max-price"), "60");
+    expect(screen.getByText("No flights match these filters.")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("flight-no-matches-clear"));
+    expect(screen.getByText("3 / 3")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("flight-filter-stops-direct"));
+    expect(screen.getByText("2 / 3")).toBeTruthy();
+    request.mockRestore();
   });
 
   it("opens the airline's flight and baggage details without inventing a baggage allowance", async () => {

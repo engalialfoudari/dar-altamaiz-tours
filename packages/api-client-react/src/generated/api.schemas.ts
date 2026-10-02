@@ -52,6 +52,590 @@ export interface HotelDealsResponse {
   deals: HotelDeal[];
 }
 
+export interface ApiError {
+  error: string;
+}
+
+export type EsimCatalogDestinationCategory = typeof EsimCatalogDestinationCategory[keyof typeof EsimCatalogDestinationCategory];
+
+
+export const EsimCatalogDestinationCategory = {
+  local: 'local',
+  regional: 'regional',
+  global: 'global',
+} as const;
+
+export interface EsimCatalogDestination {
+  slug: string;
+  title: string;
+  countryCode: string;
+  imageUrl: string;
+  /** @minimum 0 */
+  packageCount: number;
+  category: EsimCatalogDestinationCategory;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  minPriceKwd: number | null;
+}
+
+export interface EsimCatalogResponse {
+  destinations: EsimCatalogDestination[];
+  updatedAt: string;
+}
+
+export interface AdminEsimStockInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  supplierOrderId: string;
+  sellByAt: string;
+  /**
+     * @minLength 10
+     * @maxLength 2000
+     */
+  expiryEvidence: string;
+}
+
+export interface AdminEsimStockImportResponse {
+  imported: boolean;
+}
+
+export type AdminEsimStockResponseStockItem = {
+  packageId: string;
+  /** @minimum 0 */
+  available: number;
+  /** @minimum 0 */
+  reserved: number;
+  /** @minimum 0 */
+  assigned: number;
+  /** @minimum 0 */
+  expired: number;
+};
+
+export type AdminEsimStockResponseUnitsItemStatus = typeof AdminEsimStockResponseUnitsItemStatus[keyof typeof AdminEsimStockResponseUnitsItemStatus];
+
+
+export const AdminEsimStockResponseUnitsItemStatus = {
+  available: 'available',
+  reserved: 'reserved',
+  assigned: 'assigned',
+  expired: 'expired',
+} as const;
+
+export type AdminEsimStockResponseUnitsItem = {
+  supplierOrderId: string;
+  packageId: string;
+  status: AdminEsimStockResponseUnitsItemStatus;
+  sellByAt: string;
+  expiryEvidence: string;
+};
+
+export interface AdminEsimStockResponse {
+  stock: AdminEsimStockResponseStockItem[];
+  units: AdminEsimStockResponseUnitsItem[];
+}
+
+export interface EsimPackage {
+  id: string;
+  /** True only when a pre-purchased ordinary eSIM is available for stock-backed checkout. Omitted for the original authorization flow. */
+  isInStock?: boolean;
+  title: string;
+  data: string;
+  /** @minimum 1 */
+  validityDays: number;
+  isUnlimited: boolean;
+  /** Supplier indicates a fair-usage restriction. */
+  hasFairUsagePolicy?: boolean;
+  /** Supplier's original fair-usage restriction */
+  fairUsagePolicy?: string;
+  operatorName: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  priceKwd: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  minPriceKwd: number | null;
+  coverage: string[];
+  /** Supplier-provided flag image URLs, aligned by index with coverage; empty strings indicate unavailable flags. */
+  coverageFlagUrls?: string[];
+  /** Supplier-provided country codes, aligned by index with coverage; empty strings indicate unavailable codes. Never inferred from country names. */
+  coverageCountryCodes?: string[];
+  network: string[];
+}
+
+export type EsimDestinationCategory = typeof EsimDestinationCategory[keyof typeof EsimDestinationCategory];
+
+
+export const EsimDestinationCategory = {
+  local: 'local',
+  regional: 'regional',
+  global: 'global',
+} as const;
+
+export interface EsimDestination {
+  slug: string;
+  title: string;
+  countryCode: string;
+  imageUrl: string;
+  packages: EsimPackage[];
+  category: EsimDestinationCategory;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  minPriceKwd: number | null;
+}
+
+export interface EsimDestinationResponse {
+  destination: EsimDestination;
+  updatedAt: string;
+}
+
+export interface EsimMarkupInput {
+  /** @minimum 0 */
+  markupPercent: number;
+}
+
+export interface EsimMarkupResponse {
+  /** @minimum 0 */
+  markupPercent: number;
+}
+
+export interface EsimPromoCodeInput {
+  /**
+     * @minLength 1
+     * @maxLength 32
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  code: string;
+  /**
+     * @maximum 100
+     * @exclusiveMinimum 0
+     */
+  discountPercent: number;
+  isActive?: boolean;
+}
+
+export interface EsimPromoCodeUpdate {
+  /**
+     * @maximum 100
+     * @exclusiveMinimum 0
+     */
+  discountPercent?: number;
+  isActive?: boolean;
+}
+
+export interface EsimPromoCode {
+  id: number;
+  code: string;
+  discountPercent: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EsimPromoCodesResponse {
+  promoCodes: EsimPromoCode[];
+}
+
+export type AdminEsimRecoveryOrderHoldWarning = typeof AdminEsimRecoveryOrderHoldWarning[keyof typeof AdminEsimRecoveryOrderHoldWarning];
+
+
+export const AdminEsimRecoveryOrderHoldWarning = {
+  not_applicable: 'not_applicable',
+  unconfirmed: 'unconfirmed',
+  none: 'none',
+  approaching: 'approaching',
+  estimated_expired: 'estimated_expired',
+} as const;
+
+export interface AdminEsimRecoveryOrder {
+  orderId: string;
+  /** @nullable */
+  userId: number | null;
+  status: string;
+  /** @minimum 1 */
+  amountFils: number;
+  currency: string;
+  /** @nullable */
+  trackId: string | null;
+  /** @nullable */
+  paymentId: string | null;
+  /** @nullable */
+  supplierOrderId: string | null;
+  /** @nullable */
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  chargeClaimedAt: string | null;
+  /** @nullable */
+  supplierClaimedAt: string | null;
+  /** @nullable */
+  lastReconciledAt: string | null;
+  /** @nullable */
+  reviewAlertedAt: string | null;
+  needsHumanAction: boolean;
+  /** @nullable */
+  customerEmailClaimedAt: string | null;
+  /** @nullable */
+  customerEmailReviewAlertedAt: string | null;
+  emailNeedsReview: boolean;
+  /** @minimum 0 */
+  ageMinutes: number;
+  /**
+     * Conservative estimate from the authorization attempt, not confirmation of an active hold.
+     * @nullable
+     */
+  estimatedHoldExpiresAt: string | null;
+  holdWarning: AdminEsimRecoveryOrderHoldWarning;
+}
+
+export interface AdminEsimRecoveryOrdersResponse {
+  orders: AdminEsimRecoveryOrder[];
+}
+
+export type EsimEmailReviewInputDecision = typeof EsimEmailReviewInputDecision[keyof typeof EsimEmailReviewInputDecision];
+
+
+export const EsimEmailReviewInputDecision = {
+  accepted: 'accepted',
+  not_accepted: 'not_accepted',
+} as const;
+
+export interface EsimEmailReviewInput {
+  claimedAt: string;
+  decision: EsimEmailReviewInputDecision;
+  verified: true;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  evidence: string;
+}
+
+export interface EsimPaymentRecoveryInput {
+  /**
+     * @minLength 4
+     * @maxLength 150
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  trackId: string;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  evidence: string;
+  verified: true;
+}
+
+export interface EsimEmailReviewResult {
+  ok: boolean;
+}
+
+export interface AdminEsimReconcileResponse {
+  orderId: string;
+  status: string;
+  /** @nullable */
+  reason: string | null;
+  needsHumanAction: boolean;
+  /** @nullable */
+  paymentStatus: string | null;
+  supplierOrderFound: boolean;
+}
+
+/**
+ * UPayment checkout method; cc is presented to customers as Visa/Mastercard.
+ */
+export type EsimPaymentMethod = typeof EsimPaymentMethod[keyof typeof EsimPaymentMethod];
+
+
+export const EsimPaymentMethod = {
+  knet: 'knet',
+  cc: 'cc',
+  'apple-pay': 'apple-pay',
+  'samsung-pay': 'samsung-pay',
+} as const;
+
+export interface EsimQuoteInput {
+  /**
+     * @maxLength 100
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  packageId: string;
+  /**
+     * @maxLength 32
+     * @nullable
+     */
+  promoCode?: string | null;
+  paymentMethod: EsimPaymentMethod;
+}
+
+export type EsimQuoteProductCategory = typeof EsimQuoteProductCategory[keyof typeof EsimQuoteProductCategory];
+
+
+export const EsimQuoteProductCategory = {
+  local: 'local',
+  regional: 'regional',
+  global: 'global',
+} as const;
+
+export interface EsimQuoteProduct {
+  slug: string;
+  destination: string;
+  category: EsimQuoteProductCategory;
+  packageId: string;
+  title: string;
+  data: string;
+  /** @minimum 1 */
+  validityDays: number;
+  isUnlimited: boolean;
+  hasFairUsagePolicy?: boolean;
+  fairUsagePolicy?: string;
+  operatorName: string;
+  coverage: string[];
+  network: string[];
+}
+
+export interface EsimQuoteResponse {
+  paymentMethod: EsimPaymentMethod;
+  /** @minimum 1 */
+  baseAmountFils: number;
+  /** @minimum 0 */
+  paymentFeeFils: number;
+  /** @minimum 1 */
+  amountFils: number;
+  /** @minimum 0 */
+  amountKwd: number;
+  /** @minimum 0 */
+  discountFils: number;
+  /** @minimum 1 */
+  retailMinimumFils: number;
+  product: EsimQuoteProduct;
+}
+
+export interface EsimPrivateGuestCodeInput {
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface EsimOrderInput {
+  /**
+     * @maxLength 100
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  packageId: string;
+  /**
+     * @maxLength 32
+     * @nullable
+     */
+  promoCode?: string | null;
+  paymentMethod: EsimPaymentMethod;
+  /**
+     * Client-generated unguessable idempotency key; guest keys must be at least 22 characters representing 128 bits of cryptographic randomness
+     * @minLength 16
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  requestKey: string;
+  /** @minimum 1 */
+  expectedAmountFils: number;
+  /** Customer confirms the checkout email address is correct; this is not mailbox verification or proof of order/recovery identity */
+  emailAcknowledged?: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  firstName: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  lastName: string;
+  /**
+     * @minLength 3
+     * @maxLength 254
+     * @pattern ^(?=.{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])$
+     */
+  email: string;
+  /**
+     * Country-only billing snapshot in the exact format Country: <country name>
+     * @minLength 10
+     * @maxLength 129
+     * @pattern ^Country: .{1,120}$
+     */
+  billingAddress: string;
+  /**
+     * Required E.164 phone number including plus prefix
+     * @minLength 8
+     * @maxLength 16
+     * @pattern ^\+[1-9][0-9]{6,14}$
+     */
+  customerMobile: string;
+  /**
+     * Email code for a guest in historical private authorization/prepaid-stock checkout; not used for the approved Global on-demand guest checkout
+     * @maxLength 24
+     */
+  privateGuestCode?: string;
+}
+
+export interface EsimBillingProfile {
+  firstName: string;
+  lastName: string;
+  /** @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$ */
+  email: string;
+  /** Country-only billing snapshot in the exact format Country: <country name> */
+  billingAddress: string;
+  /**
+     * Previously used E.164 phone number when available
+     * @nullable
+     */
+  customerMobile?: string | null;
+}
+
+export interface EsimBillingProfileResponse {
+  profile: EsimBillingProfile | null;
+}
+
+export type EsimOrderSummaryStatus = typeof EsimOrderSummaryStatus[keyof typeof EsimOrderSummaryStatus];
+
+
+export const EsimOrderSummaryStatus = {
+  payment_pending: 'payment_pending',
+  payment_failed: 'payment_failed',
+  fulfillment_pending: 'fulfillment_pending',
+  pending_review: 'pending_review',
+  completed: 'completed',
+} as const;
+
+export type EsimOrderSummaryProduct = { [key: string]: unknown };
+
+export interface EsimOrderSummary {
+  orderId: string;
+  status: EsimOrderSummaryStatus;
+  /** @minimum 0 */
+  amountKwd: number;
+  product: EsimOrderSummaryProduct;
+  createdAt: string;
+}
+
+/**
+ * Supplier-defined manual installation steps. Available only to the purchaser after fulfillment.
+ */
+export interface EsimManualInstallation { [key: string]: unknown }
+
+export interface EsimActivationSim {
+  iccid: string;
+  qrcode: string;
+  /** HTTPS QR code URL */
+  qrcodeUrl: string;
+  manualInstallation: EsimManualInstallation | null;
+  /** @nullable */
+  directAppleInstallationUrl: string | null;
+}
+
+export interface EsimActivation {
+  id: string;
+  code: string;
+  status: string;
+  sims: EsimActivationSim[];
+}
+
+export type EsimOrderStatusResponse = EsimOrderSummary & ({
+  activation: EsimActivation | null;
+});
+
+export interface EsimCheckoutResponse {
+  order: EsimOrderSummary;
+  /** @nullable */
+  paymentUrl: string | null;
+}
+
+export interface EsimOrderListResponse {
+  orders: EsimOrderSummary[];
+}
+
+export interface EsimGuestRecoveryEmail {
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface EsimGuestRecoveryAcknowledgement {
+  ok: boolean;
+}
+
+export interface EsimGuestRecoveryProof {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 16
+     * @maxLength 16
+     */
+  code: string;
+}
+
+export interface EsimGuestRecoveryDocumentProof {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 16
+     * @maxLength 16
+     */
+  code: string;
+  /**
+     * @minLength 10
+     * @maxLength 80
+     */
+  orderId: string;
+}
+
+export interface EsimGuestRecoveryOrders {
+  orders: EsimOrderStatusResponse[];
+}
+
+export type EsimOrderDetailResponse = EsimOrderStatusResponse;
+
+export type EsimReconcileResponseStatus = typeof EsimReconcileResponseStatus[keyof typeof EsimReconcileResponseStatus];
+
+
+export const EsimReconcileResponseStatus = {
+  payment_pending: 'payment_pending',
+  payment_failed: 'payment_failed',
+  fulfillment_pending: 'fulfillment_pending',
+  pending_review: 'pending_review',
+  completed: 'completed',
+} as const;
+
+export interface EsimReconcileResponse {
+  status: EsimReconcileResponseStatus;
+}
+
 export type GetHotelDealsParams = {
 active?: boolean;
 };
+
+export type ReviewAdminEsimPayment200 = {
+  ok: boolean;
+};
+
+export type SendEsimPrivateGuestCode200 = {
+  ok: boolean;
+};
+
