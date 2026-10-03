@@ -264,6 +264,14 @@ export interface EsimPromoCodesResponse {
   promoCodes: EsimPromoCode[];
 }
 
+export type AdminEsimRecoveryOrderEmailStage = typeof AdminEsimRecoveryOrderEmailStage[keyof typeof AdminEsimRecoveryOrderEmailStage];
+
+
+export const AdminEsimRecoveryOrderEmailStage = {
+  invoice: 'invoice',
+  delivery: 'delivery',
+} as const;
+
 export type AdminEsimRecoveryOrderHoldWarning = typeof AdminEsimRecoveryOrderHoldWarning[keyof typeof AdminEsimRecoveryOrderHoldWarning];
 
 
@@ -307,6 +315,7 @@ export interface AdminEsimRecoveryOrder {
   /** @nullable */
   customerEmailReviewAlertedAt: string | null;
   emailNeedsReview: boolean;
+  emailStage?: AdminEsimRecoveryOrderEmailStage;
   /** @minimum 0 */
   ageMinutes: number;
   /**
@@ -321,6 +330,14 @@ export interface AdminEsimRecoveryOrdersResponse {
   orders: AdminEsimRecoveryOrder[];
 }
 
+export type EsimEmailReviewInputStage = typeof EsimEmailReviewInputStage[keyof typeof EsimEmailReviewInputStage];
+
+
+export const EsimEmailReviewInputStage = {
+  invoice: 'invoice',
+  delivery: 'delivery',
+} as const;
+
 export type EsimEmailReviewInputDecision = typeof EsimEmailReviewInputDecision[keyof typeof EsimEmailReviewInputDecision];
 
 
@@ -330,6 +347,7 @@ export const EsimEmailReviewInputDecision = {
 } as const;
 
 export interface EsimEmailReviewInput {
+  stage?: EsimEmailReviewInputStage;
   claimedAt: string;
   decision: EsimEmailReviewInputDecision;
   verified: true;
@@ -548,6 +566,8 @@ export type EsimOrderSummaryProduct = { [key: string]: unknown };
 
 export interface EsimOrderSummary {
   orderId: string;
+  /** @nullable */
+  paymentConfirmedAt?: string | null;
   status: EsimOrderSummaryStatus;
   /** @minimum 0 */
   amountKwd: number;

@@ -1,5 +1,5 @@
 export type CustomFetchOptions = RequestInit & {
-  responseType?: "json" | "text" | "blob" | "auto";
+  responseType?: "json" | "text" | "blob" | "arrayBuffer" | "auto";
 };
 
 export type ErrorType<T = unknown> = ApiError<T>;
@@ -292,7 +292,7 @@ function inferResponseType(response: Response): "json" | "text" | "blob" {
 
 async function parseSuccessBody(
   response: Response,
-  responseType: "json" | "text" | "blob" | "auto",
+  responseType: "json" | "text" | "blob" | "arrayBuffer" | "auto",
   requestInfo: { method: string; url: string },
 ): Promise<unknown> {
   if (hasNoBody(response, requestInfo.method)) {
@@ -303,6 +303,8 @@ async function parseSuccessBody(
     responseType === "auto" ? inferResponseType(response) : responseType;
 
   switch (effectiveType) {
+    case "arrayBuffer":
+      return response.arrayBuffer();
     case "json":
       return parseJsonBody(response, requestInfo);
 

@@ -288,6 +288,15 @@ describe("ProfileScreen Account actions", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it.each(["en", "ar"] as const)("keeps the Account back button blue and working in %s", (language) => {
+    const onClose = jest.fn();
+    const view = render(<ProfileScreen language={language} onClose={onClose} />);
+    const label = language === "ar" ? "رجوع" : "Back";
+    expect(view.getByText(label)).toHaveStyle({ color: "#003580" });
+    fireEvent.press(view.getByRole("button", { name: "Back" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("lets Google sign-in respond when sign-in is ready but account auth is still loading", async () => {
     const platformReplacement = jest.replaceProperty(Platform, "OS", "web");
     mockIsClerkLoaded = false;

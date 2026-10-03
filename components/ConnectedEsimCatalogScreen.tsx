@@ -14,7 +14,8 @@ import { EsimCountryPicker, getEsimCountryOptions, type EsimCountryOption } from
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateEsimOrder,
-  getEsimPaymentReturnStatus,
+  getEsimPaymentReturnState,
+  reconcileEsimReturnedPayment,
   useGetMyEsimBillingProfile,
   downloadMyEsimDocument,
   useGetMyEsimOrder,
@@ -40,6 +41,8 @@ import { isTrustedHotelPaymentHost } from "@/lib/hotelPortal";
 import {
   ESIM_PAYMENT_RETURN_FAST_CHECK_MS,
   ESIM_PAYMENT_RETURN_POLL_INTERVAL_MS,
+  ESIM_PAYMENT_RETURN_BACKGROUND_CHECKS,
+  ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS,
   isEsimOrderStatusTerminal,
   nextEsimOrderStatusPollDelay,
 } from "@/components/esimOrderStatusPolling";
@@ -71,6 +74,7 @@ function orderForDisplay(order: EsimOrderSummary): EsimOwnedOrder {
     destinationTitle: textField(product, "destination") || textField(product, "slug"),
     packageTitle: textField(product, "title"),
     status: order.status,
+    paymentConfirmedAt: order.paymentConfirmedAt,
     purchasedAt: order.createdAt,
   };
 }
@@ -204,6 +208,9 @@ export function ConnectedEsimCatalogScreen(props: Props) {
   const [authError, setAuthError] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [paymentStatusCheck, setPaymentStatusCheck] = useState<PaymentStatusCheck | null>(null);
+  const [verificationNextCheckAt, setVerificationNextCheckAt] = useState<number | null>(null);
+  const [guestVerificationActive, setGuestVerificationActive] = useState(false);
+  const [guestPayment, setGuestPayment] = useState<{ confirmedAt: string; completed: boolean; review: boolean } | null>(null);
   const [checkoutPending, setCheckoutPending] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
@@ -230,6 +237,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
   const recoveryGeneration = useRef(0);
   const paymentReturnSeqRef = useRef(props.paymentReturnSeq ?? 0);
   const paymentStatusReturnSeqRef = useRef(0);
+  const reconciledReturns = useRef(new Set<string>());
   const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
   const nativePayment = useRef<{ orderId: string; sessionId: string | null | undefined } | null>(null);
   const inFlight = useRef(false);
@@ -370,13 +378,36 @@ export function ConnectedEsimCatalogScreen(props: Props) {
 
   useEffect(() => {
     const orderId = props.paymentReturnOrderId;
+    if (!orderId || (!guest && !ready)) return;
+    const key = `${orderId}:${props.paymentReturnSeq ?? 0}`;
+    if (reconciledReturns.current.has(key)) return;
+    reconciledReturns.current.add(key);
+    // Start verification promptly; all subsequent observation is read-only.
+    // The backend's existing payment and supplier claims own fulfillment.
+    void reconcileEsimReturnedPayment(orderId, ready ? { Authorization: `Bearer ${auth.token}` } : undefined).catch(() => {});
+  }, [props.paymentReturnOrderId, props.paymentReturnSeq, guest, ready, auth]);
+
+  useEffect(() => {
+    const orderId = props.paymentReturnOrderId;
     if (!guest || !orderId) return;
     let active = true;
+    const startedAt = Date.now();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    setGuestVerificationActive(true);
+    setVerificationNextCheckAt(null);
+    setCheckoutNotice(null);
+    const foregroundTimer = setTimeout(() => setGuestVerificationActive(false), ESIM_PAYMENT_RETURN_FAST_CHECK_MS);
     const check = async () => {
+      if (!active) return;
+      setVerificationNextCheckAt(null);
       try {
-        const status = await getEsimPaymentReturnStatus(orderId);
+        const returned = await getEsimPaymentReturnState(orderId);
+        const status = returned.status;
         if (!active) return;
+        if (returned.paymentConfirmedAt || status === "completed") {
+          setGuestPayment({ confirmedAt: returned.paymentConfirmedAt ?? new Date().toISOString(),
+            completed: status === "completed", review: status === "pending_review" });
+        }
         const messages = {
           completed: ["Your eSIM is ready. Check your email for the invoice, QR and installation instructions.", "شريحتك جاهزة. تحقق من بريدك الإلكتروني للحصول على الفاتورة ورمز QR وتعليمات التثبيت."],
           pending_review: ["Your eSIM order needs review because payment or supplier fulfillment could not be fully confirmed. Do not pay again. Contact the eSIM team about this same order.", "طلب الشريحة يحتاج إلى مراجعة لأن الدفع أو تسليم المورد لم يُؤكّد بالكامل. لا تدفع مرة أخرى. تواصل مع فريق الشرائح بشأن الطلب نفسه."],
@@ -385,17 +416,49 @@ export function ConnectedEsimCatalogScreen(props: Props) {
           payment_failed: ["Payment was not confirmed. If your bank shows a charge, contact us before retrying.", "لم يُؤكّد الدفع. إذا ظهر خصم في حسابك البنكي فتواصل معنا قبل إعادة المحاولة."],
         };
         setCheckoutNotice(messages[status][props.lang === "ar" ? 1 : 0]);
-        if (status === "completed" || status === "payment_failed") return;
+        if (isEsimOrderStatusTerminal(status)) {
+          active = false;
+          clearTimeout(deadlineTimer);
+          setGuestVerificationActive(false);
+          return;
+        }
       } catch {
         if (!active) return;
         setCheckoutNotice(props.lang === "ar"
           ? "تعذر التحقق من حالة الطلب الآن. لا تدفع مرة أخرى؛ تحقق من البريد أو تواصل معنا بشأن الطلب نفسه."
           : "Order status could not be verified yet. Do not pay again; check your email or contact us about this same order.");
       }
-      if (active) timer = setTimeout(check, 15000);
+      if (active && Date.now() - startedAt < 10 * 60_000) {
+        setVerificationNextCheckAt(Date.now() + 15_000);
+        timer = setTimeout(check, 15_000);
+      } else if (active) {
+        setGuestVerificationActive(false);
+        setCheckoutNotice(props.lang === "ar"
+          ? "استغرق التأكيد وقتاً أطول. تحقق من بريدك أو استرجع الطلب ببريد الشراء؛ لا تدفع مرة أخرى."
+          : "Confirmation is taking longer. Check your email or recover this order with your purchase email; do not pay again.");
+      }
     };
+    // Stop the waiting state even if a status request never settles.
+    const deadlineTimer = setTimeout(() => {
+      if (!active) return;
+      active = false;
+      if (timer) clearTimeout(timer);
+      setGuestVerificationActive(false);
+      setVerificationNextCheckAt(null);
+      setCheckoutNotice(props.lang === "ar"
+        ? "استغرق التأكيد وقتاً أطول. تحقق من بريدك أو استرجع الطلب ببريد الشراء؛ لا تدفع مرة أخرى."
+        : "Confirmation is taking longer. Check your email or recover this order with your purchase email; do not pay again.");
+    }, ESIM_PAYMENT_RETURN_BACKGROUND_CHECKS * ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS);
     void check();
-    return () => { active = false; if (timer) clearTimeout(timer); };
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      clearTimeout(deadlineTimer);
+      clearTimeout(foregroundTimer);
+      setGuestVerificationActive(false);
+      setVerificationNextCheckAt(null);
+      setGuestPayment(null);
+    };
   }, [guest, props.paymentReturnOrderId, props.paymentReturnSeq, props.lang]);
 
   useEffect(() => {
@@ -458,6 +521,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     && ready
     && paymentStatusCheck.sessionId === sessionId
     && (!ownedDetail || isPendingEsimStatus(ownedDetail.status))
+    && !ownedDetail?.paymentConfirmedAt
     ? paymentStatusCheck.phase === "checking"
       ? props.lang === "ar"
         ? "نتحقق من الدفع وطلب الشريحة. يرجى عدم الدفع مرة أخرى."
@@ -493,8 +557,11 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let phaseTimer: ReturnType<typeof setTimeout> | undefined;
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
     let backgroundChecks = 0;
     const poll = async () => {
+      if (!active) return;
+      setVerificationNextCheckAt(null);
       try {
         // This is a read-only GET for the callback's exact order ID. Never
         // recreate the checkout or supplier order while payment settles.
@@ -517,6 +584,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
           return;
         }
         if (elapsed >= ESIM_PAYMENT_RETURN_FAST_CHECK_MS) backgroundChecks += 1;
+        setVerificationNextCheckAt(Date.now() + delay);
         timer = setTimeout(() => { void poll(); }, delay);
       } catch {
         if (!active || sessionRef.current !== check.sessionId) return;
@@ -527,11 +595,22 @@ export function ConnectedEsimCatalogScreen(props: Props) {
             : current);
           return;
         }
+        setVerificationNextCheckAt(Date.now() + delay);
         timer = setTimeout(() => { void poll(); }, delay);
       }
     };
 
+    setVerificationNextCheckAt(Date.now() + ESIM_PAYMENT_RETURN_POLL_INTERVAL_MS);
     timer = setTimeout(() => { void poll(); }, ESIM_PAYMENT_RETURN_POLL_INTERVAL_MS);
+    deadlineTimer = setTimeout(() => {
+      if (!active || sessionRef.current !== check.sessionId) return;
+      active = false;
+      if (timer) clearTimeout(timer);
+      if (phaseTimer) clearTimeout(phaseTimer);
+      setVerificationNextCheckAt(null);
+      setPaymentStatusCheck((current) => current?.orderId === check.orderId
+        ? { ...current, phase: "paused" } : current);
+    }, ESIM_PAYMENT_RETURN_FAST_CHECK_MS + ESIM_PAYMENT_RETURN_BACKGROUND_CHECKS * ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS);
     phaseTimer = setTimeout(() => {
       if (!active || sessionRef.current !== check.sessionId) return;
       setPaymentStatusCheck((current) => current?.orderId === check.orderId
@@ -542,6 +621,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
       active = false;
       if (timer) clearTimeout(timer);
       if (phaseTimer) clearTimeout(phaseTimer);
+      if (deadlineTimer) clearTimeout(deadlineTimer);
     };
   }, [
     paymentStatusCheck?.orderId,
@@ -865,38 +945,43 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     const recoveryAttempt = recoveryGeneration.current;
     const stillCurrent = () => sessionRef.current === buyerSession && (!guestDownload || recoveryGeneration.current === recoveryAttempt);
     let temporaryFile: File | null = null;
+    let handedToSharing = false;
     try {
-      const html = guestDownload
-        ? await downloadEsimGuestDocument({ ...recoveryProof!, orderId: id }, { responseType: "text" })
-        : await downloadMyEsimDocument(id, { headers: { Authorization: `Bearer ${auth!.token}` }, responseType: "text" });
+      const pdf = (guestDownload
+        ? await downloadEsimGuestDocument({ ...recoveryProof!, orderId: id }, { headers: { Accept: "application/pdf" }, responseType: "arrayBuffer" })
+        : await downloadMyEsimDocument(id, { headers: { Authorization: `Bearer ${auth!.token}`, Accept: "application/pdf" }, responseType: "arrayBuffer" })) as unknown as ArrayBuffer;
       if (!stillCurrent()) return;
-      if (typeof html !== "string" || !html.trim()) throw new Error("Empty document");
+      const bytes = new Uint8Array(pdf);
+      if (bytes.length < 5 || String.fromCharCode(...bytes.subarray(0, 5)) !== "%PDF-") throw new Error("Invalid PDF document");
       if (Platform.OS === "web" && typeof document !== "undefined") {
-        const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+        const url = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" }));
         const anchor = document.createElement("a");
         anchor.href = url;
-        anchor.download = `esim-${id.replace(/[^a-zA-Z0-9_-]/g, "")}.html`;
+        anchor.download = `esim-${id.replace(/[^a-zA-Z0-9_-]/g, "")}.pdf`;
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
       } else {
         if (!(await Sharing.isAvailableAsync())) throw new Error("Document sharing unavailable");
-        // The authenticated response is never put into a public URL or passed as raw HTML
-        // to a text share intent. The share sheet receives a private temporary HTML file.
-        temporaryFile = new File(Paths.cache, `esim-${id.replace(/[^a-zA-Z0-9_-]/g, "")}-${Date.now()}.html`);
-        temporaryFile.write(html);
+        // Share only the verified PDF bytes from the private authenticated response.
+        temporaryFile = new File(Paths.cache, `esim-${id.replace(/[^a-zA-Z0-9_-]/g, "")}-${Crypto.randomUUID()}.pdf`);
+        temporaryFile.write(bytes);
         if (!stillCurrent()) return;
+        // Chooser completion does not acknowledge that the receiver read/saved
+        // its content URI. Keep handed-off files in private cache, even on an
+        // ambiguous error or cancellation; a saved copy is needed long term.
+        handedToSharing = true;
         await Sharing.shareAsync(temporaryFile.uri, {
-          mimeType: "text/html",
-          UTI: "public.html",
+          mimeType: "application/pdf",
+          UTI: "com.adobe.pdf",
           dialogTitle: "Save eSIM installation document",
         });
       }
     } catch {
       if (stillCurrent()) setDownloadError(props.lang === "ar" ? "تعذر تجهيز مستند الشريحة. حاول مجدداً." : "Couldn't prepare your eSIM document. Please try again.");
     } finally {
-      if (temporaryFile) {
+      if (temporaryFile && !handedToSharing) {
         try { if (temporaryFile.exists) temporaryFile.delete(); } catch { /* OS may already have moved the shared file. */ }
       }
       if (stillCurrent()) setDownloadPending(false);
@@ -960,19 +1045,46 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     }
   };
 
+  useEffect(() => {
+    if (!recoveryOpen || !recoveryProof || !guest
+      || !recoveredOrders.some((row) => row.status !== "completed")) return;
+    let active = true;
+    const current = recoveryGeneration.current;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try {
+        const result = await recoverOrders.mutateAsync({ data: recoveryProof });
+        if (!active || current !== recoveryGeneration.current) return;
+        setRecoveredOrders(result.orders);
+        if (result.orders.some((row) => row.status !== "completed")) timer = setTimeout(refresh, 60_000);
+      } catch {
+        if (!active || current !== recoveryGeneration.current) return;
+        setRecoveryError(props.lang === "ar" ? "تعذر تحديث حالة الطلب. استخدم رمزاً جديداً للتحقق مجدداً؛ لا تدفع مرة أخرى." : "Could not refresh the order. Use a new code to check again; do not pay again.");
+      }
+    };
+    // Respect the shared email-proof rate limit and stop on expiry or closing.
+    timer = setTimeout(refresh, 60_000);
+    return () => { active = false; clearTimeout(timer); };
+  }, [recoveryOpen, recoveryProof, guest, props.lang]);
+
   return <>
     <EsimCatalogScreen
     {...props}
     signedIn={ready}
     paymentStatusOrderId={paymentStatusCheck?.orderId}
     paymentStatusMessage={paymentStatusMessage}
+    verificationActive={guest ? guestVerificationActive && !guestPayment : !!paymentStatusMessage && paymentStatusCheck?.phase === "checking"}
+    verificationNextCheckAt={verificationNextCheckAt}
+    paymentReturnNotice={guest && !guestPayment && props.paymentReturnOrderId && !guestVerificationActive ? checkoutNotice : null}
+    paymentSuccess={guest ? guestPayment : ownedDetail && (ownedDetail.paymentConfirmedAt || ownedDetail.status === "completed")
+      ? { confirmedAt: ownedDetail.paymentConfirmedAt ?? new Date().toISOString(), completed: ownedDetail.status === "completed", review: ownedDetail.status === "pending_review" } : null}
     paymentReturnRecovery={props.paymentReturnRecovery}
     onRecoverGuest={guest ? () => setRecoveryOpen(true) : undefined}
     onBuy={onBuy}
     onCheckoutInputChange={onCheckoutInputChange}
     checkoutPending={checkoutPending}
     checkoutError={checkoutError}
-    checkoutNotice={checkoutNotice}
+    checkoutNotice={guest && props.paymentReturnOrderId ? null : checkoutNotice}
     ownedOrders={ownedOrders}
     ownedOrdersStatus={isSignedIn !== true || authError ? "unavailable" : !ready || orders.isPending ? "loading" : orders.isError ? "error" : "ready"}
     onRetryOwnedOrders={() => { void refreshToken(); void orders.refetch(); }}
@@ -1003,13 +1115,16 @@ export function ConnectedEsimCatalogScreen(props: Props) {
             <Pressable testID="esim-recovery-verify" accessibilityRole="button" disabled={recoveryPending || recoveryCode.length !== 16} onPress={() => void verifyRecovery()} style={[modalStyles.confirm, (recoveryPending || recoveryCode.length !== 16) && modalStyles.disabled]}><Text style={modalStyles.confirmText}>{props.lang === "ar" ? "عرض شرائحي" : "Show my eSIMs"}</Text></Pressable>
           </> : <>
             <Pressable testID="esim-recovery-reset" accessibilityRole="button" onPress={() => { setRecoveryProof(null); setRecoveredOrders([]); setRecoveryOrderId(null); setRecoveryError(null); }} style={modalStyles.retryAuth}><Text style={modalStyles.retryAuthText}>{props.lang === "ar" ? "استخدم بريداً آخر أو رمزاً جديداً" : "Use another email or code"}</Text></Pressable>
-            {recoveredOrders.length === 0 && <Text style={modalStyles.note}>{props.lang === "ar" ? "لا توجد طلبات مكتملة كزائر لهذا البريد." : "No completed guest orders found for this email."}</Text>}
+            {recoveredOrders.length === 0 && <Text style={modalStyles.note}>{props.lang === "ar" ? "لا توجد طلبات كزائر لهذا البريد." : "No guest orders found for this email."}</Text>}
             {recoveredOrders.map((order) => <View key={order.orderId} style={modalStyles.productStrip}>
               <View style={{ flex: 1 }}>
                 <Text style={modalStyles.productStripTitle}>{textField(order.product, "destination") || textField(order.product, "slug")}</Text>
                 <Text style={modalStyles.productStripMeta}>{textField(order.product, "title")}</Text>
-                <Pressable testID={`esim-recovery-order-${order.orderId}`} accessibilityRole="button" onPress={() => setRecoveryOrderId(recoveryOrderId === order.orderId ? null : order.orderId)}><Text style={modalStyles.retryAuthText}>{recoveryOrderId === order.orderId ? (props.lang === "ar" ? "إخفاء التفاصيل" : "Hide details") : (props.lang === "ar" ? "تعليمات التفعيل" : "Activation instructions")}</Text></Pressable>
-                {recoveryOrderId === order.orderId && <>
+                {order.status !== "completed" && <Text style={modalStyles.note}>{props.lang === "ar"
+                  ? (order.status === "pending_review" ? "الطلب قيد المراجعة. لا تدفع مرة أخرى؛ لم يجهز مستند التفعيل بعد." : "جارٍ تجهيز الطلب. لا تدفع مرة أخرى؛ سيظهر مستند التفعيل عند اكتماله.")
+                  : (order.status === "pending_review" ? "This order is under review. Do not pay again; activation is not ready yet." : "This order is processing. Do not pay again; activation will appear when complete.")}</Text>}
+                {order.status === "completed" && <Pressable testID={`esim-recovery-order-${order.orderId}`} accessibilityRole="button" onPress={() => setRecoveryOrderId(recoveryOrderId === order.orderId ? null : order.orderId)}><Text style={modalStyles.retryAuthText}>{recoveryOrderId === order.orderId ? (props.lang === "ar" ? "إخفاء التفاصيل" : "Hide details") : (props.lang === "ar" ? "تعليمات التفعيل" : "Activation instructions")}</Text></Pressable>}
+                {recoveryOrderId === order.orderId && order.status === "completed" && order.activation && <>
                   <Text selectable style={modalStyles.note}>{activationForDisplay(order.activation) || (props.lang === "ar" ? "التعليمات غير متاحة مؤقتاً." : "Instructions are temporarily unavailable.")}</Text>
                   <Pressable testID="esim-recovery-download" accessibilityRole="button" disabled={downloadPending} onPress={() => void downloadOrder(order.orderId)} style={[modalStyles.confirm, downloadPending && modalStyles.disabled]}><Text style={modalStyles.confirmText}>{props.lang === "ar" ? "تنزيل مستند الشريحة" : "Download installation document"}</Text></Pressable>
                 </>}

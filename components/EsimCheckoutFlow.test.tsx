@@ -1,20 +1,25 @@
 import React from "react";
 import { act, fireEvent, render, waitFor, within } from "@testing-library/react-native";
 import { AppState, Image, Linking, StyleSheet } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { ConnectedEsimCatalogScreen } from "./ConnectedEsimCatalogScreen";
 import { EsimCatalogScreen } from "./EsimCatalogScreen";
 import { PaymentMethodLogo } from "./PaymentMethodLogo";
 import { EsimIcon } from "./EsimIcon";
 import { isValidE164, normalizeNationalPhone, parseBilling, serializeBilling } from "./esimBilling";
 import { resolveEsimDeepLink } from "@/utils/home-navigation";
+import { shareFixturePdf } from "../test/fixtures/shareFixturePdf";
 
 const mockQuote = jest.fn();
 const mockCreate = jest.fn();
+const mockGuestStatus = jest.fn();
+let mockGuestPaidAt: string | null = null;
 const mockSendGuestCode = jest.fn();
 const mockSendRecoveryCode = jest.fn();
 const mockRecoverOrders = jest.fn();
 const mockDownloadGuestDocument = jest.fn();
-const mockSharedFiles: Array<{ uri: string; html: string; deleted: boolean }> = [];
+const mockDownloadOwnedDocument = jest.fn();
+const mockSharedFiles: Array<{ uri: string; bytes: Uint8Array; deleted: boolean }> = [];
 let mockCatalogRefreshError = false;
 let mockDetailRefreshError = false;
 let mockDetailFetchedAfterMount = true;
@@ -44,7 +49,7 @@ jest.mock("expo-file-system", () => ({
     uri: string;
     exists = true;
     constructor(_cache: string, name: string) { this.uri = `file://test-cache/${name}`; }
-    write(html: string) { mockSharedFiles.push({ uri: this.uri, html, deleted: false }); }
+    write(bytes: Uint8Array) { mockSharedFiles.push({ uri: this.uri, bytes: bytes.slice(), deleted: false }); }
     delete() {
       const file = mockSharedFiles.find((item) => item.uri === this.uri);
       if (file) file.deleted = true;
@@ -157,12 +162,15 @@ jest.mock("@workspace/api-client-react", () => {
       refetch: () => mockOrderDetailRead(orderId),
     }),
     useCreateEsimOrder: () => ({ mutateAsync: (...args: unknown[]) => mockCreate(...args) }),
+    getEsimPaymentReturnStatus: (...args: unknown[]) => mockGuestStatus(...args),
+    getEsimPaymentReturnState: async (...args: unknown[]) => ({ status: await mockGuestStatus(...args), paymentConfirmedAt: mockGuestPaidAt }),
+    reconcileEsimReturnedPayment: jest.fn().mockResolvedValue(undefined),
     useQuoteEsimPackage: () => ({ mutateAsync: (...args: unknown[]) => mockQuote(...args) }),
     useSendEsimPrivateGuestCode: () => ({ mutateAsync: (...args: unknown[]) => mockSendGuestCode(...args) }),
     useSendEsimGuestRecoveryCode: () => ({ mutateAsync: (...args: unknown[]) => mockSendRecoveryCode(...args) }),
     useRecoverEsimGuestOrders: () => ({ mutateAsync: (...args: unknown[]) => mockRecoverOrders(...args) }),
     downloadEsimGuestDocument: (...args: unknown[]) => mockDownloadGuestDocument(...args),
-    downloadMyEsimDocument: jest.fn(),
+    downloadMyEsimDocument: (...args: unknown[]) => mockDownloadOwnedDocument(...args),
   };
 });
 
@@ -230,6 +238,29 @@ function isDisabled(control: { props: { accessibilityState?: { disabled?: boolea
 }
 
 describe("private eSIM deep links", () => {
+  it("preserves a public catalog package handoff without trusting prices from the URL", () => {
+    expect(resolveEsimDeepLink("?esimDestination=world&esimPackage=world-3gb-7days&price=0", true, false)).toEqual({
+      open: true,
+      privateTest: false,
+      destination: "world",
+      packageId: "world-3gb-7days",
+    });
+    expect(resolveEsimDeepLink("?esimDestination=world&esimPackage=%3Cscript%3E", true, false)).toEqual({
+      open: true,
+      privateTest: false,
+      destination: "world",
+    });
+    expect(resolveEsimDeepLink("?esim=1&esimPackage=world-3gb-7days", true, false)).toEqual({
+      open: true,
+      privateTest: false,
+      destination: null,
+    });
+    expect(resolveEsimDeepLink("?esimDestination=world&esimPackage=world-3gb-7days", false, false)).toEqual({
+      open: false,
+      privateTest: false,
+      destination: null,
+    });
+  });
   it("opens the requested world destination for a private test link and keeps the UAE fallback", () => {
     expect(resolveEsimDeepLink("?esimPrivateTest=1&esimDestination=world", false, true)).toEqual({
       open: true,
@@ -271,6 +302,23 @@ describe("signed-in eSIM checkout", () => {
     selectedSlug: "saudi-arabia",
     onSelectDestination: jest.fn(),
   };
+
+  it("preselects a catalog handoff package and opens the existing customer-details step", async () => {
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} initialSelectedPackageId="sa-7d" />);
+    await waitFor(() => expect(isDisabled(screen.getByTestId("esim-buy-now"))).toBe(false));
+    fireEvent.press(screen.getByTestId("esim-buy-now"));
+    expect(screen.getByTestId("esim-firstName")).toBeTruthy();
+    expect(screen.getByTestId("esim-email")).toBeTruthy();
+    expect(mockQuote).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not enable buying an unknown catalog handoff package", async () => {
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} initialSelectedPackageId="unknown-package" />);
+    expect(isDisabled(screen.getByTestId("esim-buy-now"))).toBe(true);
+    expect(mockQuote).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
 
   it("shows only the five requested details, requires them, and renders four branded payment methods", async () => {
     const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} />);
@@ -717,8 +765,8 @@ describe("guest eSIM recovery after reopening", () => {
     fireEvent.press(screen.getByTestId(`esim-recovery-order-${order.orderId}`));
     expect(screen.getByText("Code: INSTALL-ONLY")).toBeTruthy();
 
-    const html = "<html><h1>Paid eSIM invoice</h1><h2>Installation instructions</h2>INSTALL-ONLY</html>";
-    mockDownloadGuestDocument.mockResolvedValueOnce(html);
+    const pdf = shareFixturePdf().buffer;
+    mockDownloadGuestDocument.mockResolvedValueOnce(pdf);
     const Sharing = require("expo-sharing") as typeof import("expo-sharing");
     jest.spyOn(Sharing, "isAvailableAsync").mockResolvedValueOnce(true);
     const share = jest.spyOn(Sharing, "shareAsync").mockResolvedValueOnce();
@@ -726,14 +774,134 @@ describe("guest eSIM recovery after reopening", () => {
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
     expect(mockDownloadGuestDocument).toHaveBeenCalledWith(
       { email: "Guest@inbox.test", code: "ABCDEF1234567890", orderId: order.orderId },
-      { responseType: "text" },
+      { headers: { Accept: "application/pdf" }, responseType: "arrayBuffer" },
     );
-    expect(mockSharedFiles[0].html).toBe(html);
-    expect(share).toHaveBeenCalledWith(mockSharedFiles[0].uri, expect.objectContaining({ mimeType: "text/html" }));
-    await waitFor(() => expect(mockSharedFiles[0].deleted).toBe(true));
+    expect(mockSharedFiles[0].bytes).toEqual(new Uint8Array(pdf));
+    expect(mockSharedFiles[0].uri).toMatch(/\.pdf$/);
+    expect(share).toHaveBeenCalledWith(mockSharedFiles[0].uri, expect.objectContaining({ mimeType: "application/pdf", UTI: "com.adobe.pdf" }));
+    await waitFor(() => expect(screen.getByTestId("esim-recovery-download").props.accessibilityState?.disabled).not.toBe(true));
+    expect(mockSharedFiles[0].deleted).toBe(false);
+    mockDownloadGuestDocument.mockResolvedValueOnce(Uint8Array.from([60, 104, 116, 109, 108, 62]).buffer);
+    fireEvent.press(screen.getByTestId("esim-recovery-download"));
+    await waitFor(() => expect(screen.getByText("Couldn't prepare your eSIM document. Please try again.")).toBeTruthy());
+    expect(share).toHaveBeenCalledTimes(1);
     fireEvent.press(screen.getByTestId("esim-recovery-close"));
     expect(screen.queryByText("Code: INSTALL-ONLY")).toBeNull();
     share.mockRestore();
+  });
+
+  it("shows a verified pending guest order without exposing activation or offering a download", async () => {
+    mockRecoverOrders.mockResolvedValueOnce({ orders: [{
+      orderId: "pending-guest-order", status: "fulfillment_pending", amountKwd: 0.499,
+      product: { destination: "Europe", title: "Pending plan" },
+      createdAt: "2026-10-03T00:00:00Z", activation: null,
+    }] });
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen lang="en" selectedSlug={null} onClose={jest.fn()} onSelectDestination={jest.fn()} />);
+    fireEvent.press(screen.getByTestId("esim-recover-guest"));
+    fireEvent.changeText(screen.getByTestId("esim-recovery-email"), "Guest@inbox.test");
+    fireEvent.changeText(screen.getByTestId("esim-recovery-code"), "ABCDEF1234567890");
+    fireEvent.press(screen.getByTestId("esim-recovery-verify"));
+    await waitFor(() => expect(screen.getByText("Pending plan")).toBeTruthy());
+    expect(screen.getByText("This order is processing. Do not pay again; activation will appear when complete.")).toBeTruthy();
+    expect(screen.queryByTestId("esim-recovery-download")).toBeNull();
+    expect(screen.queryByTestId("esim-recovery-order-pending-guest-order")).toBeNull();
+    expect(mockDownloadGuestDocument).not.toHaveBeenCalled();
+  });
+});
+
+describe("private eSIM PDF share lifetime (native API contract, not a device viewer)", () => {
+  const Sharing = require("expo-sharing") as typeof import("expo-sharing");
+  const props = {
+    lang: "en" as const, selectedSlug: null, initialShowOrders: true, initialOrderId: "owned-1",
+    onClose: jest.fn(), onSelectDestination: jest.fn(),
+  };
+
+  beforeEach(() => {
+    mockSignedIn = true;
+    mockIsLoaded = true;
+    mockSessionId = "session-test";
+    jest.mocked(Sharing.shareAsync).mockReset();
+    jest.mocked(Sharing.isAvailableAsync).mockReset().mockResolvedValue(false);
+    mockRequestToken.mockReset().mockResolvedValue("signed-in-test-token");
+    mockOwnedOrderDetail = {
+      orderId: "owned-1", status: "completed", amountKwd: 3.25,
+      product: { destination: "Testland", title: "Fixture plan" },
+      createdAt: "2026-10-03T00:00:00Z", activation: null,
+    };
+    mockSharedFiles.length = 0;
+    mockDownloadOwnedDocument.mockReset().mockResolvedValue(shareFixturePdf().buffer);
+    mockCreate.mockReset();
+  });
+
+  afterEach(() => {
+    mockOwnedOrderDetail = null;
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it.each(["resolved", "rejected"] as const)("retains bytes after sharing %s, delayed consumption and screen unmount", async (outcome) => {
+    jest.spyOn(Sharing, "isAvailableAsync").mockResolvedValue(true);
+    const share = jest.spyOn(Sharing, "shareAsync");
+    if (outcome === "resolved") share.mockResolvedValue();
+    else share.mockRejectedValue(new Error("Receiver state is unknown"));
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} />);
+    fireEvent.press(screen.getByTestId("esim-download"));
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    await act(async () => { await Promise.resolve(); });
+    expect(mockDownloadOwnedDocument).toHaveBeenCalledWith("owned-1", {
+      headers: { Authorization: "Bearer signed-in-test-token", Accept: "application/pdf" },
+      responseType: "arrayBuffer",
+    });
+    expect(share).toHaveBeenCalledWith(mockSharedFiles[0].uri, expect.objectContaining({
+      mimeType: "application/pdf", UTI: "com.adobe.pdf",
+    }));
+    screen.unmount();
+    jest.useFakeTimers();
+    await act(async () => { await jest.advanceTimersByTimeAsync(10 * 60 * 1000); });
+    // Modeled receiver read, not Android FileProvider verification.
+    expect(mockSharedFiles[0].deleted).toBe(false);
+    expect(mockSharedFiles[0].bytes).toEqual(shareFixturePdf());
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("uses independent files for repeated downloads and can save their bytes for offline reopening", async () => {
+    jest.spyOn(Sharing, "isAvailableAsync").mockResolvedValue(true);
+    const share = jest.spyOn(Sharing, "shareAsync").mockResolvedValue();
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} />);
+    for (let count = 1; count <= 2; count++) {
+      fireEvent.press(screen.getByTestId("esim-download"));
+      await waitFor(() => expect(share).toHaveBeenCalledTimes(count));
+      await act(async () => { await Promise.resolve(); });
+    }
+    expect(mockSharedFiles[0].uri).not.toBe(mockSharedFiles[1].uri);
+    expect(mockSharedFiles.every((file) => !file.deleted && file.uri.endsWith(".pdf"))).toBe(true);
+    // Actual local disk copy/reopen, not an Android Save action.
+    const fs = require("node:fs") as typeof import("node:fs");
+    const os = require("node:os") as typeof import("node:os");
+    const path = require("node:path") as typeof import("node:path");
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "esim-share-fixture-"));
+    try {
+      const savedPath = path.join(directory, "saved-esim.pdf");
+      fs.writeFileSync(savedPath, mockSharedFiles[0].bytes);
+      screen.unmount();
+      mockDownloadOwnedDocument.mockRejectedValue(new Error("Offline"));
+      mockSharedFiles.forEach((file) => { file.deleted = true; });
+      expect(new Uint8Array(fs.readFileSync(savedPath))).toEqual(shareFixturePdf());
+      expect(mockDownloadOwnedDocument).toHaveBeenCalledTimes(2);
+      expect(mockCreate).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("never creates or shares a cached file for a non-PDF authenticated response", async () => {
+    mockDownloadOwnedDocument.mockResolvedValueOnce(Uint8Array.from([60, 104, 116, 109, 108, 62]).buffer);
+    const share = jest.spyOn(Sharing, "shareAsync").mockResolvedValue();
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} />);
+    fireEvent.press(screen.getByTestId("esim-download"));
+    await waitFor(() => expect(screen.getByText("Couldn't prepare your eSIM document. Please try again.")).toBeTruthy());
+    expect(mockSharedFiles).toHaveLength(0);
+    expect(share).not.toHaveBeenCalled();
   });
 });
 
@@ -1014,7 +1182,8 @@ describe("checkout security transitions", () => {
 
   it("preserves the original guest request key and review until a pending payment URL is ready", async () => {
     mockSignedIn = false;
-    const openUrl = jest.spyOn(Linking, "openURL").mockResolvedValueOnce();
+    const orderId = "ESIM-0123456789ABCDEF0123456789ABCD";
+    const openUrl = jest.spyOn(WebBrowser, "openAuthSessionAsync").mockResolvedValueOnce({ type: "success", url: `dttours://esim-payment-return?orderId=${orderId}` });
     try {
       const screen = render(<ConnectedEsimCatalogScreen {...props} />);
       fill(screen);
@@ -1028,17 +1197,74 @@ describe("checkout security transitions", () => {
       await waitFor(() => expect(screen.getByText("Retry secure payment link")).toBeTruthy());
       expect(screen.getByTestId("esim-cancel-checkout").props.accessibilityState?.disabled ?? screen.getByTestId("esim-cancel-checkout").props.disabled).toBe(true);
       expect(screen.getByTestId("esim-email-acknowledgement").props.accessibilityState.checked).toBe(true);
-      mockCreate.mockResolvedValueOnce({ order: { amountKwd: 2.563 }, paymentUrl: "https://www.upayments.com/pay/test-invoice" });
+      mockCreate.mockResolvedValueOnce({ order: { orderId, amountKwd: 2.563 }, paymentUrl: "https://www.upayments.com/pay/test-invoice" });
       fireEvent.press(screen.getByTestId("esim-confirm-checkout"));
-      await waitFor(() => expect(openUrl).toHaveBeenCalledWith("https://www.upayments.com/pay/test-invoice"));
+      await waitFor(() => expect(openUrl).toHaveBeenCalledWith("https://www.upayments.com/pay/test-invoice", "dttours://esim-payment-return"));
       expect(mockCreate).toHaveBeenCalledTimes(2);
       expect(mockCreate.mock.calls[1][0].data.requestKey).toBe(mockCreate.mock.calls[0][0].data.requestKey);
       expect(mockCreate.mock.calls[0][0].data).toMatchObject({ email: "maya@example.com", emailAcknowledged: true });
       expect(mockCreate.mock.calls[1][0].data).toMatchObject({ email: "maya@example.com", emailAcknowledged: true });
       expect(mockCreate.mock.calls[0][0].data).not.toHaveProperty("privateGuestCode");
       expect(mockSendGuestCode).not.toHaveBeenCalled();
-      expect(screen.getByText(/Check your email for your order confirmation/)).toBeTruthy();
+      await waitFor(() => expect(screen.getByText(/Check your email for your order confirmation/)).toBeTruthy());
     } finally { openUrl.mockRestore(); }
+  });
+  it("resumes the same order after a native payment session is dismissed", async () => {
+    mockSignedIn = false;
+    const orderId = "ESIM-0123456789ABCDEF0123456789ABCD";
+    const browser = jest.spyOn(WebBrowser, "openAuthSessionAsync")
+      .mockResolvedValueOnce({ type: "cancel" })
+      .mockResolvedValueOnce({ type: "success", url: `dttours://esim-payment-return?orderId=${orderId}` });
+    try {
+      const screen = render(<ConnectedEsimCatalogScreen {...props} />);
+      fill(screen);
+      mockQuote.mockResolvedValueOnce({ amountFils: 2563, baseAmountFils: 2500, paymentFeeFils: 63, amountKwd: 2.563, discountFils: 0, paymentMethod: "cc", product: { slug: "saudi-arabia", packageId: "sa-7d" } });
+      fireEvent.press(screen.getByTestId("esim-pay"));
+      await waitFor(() => expect(screen.getByTestId("esim-confirm-checkout")).toBeTruthy());
+      acknowledgeEmail(screen);
+      mockCreate.mockResolvedValue({ order: { orderId, amountKwd: 2.563 }, paymentUrl: "https://www.upayments.com/pay/test-invoice" });
+      fireEvent.press(screen.getByTestId("esim-confirm-checkout"));
+      await waitFor(() => expect(screen.getAllByText(/Payment window closed/).length).toBeGreaterThan(0));
+      expect(screen.getByTestId("esim-cancel-checkout").props.accessibilityState?.disabled ?? screen.getByTestId("esim-cancel-checkout").props.disabled).toBe(true);
+      fireEvent.press(screen.getByTestId("esim-confirm-checkout"));
+      await waitFor(() => expect(screen.getByText(/Check your email for your order confirmation/)).toBeTruthy());
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+      expect(mockCreate.mock.calls[1][0].data.requestKey).toBe(mockCreate.mock.calls[0][0].data.requestKey);
+    } finally { browser.mockRestore(); }
+  });
+  it("shows the actual Arabic guest return status without exposing activation or creating another order", async () => {
+    mockSignedIn = false;
+    const orderId = "ESIM-0123456789ABCDEF0123456789ABCD";
+    mockGuestStatus.mockResolvedValueOnce("completed");
+    const screen = render(<ConnectedEsimCatalogScreen {...props} lang="ar" paymentReturnOrderId={orderId} paymentReturnSeq={1} />);
+    await waitFor(() => expect(screen.getByText(/شريحتك جاهزة/)).toBeTruthy());
+    expect(mockGuestStatus).toHaveBeenCalledWith(orderId);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockQuote).not.toHaveBeenCalled();
+  });
+  it("closes the original checkout when the native return arrives before the browser promise", async () => {
+    mockSignedIn = false;
+    const orderId = "ESIM-0123456789ABCDEF0123456789ABCD";
+    let finish: (result: { type: "success"; url: string }) => void = () => {};
+    const browser = jest.spyOn(WebBrowser, "openAuthSessionAsync")
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    try {
+      const screen = render(<ConnectedEsimCatalogScreen {...props} />);
+      fill(screen);
+      mockQuote.mockResolvedValueOnce({ amountFils: 2563, baseAmountFils: 2500, paymentFeeFils: 63, amountKwd: 2.563, discountFils: 0, paymentMethod: "cc", product: { slug: "saudi-arabia", packageId: "sa-7d" } });
+      fireEvent.press(screen.getByTestId("esim-pay"));
+      await waitFor(() => expect(screen.getByTestId("esim-confirm-checkout")).toBeTruthy());
+      acknowledgeEmail(screen);
+      mockCreate.mockResolvedValueOnce({ order: { orderId, amountKwd: 2.563 }, paymentUrl: "https://www.upayments.com/pay/test-invoice" });
+      fireEvent.press(screen.getByTestId("esim-confirm-checkout"));
+      await waitFor(() => expect(browser).toHaveBeenCalled());
+      mockGuestStatus.mockResolvedValueOnce("completed");
+      screen.rerender(<ConnectedEsimCatalogScreen {...props} paymentReturnOrderId={orderId} paymentReturnSeq={1} />);
+      await waitFor(() => expect(screen.getByText(/Your eSIM is ready/)).toBeTruthy());
+      expect(screen.queryByTestId("esim-confirm-checkout")).toBeNull();
+      await act(async () => finish({ type: "success", url: `dttours://esim-payment-return?orderId=${orderId}` }));
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    } finally { browser.mockRestore(); }
   });
 });
 
@@ -1322,6 +1548,7 @@ describe("capture-first eSIM payment return", () => {
       createdAt: "2026-10-01T00:00:00Z",
       activation: null,
     };
+    mockGuestPaidAt = null;
     mockOrderDetailRead.mockReset().mockImplementation(async (requestedOrderId: string) => ({
       data: requestedOrderId === orderId ? mockOwnedOrderDetail : undefined,
     }));
@@ -1372,6 +1599,98 @@ describe("capture-first eSIM payment return", () => {
     const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} lang="ar" />);
     expect(screen.getByTestId("esim-payment-status-message").props.children)
       .toBe("نتحقق من الدفع وطلب الشريحة. يرجى عدم الدفع مرة أخرى.");
+    screen.unmount();
+  });
+
+  it("shows payment success as soon as capture is confirmed and quietly waits for the account eSIM", async () => {
+    jest.useFakeTimers();
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} />);
+    expect(screen.getByText("Please wait—do not close this page")).toBeTruthy();
+    mockOwnedOrderDetail = { ...mockOwnedOrderDetail, status: "fulfillment_pending", paymentConfirmedAt: new Date().toISOString() };
+    await act(async () => { await jest.advanceTimersByTimeAsync(1_000); });
+    expect(screen.getByTestId("esim-payment-success")).toBeTruthy();
+    expect(screen.getByText("Payment successful")).toBeTruthy();
+    expect(screen.getByText(/appear in your account shortly once prepared/)).toBeTruthy();
+    expect(screen.getByText(/second email with your voucher/)).toBeTruthy();
+    expect(screen.queryByTestId("esim-verification-progress")).toBeNull();
+    await act(async () => { await jest.advanceTimersByTimeAsync(64_000); });
+    expect(screen.queryByTestId("esim-verification-progress")).toBeNull();
+    expect(mockOrderDetailRead.mock.calls.every(([id]) => id === orderId)).toBe(true);
+    mockOwnedOrderDetail = { ...mockOwnedOrderDetail, status: "completed", activation: { id: "fixture", status: "completed", code: "INSTALL", sims: [] } };
+    await act(async () => { await jest.advanceTimersByTimeAsync(15_000); });
+    expect(screen.queryByTestId("esim-verification-progress")).toBeNull();
+    expect(screen.getByTestId("esim-download")).toBeTruthy();
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockQuote).not.toHaveBeenCalled();
+    screen.unmount();
+  });
+
+  it("shows guest waiting and countdown, then confirmation without fetching private activation", async () => {
+    jest.useFakeTimers();
+    mockSignedIn = false;
+    mockSessionId = null;
+    mockGuestStatus.mockReset().mockResolvedValue("fulfillment_pending");
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} initialShowOrders={false} />);
+    expect(screen.getByText("Please wait—do not close this page")).toBeTruthy();
+    expect(screen.getByText("Next status check in 00:15")).toBeTruthy();
+    await act(async () => { await jest.advanceTimersByTimeAsync(1_000); });
+    expect(screen.getByText("Next status check in 00:14")).toBeTruthy();
+    mockGuestStatus.mockResolvedValue("completed");
+    await act(async () => { await jest.advanceTimersByTimeAsync(14_000); });
+    expect(screen.queryByTestId("esim-verification-progress")).toBeNull();
+    expect(screen.getByText(/Your eSIM is ready. Check your email/)).toBeTruthy();
+    const checks = mockGuestStatus.mock.calls.length;
+    await act(async () => { await jest.advanceTimersByTimeAsync(30_000); });
+    expect(mockGuestStatus).toHaveBeenCalledTimes(checks);
+    expect(mockOrderDetailRead).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+    screen.unmount();
+  });
+
+  it("lets a paid Arabic guest close the page while delivery is prepared, without exposing activation", async () => {
+    jest.useFakeTimers();
+    mockSignedIn = false;
+    mockSessionId = null;
+    mockGuestPaidAt = new Date().toISOString();
+    mockGuestStatus.mockReset().mockResolvedValue("fulfillment_pending");
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} lang="ar" initialShowOrders={false} />);
+    expect(screen.getByText("تم الدفع بنجاح")).toBeTruthy();
+    expect(screen.getByText(/خلال أقل من عشر دقائق/)).toBeTruthy();
+    expect(screen.getByText(/يمكنك إغلاق هذه الصفحة بأمان/)).toBeTruthy();
+    expect(screen.getByText(/رسالة ثانية عند جاهزيتها/)).toBeTruthy();
+    expect(screen.queryByTestId("esim-verification-progress")).toBeNull();
+    expect(screen.queryByTestId("esim-download")).toBeNull();
+    expect(mockOrderDetailRead).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+    screen.unmount();
+  });
+
+  it("stops the waiting countdown for a genuine review rather than promising automatic completion", async () => {
+    jest.useFakeTimers();
+    mockSignedIn = false;
+    mockSessionId = null;
+    mockGuestStatus.mockReset().mockResolvedValue("pending_review");
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} initialShowOrders={false} lang="ar" />);
+    expect(screen.queryByTestId("esim-verification-progress")).toBeNull();
+    expect(screen.getByTestId("esim-payment-return-notice").props.children).toMatch(/يحتاج إلى مراجعة/);
+    await act(async () => { await jest.advanceTimersByTimeAsync(30_000); });
+    expect(mockGuestStatus).toHaveBeenCalledTimes(1);
+    expect(mockCreate).not.toHaveBeenCalled();
+    screen.unmount();
+  });
+
+  it("stops guest waiting after ten minutes even if the status request never settles", async () => {
+    jest.useFakeTimers();
+    mockSignedIn = false;
+    mockSessionId = null;
+    mockGuestStatus.mockReset().mockImplementation(() => new Promise(() => {}));
+    const screen = await renderConnected(<ConnectedEsimCatalogScreen {...props} initialShowOrders={false} />);
+    expect(screen.getByTestId("esim-verification-progress")).toBeTruthy();
+    await act(async () => { await jest.advanceTimersByTimeAsync(600_000); });
+    expect(screen.queryByTestId("esim-verification-progress")).toBeNull();
+    expect(screen.getByTestId("esim-payment-return-notice").props.children).toMatch(/Confirmation is taking longer/);
+    expect(mockGuestStatus).toHaveBeenCalledTimes(1);
+    expect(mockCreate).not.toHaveBeenCalled();
     screen.unmount();
   });
 

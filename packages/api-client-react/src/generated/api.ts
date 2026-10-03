@@ -1989,7 +1989,7 @@ export const getDownloadEsimGuestDocumentUrl = () => {
 /**
  * @summary Download a completed guest order document after email verification
  */
-export const downloadEsimGuestDocument = async (esimGuestRecoveryDocumentProof: EsimGuestRecoveryDocumentProof, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+export const downloadEsimGuestDocument = async (esimGuestRecoveryDocumentProof: EsimGuestRecoveryDocumentProof, options?: Parameters<typeof customFetch>[1]): Promise<Blob | string> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1997,7 +1997,7 @@ export const downloadEsimGuestDocument = async (esimGuestRecoveryDocumentProof: 
     if (Array.isArray(h)) return Object.fromEntries(h);
     return h;
   };
-return customFetch<string>(getDownloadEsimGuestDocumentUrl(),
+return customFetch<Blob | string>(getDownloadEsimGuestDocumentUrl(),
   {
     ...options,
     method: 'POST',
@@ -2225,9 +2225,9 @@ export const getDownloadMyEsimDocumentUrl = (orderId: string,) => {
  * Returns a downloadable HTML invoice and installation document only after confirmed payment and persisted Airalo activation.
  * @summary Download the authenticated customer's fulfilled eSIM document
  */
-export const downloadMyEsimDocument = async (orderId: string, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+export const downloadMyEsimDocument = async (orderId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob | string> => {
 
-  return customFetch<string>(getDownloadMyEsimDocumentUrl(orderId),
+  return customFetch<Blob | string>(getDownloadMyEsimDocumentUrl(orderId),
   {
     ...options,
     method: 'GET'

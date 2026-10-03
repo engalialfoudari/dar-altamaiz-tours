@@ -1,4 +1,4 @@
-name: Publish Android eSIM language and return fixes
+name: Publish Android eSIM payment success
 on:
   workflow_dispatch: {}
 defaults:
@@ -15,4 +15,4 @@ jobs:
     params:
       platform: android
       channel: production
-      message: eSIM localized countries, flags and secure checkout return
+      message: Green verified eSIM payment success with asynchronous delivery guidance

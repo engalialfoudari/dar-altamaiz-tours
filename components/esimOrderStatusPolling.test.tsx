@@ -1,5 +1,6 @@
 import {
   ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS,
+  ESIM_PAYMENT_RETURN_BACKGROUND_CHECKS,
   ESIM_PAYMENT_RETURN_FAST_CHECK_MS,
   ESIM_PAYMENT_RETURN_POLL_INTERVAL_MS,
   nextEsimOrderStatusPollDelay,
@@ -20,13 +21,15 @@ describe("read-only eSIM payment-return checks", () => {
     expect(nextEsimOrderStatusPollDelay(ESIM_PAYMENT_RETURN_FAST_CHECK_MS, undefined, 0)).toBeNull();
   });
 
-  it("makes at most three slower reads for a pending same-order status", () => {
+  it("keeps checking through supplier delays but pauses after a bounded ten-minute window", () => {
     expect(nextEsimOrderStatusPollDelay(20_000, "fulfillment_pending", 0))
       .toBe(ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS);
     expect(nextEsimOrderStatusPollDelay(40_000, "fulfillment_pending", 1))
       .toBe(ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS);
     expect(nextEsimOrderStatusPollDelay(60_000, "payment_pending", 2))
       .toBe(ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS);
-    expect(nextEsimOrderStatusPollDelay(80_000, "payment_pending", 3)).toBeNull();
+    expect(nextEsimOrderStatusPollDelay(80_000, "payment_pending", 3))
+      .toBe(ESIM_PAYMENT_RETURN_BACKGROUND_INTERVAL_MS);
+    expect(nextEsimOrderStatusPollDelay(610_000, "payment_pending", ESIM_PAYMENT_RETURN_BACKGROUND_CHECKS)).toBeNull();
   });
 });

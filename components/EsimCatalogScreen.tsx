@@ -5,6 +5,8 @@ import { EsimIcon, type EsimIconName } from "./EsimIcon";
 import { getEsimRegionImage } from "./EsimRegionImages";
 import { EsimCoverageSheet } from "./EsimCoverageSheet";
 import { EsimFaq } from "./EsimFaq";
+import EsimVerificationProgress from "./EsimVerificationProgress";
+import EsimPaymentSuccess from "./EsimPaymentSuccess";
 import {
   getGetEsimCatalogQueryKey,
   getGetEsimCatalogDestinationQueryKey,
@@ -23,6 +25,7 @@ type DataFilter = "all" | "unlimited" | "fixed";
 
 /** Parent passes authenticated, fulfilled supplier orders here; never infer ownership from catalog data. */
 export type EsimOwnedOrder = {
+  paymentConfirmedAt?: string | null;
   id: string;
   destinationTitle: string;
   packageTitle: string;
@@ -41,6 +44,10 @@ type Props = {
   paymentReturnRecovery?: boolean;
   paymentStatusOrderId?: string | null;
   paymentStatusMessage?: string | null;
+  verificationActive?: boolean;
+  verificationNextCheckAt?: number | null;
+  paymentReturnNotice?: string | null;
+  paymentSuccess?: { confirmedAt: string; completed: boolean; review: boolean } | null;
   onSelectDestination: (slug: string | null) => void;
   /** Opens the customer-details step; guest checkout is supported. */
   onBuy?: (item: EsimPackage, destination: EsimDestination) => void;
@@ -190,6 +197,9 @@ export function EsimCatalogScreen({
   selectedOwnedOrderId, onSelectOwnedOrder, ownedOrderDetail, ownedDetailStatus, onRetryOwnedDetail,
   onDownloadOwnedOrder, downloadPending, downloadError,
   checkoutPending = false, checkoutError, checkoutNotice, paymentStatusOrderId, paymentStatusMessage,
+  verificationActive = false, verificationNextCheckAt = null,
+  paymentReturnNotice,
+  paymentSuccess,
 }: Props) {
   const insets = useSafeAreaInsets();
   const rtl = lang === "ar";
@@ -345,6 +355,9 @@ export function EsimCatalogScreen({
       <View style={styles.headerSpacer} />
     </View>}
 
+    {verificationActive && <EsimVerificationProgress lang={lang} nextCheckAt={verificationNextCheckAt} />}
+    {paymentSuccess && <EsimPaymentSuccess lang={lang} signedIn={signedIn} {...paymentSuccess} />}
+    {!!paymentReturnNotice && <Text testID="esim-payment-return-notice" accessibilityRole="text" style={[styles.infoBody, { marginHorizontal: 16, marginVertical: 8 }, rtl && styles.rtl]}>{paymentReturnNotice}</Text>}
     {showOrders ? (
       selectedOwnedOrderId ? (
         ownedDetailStatus === "loading" ? <View><LoadingCards />{paymentStatusOrderId === selectedOwnedOrderId && !!paymentStatusMessage
