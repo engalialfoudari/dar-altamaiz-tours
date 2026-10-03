@@ -15,4 +15,4 @@ jobs:
     params:
       platform: android
       channel: production
-      message: Logo-only hotel header: remove the extra company name without changing logo size
+      message: "Logo-only hotel header: remove the extra company name without changing logo size"
