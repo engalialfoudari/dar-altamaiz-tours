@@ -4,9 +4,10 @@ import {
   Easing,
   Platform,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { useAppLanguage } from "../localization/provider";
+import { Text } from "../localization/components";
 
 export const TICKER_HEIGHT = 64;
 const API_BASE = (process.env["EXPO_PUBLIC_API_BASE"] ?? "").replace(/\/$/, "");
@@ -93,6 +94,29 @@ const MESSAGES: Array<{ ar: string; en: string }> = [
   },
 ];
 
+// Translate whole sentences before splitting out highlighted numbers. This
+// banner must never request separate AI translations of sentence fragments.
+const TURKISH_MESSAGES = [
+  "Her rezervasyonda anında nakit iade kazanın. Nakit iadeniz uygulama üzerinden anında hesabınıza eklenir. Güncel dolar kuru: {USD_KWD} KWD",
+  "Hatırlatma: Yaklaşan seyahatinizden önce pasaportunuzun en az 6 ay geçerli olduğundan emin olun",
+  "Avronun Kuveyt dinarı karşısındaki kurunu anlık takip edin. Güncel kur: Avro başına {EUR_KWD} KWD",
+  "Zamandan ve emekten tasarruf edin. Uçuş ve otellerden oluşan tatil paketinizi tek dokunuşla oluşturun",
+  "Güvenle rezervasyon yapın. Tüm işlemleriniz ve rezervasyonlarınız en yüksek güvenlik standartlarıyla korunur",
+  "Grup seyahati mi planlıyorsunuz? Size özel kapsamlı turlar düzenlemek için bizimle iletişime geçin",
+  "Seyahat önerisi: Ek ücretlerden kaçınmak için havaalanına gitmeden önce biletinizdeki bagaj hakkını kontrol edin",
+  "Güvenilir seyahat ortağınız Dar AlTamaiz, kusursuz bir tatil için 2008 yılından bu yana edindiği deneyimi hizmetinize sunar",
+  "Planlamada tam esneklik. Platformumuz üzerinden rezervasyon ayrıntılarınızı kolayca takip edin ve yönetin",
+  "Dünya keşfetmenizi bekliyor. Bir sonraki seyahatinizi planlayın; seyahat uzmanlarımız tüm ayrıntıları sizin için düzenlesin",
+  "Seyahat önerisi: Banka kartlarınızı uluslararası kullanıma açmayı ve seyahat sigortası yaptırmayı unutmayın",
+  "Rezervasyonlarınız kontrolünüz altında. Uçuş durumunuzu takip edin, biletlerinizi ve biniş kartlarınızı kolayca alın",
+  "Rahat bir uçuşa kabul işlemi için uluslararası uçuşlardan 4 saat önce havaalanına gelin",
+  "Lüks ayrıntılarda gizlidir. Unutulmaz bir seyahat için tüm ayrıntılarla biz ilgileniyoruz",
+  "Dünyanın neresinde olursanız olun, Dar AlTamaiz destek ekibi anında yardım için 7/24 yanınızdadır",
+  "Zamandan tasarruf edin ve yaklaşan seyahatlerinizi aramak için yapay zekâmızı kullanın",
+  "Bir sonraki seyahatinizi kolayca planlamak için yapay zekâmızı kullanın",
+  "Kişisel asistanınıza (DT. Tours Ai) güncel seyahat haberlerini ve kurallarını sorun",
+];
+
 type HPattern = { pattern: string; value?: string };
 
 const HIGHLIGHT: HPattern[] = [
@@ -114,6 +138,10 @@ const HIGHLIGHT: HPattern[] = [
   { pattern: "Save your time" },
   { pattern: "Artificial Intelligence" },
   { pattern: "our AI" },
+  { pattern: "6 ay" },
+  { pattern: "4 saat" },
+  { pattern: "yapay zekâmızı" },
+  { pattern: "anında nakit iade" },
   // shared
   { pattern: "2008" },
   { pattern: "DT. Tours Ai" },
@@ -179,6 +207,7 @@ interface MarqueeTickerProps {
 }
 
 export function MarqueeTicker({ embedded = false }: MarqueeTickerProps) {
+  const { locale } = useAppLanguage();
   const [usdKwd, setUsdKwd] = useState("0.307");
   const [eurKwd, setEurKwd] = useState("0.334");
   const [step, setStep] = useState<StepState>({ msgIdx: 0, lang: "ar" });
@@ -229,26 +258,27 @@ export function MarqueeTicker({ embedded = false }: MarqueeTickerProps) {
     anim.start(({ finished }) => {
       if (!finished) return;
       setStep((prev) => {
+        if (locale === "tr") return { msgIdx: (prev.msgIdx + 1) % MESSAGES.length, lang: "ar" };
         if (prev.lang === "ar") return { msgIdx: prev.msgIdx, lang: "en" };
         return { msgIdx: (prev.msgIdx + 1) % MESSAGES.length, lang: "ar" };
       });
     });
     return () => anim.stop();
-  }, [step.msgIdx, step.lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step.msgIdx, step.lang, locale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const segments = useMemo(() => {
     const msg = MESSAGES[step.msgIdx];
-    const template = step.lang === "ar" ? msg.ar : msg.en;
+    const template = locale === "tr" ? TURKISH_MESSAGES[step.msgIdx]! : step.lang === "ar" ? msg.ar : msg.en;
     return parseSegments(template, usdKwd, eurKwd);
-  }, [step, usdKwd, eurKwd]);
+  }, [step, usdKwd, eurKwd, locale]);
 
   if (embedded) {
     return (
       <Animated.View style={[styles.embeddedContent, { opacity }]}>
-        <Text style={styles.embeddedText} numberOfLines={3}>
+        <Text dtDisplayData={locale === "tr"} style={styles.embeddedText} numberOfLines={3}>
           {segments.map((seg, i) =>
             seg.live ? (
-              <Text key={i} style={styles.embeddedLive}>
+              <Text dtDisplayData={locale === "tr"} key={i} style={styles.embeddedLive}>
                 {seg.text}
               </Text>
             ) : (
@@ -263,10 +293,10 @@ export function MarqueeTicker({ embedded = false }: MarqueeTickerProps) {
   return (
     <View style={styles.banner}>
       <Animated.View style={[styles.content, { opacity }]}>
-        <Text style={styles.text} numberOfLines={2}>
+        <Text dtDisplayData={locale === "tr"} style={styles.text} numberOfLines={2}>
           {segments.map((seg, i) =>
             seg.live ? (
-              <Text key={i} style={styles.live}>
+              <Text dtDisplayData={locale === "tr"} key={i} style={styles.live}>
                 {seg.text}
               </Text>
             ) : (

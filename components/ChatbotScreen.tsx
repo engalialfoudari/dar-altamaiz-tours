@@ -75,6 +75,9 @@ function isPlanInquiry(text: string): boolean {
 }
 
 
+import { useAppLanguage } from "@/localization/provider";
+import { getAppLocale } from "@/localization/engine";
+
 type Language = "ar" | "en";
 type Role = "user" | "assistant";
 
@@ -4118,6 +4121,7 @@ interface Props {
 
 // hint: Logic changed on both sides. Requires understanding intent of each change.
 export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptionRequest = 0 }: Props) {
+  const { locale: selectedLocale, changeLocale } = useAppLanguage();
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
   const [language, setLanguage] = useState<Language | null>(null);
@@ -4810,7 +4814,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
           tier: planId,
           userEmail: emailTrimmed,
           userName: userName || "Guest",
-          language: isAr ? "ar" : "en",
+          language: getAppLocale() === "tr" ? "tr" : isAr ? "ar" : "en",
         }),
       });
       const data = await res.json() as { ok: boolean; url?: string; error?: string };
@@ -4971,7 +4975,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
       const res = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp, ...(adminToken ? { "x-admin-token": adminToken } : {}) },
-        body: JSON.stringify({ messages: historyForApi, userName: userName.trim(), language: language ?? "ar", fingerprint: deviceFp }),
+        body: JSON.stringify({ messages: historyForApi, userName: userName.trim(), language: getAppLocale() === "tr" ? "tr" : language ?? "ar", fingerprint: deviceFp }),
       });
       const data = (await res.json()) as { ok: boolean; content?: string; hotelParams?: { city: string; checkin: string; checkout: string; stars: number; breakfast?: boolean }; hotelNameParams?: { hotelName: string; hotelNames: string[]; checkin: string; checkout: string; adults: number; rooms: number } };
       const raw = data.content ?? (isAr ? "عذراً، صار خطأ." : "Sorry, an error occurred.");
@@ -5421,7 +5425,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
         body: JSON.stringify({
           messages: historyForApi,
           userName: userName.trim(),
-          language: effectiveLang,
+          language: getAppLocale() === "tr" ? "tr" : effectiveLang,
           fingerprint: deviceFp,
         }),
       });
@@ -5979,22 +5983,34 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
                 <Pressable
                   style={({ pressed }) => [
                     styles.langBtn,
-                    pendingLanguage === "ar" && styles.langBtnSelected,
+                    selectedLocale !== "tr" && pendingLanguage === "ar" && styles.langBtnSelected,
                     pressed && { opacity: 0.8 },
                   ]}
-                  onPress={() => setPendingLanguage("ar")}
+                  onPress={() => { setPendingLanguage("ar"); changeLocale("ar"); }}
                 >
                   <Text style={styles.langBtnText}>عربي 🇰🇼</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
                     styles.langBtn,
-                    pendingLanguage === "en" && styles.langBtnSelected,
+                    selectedLocale !== "tr" && pendingLanguage === "en" && styles.langBtnSelected,
                     pressed && { opacity: 0.8 },
                   ]}
-                  onPress={() => setPendingLanguage("en")}
+                  onPress={() => { setPendingLanguage("en"); changeLocale("en"); }}
                 >
                   <Text style={styles.langBtnText}>English 🇬🇧</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.langBtn,
+                    selectedLocale === "tr" && styles.langBtnSelected,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => { setPendingLanguage("en"); changeLocale("tr"); }}
+                  accessibilityLabel="Türkçe"
+                  testID="chat-language-tr"
+                >
+                  <Text style={styles.langBtnText}>Türkçe 🇹🇷</Text>
                 </Pressable>
               </View>
 

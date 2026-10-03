@@ -5,6 +5,51 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type UiTextTranslationRequestLang = typeof UiTextTranslationRequestLang[keyof typeof UiTextTranslationRequestLang];
+
+
+export const UiTextTranslationRequestLang = {
+  en: 'en',
+  ar: 'ar',
+  tr: 'tr',
+  hi: 'hi',
+  ur: 'ur',
+  tl: 'tl',
+} as const;
+
+export interface UiTextTranslationRequest {
+  /**
+     * @minItems 1
+     * @maxItems 80
+     * @items.minLength 1
+     * @items.maxLength 8000
+     */
+  texts: string[];
+  lang: UiTextTranslationRequestLang;
+  url?: string;
+}
+
+export type PageTranslationRequestLang = typeof PageTranslationRequestLang[keyof typeof PageTranslationRequestLang];
+
+
+export const PageTranslationRequestLang = {
+  en: 'en',
+  ar: 'ar',
+  tr: 'tr',
+  hi: 'hi',
+  ur: 'ur',
+  tl: 'tl',
+} as const;
+
+export interface PageTranslationRequest {
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  url: string;
+  lang: PageTranslationRequestLang;
+}
+
 export type AdminHotelProfitDetailsResponseDetailsItem = {
   bookingReference: string;
   reasonCode: string;
@@ -665,6 +710,19 @@ export const EsimReconcileResponseStatus = {
 export interface EsimReconcileResponse {
   status: EsimReconcileResponseStatus;
 }
+
+export type TranslateUiTexts200 = {
+  translations: string[];
+  cached?: boolean;
+  fallback?: boolean;
+};
+
+export type FetchPageTranslations200Map = {[key: string]: string};
+
+export type FetchPageTranslations200 = {
+  map: FetchPageTranslations200Map;
+  cached?: boolean;
+};
 
 export type GetAdminHotelProfitDetailsParams = {
 /**

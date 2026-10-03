@@ -1,0 +1,18 @@
+name: Publish Turkish language and hotel banner fixes
+on:
+  workflow_dispatch: {}
+defaults:
+  image: sdk-54
+  tools:
+    node: "22.14.0"
+jobs:
+  update:
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: production
+      message: Turkish language selection, aligned language controls, and hotel announcement banner removal

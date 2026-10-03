@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -18,6 +17,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import colors from "@/constants/colors";
 import { buildHotelDestinationUrl, buildHotelDealUrl } from "@/lib/hotelPortal";
 import { isEsimReleased } from "@/lib/esimRelease";
+import { useAppLanguage } from "@/localization/provider";
+import type { AppLocale } from "@/localization/engine";
+import { Text } from "@/localization/components";
 
 // Match the active dt-tour.com/hotels portal palette without changing the
 // appearance of unrelated mobile screens.
@@ -220,12 +222,12 @@ function NavCard({ icon, title, sub, onPress, width, rtl, testID }: NavCardProps
       ]}
     >
       <View style={styles.navIconWrap}>
-        <VectorIcon name={icon} size={22} color={C.navyLight} />
+        <VectorIcon name={icon} size={20} color={C.navyLight} />
       </View>
-      <Text style={[styles.navTitle, rtl && styles.navTitleRtl]} numberOfLines={2}>
+      <Text style={[styles.navTitle, rtl && styles.navTitleRtl]}>
         {title}
       </Text>
-      <Text style={[styles.navSub, rtl && styles.navSubRtl]} numberOfLines={1}>
+      <Text style={[styles.navSub, rtl && styles.navSubRtl]} numberOfLines={2}>
         {sub}
       </Text>
     </Pressable>
@@ -287,10 +289,12 @@ export function LuxuryHome({
   onOpenHotelPortalUrl,
   onExplore,
   onMembersOffers,
+  onOpenChat,
+  onVisibilityChange,
   isOffline,
 }: {
   lang: HomeLang;
-  onChangeLang: (l: HomeLang) => void;
+  onChangeLang: (l: AppLocale) => void;
   onFlights: () => void;
   onHotels: () => void;
   onAIBuilder: () => void;
@@ -301,12 +305,18 @@ export function LuxuryHome({
   onOpenHotelPortalUrl?: (url: string) => void;
   onExplore: () => void;
   onMembersOffers?: () => void;
+  onOpenChat?: () => void;
+  onVisibilityChange?: (visible: boolean) => void;
   isOffline: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const s = STR[lang];
   const rtl = lang === "ar";
+  useEffect(() => {
+    onVisibilityChange?.(true);
+    return () => onVisibilityChange?.(false);
+  }, [onVisibilityChange]);
   const [tours, setTours] = useState<TourPackage[]>([]);
   const [destinations, setDestinations] = useState<TrendingDestination[]>([]);
   const [loadingDestinations, setLoadingDestinations] = useState(true);
@@ -353,7 +363,10 @@ export function LuxuryHome({
     };
   }, []);
 
-  const toggleLang = (l: HomeLang) => {
+  const { locale: sharedLocale, changeLocale } = useAppLanguage();
+  const selectedLocale = sharedLocale === "tr" ? "tr" : lang;
+  const toggleLang = (l: AppLocale) => {
+    changeLocale(l);
     onChangeLang(l);
     AsyncStorage.setItem("home_lang", l).catch(() => {});
   };
@@ -372,7 +385,7 @@ export function LuxuryHome({
       ? Math.max(insets.top, 59) + 8
       : Math.round((Math.max(insets.top, 67) + 12) * 0.36)
     : Math.round(((insets.top || 20) + 10) * 0.95);
-  const navCardWidth = (width - 32 - 16) / 2;
+  const navCardWidth = Math.floor((width - 32 - 12) / 2);
 
   return (
     <View style={styles.root}>
@@ -389,17 +402,17 @@ export function LuxuryHome({
           </View>
           <View style={styles.headerActions}>
               <View style={styles.langPill}>
-              {(["en", "ar"] as HomeLang[]).map((l) => (
+              {(["en", "tr", "ar"] as AppLocale[]).map((l) => (
                 <Pressable
                   key={l}
                   onPress={() => toggleLang(l)}
-                  style={[styles.langBtn, lang === l && styles.langBtnActive]}
+                  style={[styles.langBtn, selectedLocale === l && styles.langBtnActive]}
                   testID={`lang-${l}`}
                   accessibilityRole="button"
-                  accessibilityLabel={l === "en" ? "English" : "Arabic"}
+                  accessibilityLabel={l === "tr" ? "Türkçe" : l === "en" ? "English" : "Arabic"}
                 >
-                  <Text style={[styles.langText, lang === l && styles.langTextActive]}>
-                    {l === "en" ? "EN" : "عربي"}
+                  <Text dtDisplayData style={[styles.langText, selectedLocale === l && styles.langTextActive]}>
+                    {l === "tr" ? "TR" : l === "en" ? "EN" : "عربي"}
                   </Text>
                 </Pressable>
               ))}
@@ -569,6 +582,29 @@ export function LuxuryHome({
           )}
         </ScrollView>
       </Animated.View>
+      {onOpenChat && (
+        <Pressable
+          testID="home-travel-assistant"
+          accessibilityRole="button"
+          accessibilityLabel="Open Tamaiz AI travel advisor"
+          onPress={onOpenChat}
+          style={({ pressed }) => [
+            styles.assistantDock,
+            rtl && { flexDirection: "row-reverse" },
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Image
+            source={require("../assets/images/tamaiz-robot.png")}
+            style={styles.assistantAvatar}
+            resizeMode="cover"
+          />
+          <Text style={[styles.assistantLabel, rtl && styles.rtlText]}>
+            {selectedLocale === "tr" ? "Seyahat asistanı" : rtl ? "مساعد السفر" : "Travel assistant"}
+          </Text>
+          <VectorIcon name="sparkles" size={20} color={C.navyLight} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -588,7 +624,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 10,
   },
-  headerRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+  headerRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", rowGap: 8, columnGap: 8 },
   // The source has transparent padding around the horizontal mark. This frame
   // trims only the empty canvas while leaving every letter fully visible.
   logoFrame: { width: 196, height: 42, overflow: "hidden", position: "relative" },
@@ -603,13 +639,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 24,
-    padding: 4,
+    padding: 3,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
   },
-  langBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  langBtn: { paddingHorizontal: 10, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 20 },
   langBtnActive: { backgroundColor: C.blue },
-  langText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "700" },
+  langText: { color: "rgba(255,255,255,0.8)", fontSize: 12, lineHeight: 18, includeFontPadding: false, textAlignVertical: "center", fontWeight: "700" },
   langTextActive: { color: C.navy, fontWeight: "800" },
   headerActions: { alignItems: "flex-end", gap: 6 },
   heroCopy: { marginTop: Platform.OS === "web" ? 6 : 10 },
@@ -637,7 +673,14 @@ const styles = StyleSheet.create({
   heroStatDivider: { width: 1, height: 14, backgroundColor: "rgba(255,255,255,0.2)", marginHorizontal: 12 },
 
   scroll: { flex: 1 },
-  sectionIntro: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 6 },
+  assistantDock: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: C.canvas, paddingHorizontal: 20, paddingVertical: 8,
+    borderTopWidth: 1, borderTopColor: "rgba(0,53,128,0.08)",
+  },
+  assistantAvatar: { width: 36, height: 36, borderRadius: 18 },
+  assistantLabel: { flex: 1, color: C.navy, fontSize: 13, fontWeight: "700" },
+  sectionIntro: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 6 },
   sectionEyebrow: { color: C.navyLight, fontSize: 11, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
   sectionHeading: { color: C.navy, fontSize: 22, fontWeight: "900", marginTop: 6 },
 
@@ -646,13 +689,13 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     paddingHorizontal: 16,
     paddingTop: 12,
-    gap: 16,
+    gap: 12,
   },
   navCard: {
     backgroundColor: C.canvas,
-    borderRadius: 20,
-    padding: 16,
-    minHeight: 140,
+    borderRadius: 18,
+    padding: 14,
+    minHeight: 116,
     shadowColor: C.navy,
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -664,16 +707,16 @@ const styles = StyleSheet.create({
   },
   navCardRtl: { alignItems: "flex-end" },
   navIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "rgba(46,117,200,0.12)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    marginBottom: 10,
   },
-  navTitle: { color: C.navy, fontSize: 16, fontWeight: "800", lineHeight: 22 },
-  navSub: { color: C.mutedOnLight, fontSize: 12, marginTop: 4, fontWeight: "500" },
+  navTitle: { color: C.navy, fontSize: 15, fontWeight: "800", lineHeight: 20 },
+  navSub: { color: C.mutedOnLight, fontSize: 12, lineHeight: 16, marginTop: 3, fontWeight: "500" },
   navTitleRtl: { alignSelf: "stretch", textAlign: "right", writingDirection: "rtl" },
   navSubRtl: { alignSelf: "stretch", textAlign: "right", writingDirection: "rtl" },
 

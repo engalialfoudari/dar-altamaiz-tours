@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { CartProvider } from "@/lib/cartContext";
+import { AppLanguageProvider, useAppLanguage } from "@/localization/provider";
 import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { useFonts } from "expo-font";
@@ -162,6 +163,12 @@ function AuthStartupFallback({
 }
 
 export default function RootLayout() {
+  return <AppLanguageProvider><RootLayoutContent /></AppLanguageProvider>;
+}
+
+function RootLayoutContent() {
+  const { locale } = useAppLanguage();
+  const pageTitle = locale === "tr" ? "DT Tours — Bir sonraki seyahatiniz burada başlıyor!" : WEB_PAGE_TITLE;
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
@@ -290,7 +297,7 @@ export default function RootLayout() {
   if (!appReady) {
     return (
       <Head>
-        <title>{WEB_PAGE_TITLE}</title>
+        <title>{pageTitle}</title>
       </Head>
     );
   }
@@ -310,7 +317,7 @@ export default function RootLayout() {
   return (
     <>
       <Head>
-        <title>{WEB_PAGE_TITLE}</title>
+        <title>{pageTitle}</title>
       </Head>
       <ErrorBoundary onError={handleError}>
         <ClerkProvider

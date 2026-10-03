@@ -95,11 +95,11 @@ export function parseHotelPortalAuthHandoffMessage(rawMessage: string): string |
   }
 }
 
-export function parseHotelPortalLanguageMessage(rawMessage: string): "en" | "ar" | null {
+export function parseHotelPortalLanguageMessage(rawMessage: string): "en" | "ar" | "tr" | null {
   try {
     const message = JSON.parse(rawMessage);
     return message?.type === "dt-portal-language" &&
-      (message?.language === "en" || message?.language === "ar")
+      (message?.language === "en" || message?.language === "ar" || message?.language === "tr")
       ? message.language
       : null;
   } catch {

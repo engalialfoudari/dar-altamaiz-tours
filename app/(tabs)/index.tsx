@@ -33,6 +33,8 @@ import { InfoModal } from "@/components/InfoModal";
 import { SpecialRequestsScreen } from "@/components/SpecialRequestsScreen";
 import { ProfileScreen } from "@/components/ProfileScreen";
 import { LuxuryHome, HomeLang } from "@/components/LuxuryHome";
+import { useAppLanguage } from "@/localization/provider";
+import type { AppLocale } from "@/localization/engine";
 import { WhereToGoScreen } from "@/components/WhereToGoScreen";
 import { PackageBuilderScreen } from "@/components/PackageBuilderScreen";
 import { ContactScreen } from "@/components/ContactScreen";
@@ -500,7 +502,7 @@ export function WebShell({
   hotelPortalOverrideUrl?: string | null;
   onOpenHotelPortal: () => void;
   onCloseHotelPortal: (destination?: "packages" | "bookings" | "profile") => void;
-  onHotelPortalLanguageChange: (language: HomeLang) => void;
+  onHotelPortalLanguageChange: (language: AppLocale) => void;
   onHotelPortalLoggedOut: () => void | Promise<void>;
   activeLang?: HomeLang;
   hotelPaymentReturn?: { orderId: string; status: "success" | "failed"; seq: number } | null;
@@ -512,6 +514,7 @@ export function WebShell({
   const { getToken, isSignedIn, sessionId } = useAuth();
   const { addItems } = useCart();
   const webviewRef = useRef<any>(null);
+  const { locale: portalDisplayLocale } = useAppLanguage();
   const canGoBack = useRef(false);
   const hotelPortalRef = useRef<any>(null);
   const hotelPortalNativeCanGoBack = useRef(false);
@@ -546,6 +549,12 @@ export function WebShell({
   }), [hotelPortalInstance, localizedHotelPortalUrl]);
   const lastExternalPaymentUrl = useRef("");
   const hotelPortalDismissed = useRef(false);
+  useEffect(() => {
+    if (!hotelPortalVisible) return;
+    hotelPortalRef.current?.injectJavaScript?.(
+      `if(typeof window.setLang==='function')window.setLang(${JSON.stringify(portalDisplayLocale)});true;`,
+    );
+  }, [portalDisplayLocale, hotelPortalVisible]);
 
   useEffect(() => {
     if (hotelPortalVisible) hotelPortalDismissed.current = false;
@@ -906,10 +915,10 @@ export function WebShell({
 
   return (
     <View style={[styles.shellRoot, { width, height }]}>
-      {(hotelPortalVisible || !showNativeHome || !nativeHome) && (
+      {!hotelPortalVisible && (!showNativeHome || !nativeHome) && (
         <AppHeader
-          onBack={hotelPortalVisible ? handleHotelPortalBack : handleShellBack}
-          canGoBack={hotelPortalVisible || canGoBackState || canReturnToNativeHome}
+          onBack={handleShellBack}
+          canGoBack={canGoBackState || canReturnToNativeHome}
           onInfo={() => setShowInfo(true)}
         />
       )}
@@ -1042,6 +1051,9 @@ export function WebShell({
                 const serialized = serializeHotelDisplayPreferencesMessage(hotelDisplayPreferences);
                 hotelPortalRef.current?.injectJavaScript?.(
                   `window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(serialized)}}));true;`,
+                );
+                hotelPortalRef.current?.injectJavaScript?.(
+                  `if(typeof window.setLang==='function')window.setLang(${JSON.stringify(portalDisplayLocale)});true;`,
                 );
               }}
               onMessage={(event: any) => {
@@ -1257,7 +1269,7 @@ export function WebIframeShell({
   hotelPortalOverrideUrl?: string | null;
   onOpenHotelPortal: () => void;
   onCloseHotelPortal: (destination?: "packages" | "bookings" | "profile") => void;
-  onHotelPortalLanguageChange: (language: HomeLang) => void;
+  onHotelPortalLanguageChange: (language: AppLocale) => void;
   onHotelPortalLoggedOut: () => void | Promise<void>;
   activeLang?: HomeLang;
   hotelDisplayPreferences: HotelDisplayPreferences;
@@ -1268,6 +1280,7 @@ export function WebIframeShell({
   const { getToken, isSignedIn, sessionId } = useAuth();
   const { addItems } = useCart();
   const { width, height } = useWindowDimensions();
+  const { locale: portalDisplayLocale } = useAppLanguage();
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [webUrl, setWebUrl] = useState(initialUrl);
   const [showInfo, setShowInfo] = useState(false);
@@ -1289,6 +1302,15 @@ export function WebIframeShell({
   const hotelPortalSourceLanguage = useRef(activeLang ?? "en");
   const localizedHotelPortalUrl = hotelPortalUrlWithLanguage(hotelPortalUrl, hotelPortalSourceLanguage.current);
   const hotelPortalDismissed = useRef(false);
+  const sendHotelPortalLanguage = useCallback(() => {
+    hotelPortalFrameRef.current?.contentWindow?.postMessage(
+      { source: "dt-portal-display-language", language: portalDisplayLocale },
+      new URL(localizedHotelPortalUrl).origin,
+    );
+  }, [portalDisplayLocale, localizedHotelPortalUrl]);
+  useEffect(() => {
+    if (hotelPortalVisible) sendHotelPortalLanguage();
+  }, [hotelPortalVisible, sendHotelPortalLanguage]);
 
   useEffect(() => {
     if (isSignedIn === false) {
@@ -1538,10 +1560,10 @@ export function WebIframeShell({
 
   return (
     <View style={[styles.shellRoot, { width, height }]}>
-      {(hotelPortalVisible || !showNativeHome || !nativeHome) && (
+      {!hotelPortalVisible && (!showNativeHome || !nativeHome) && (
         <AppHeader
-          onBack={hotelPortalVisible ? handleHotelPortalBack : handleBack}
-          canGoBack={hotelPortalVisible || canGoBack}
+          onBack={handleBack}
+          canGoBack={canGoBack}
           onInfo={() => setShowInfo(true)}
         />
       )}
@@ -1570,7 +1592,7 @@ export function WebIframeShell({
               ref={hotelPortalFrameRef}
               key={`hotel-portal-${hotelPortalInstance}`}
               src={localizedHotelPortalUrl}
-              onLoad={() => { sendHotelPortalToken(); sendHotelPortalDisplayPreferences(); }}
+              onLoad={() => { sendHotelPortalToken(); sendHotelPortalDisplayPreferences(); sendHotelPortalLanguage(); }}
               sandbox="allow-scripts allow-forms allow-same-origin allow-top-navigation-by-user-activation allow-modals"
               style={{ flex: 1, width: "100%", height: "100%", border: "none" } as any}
               title="D.T. Tours Hotels"
@@ -1656,10 +1678,18 @@ export default function HomeScreen() {
   const navSeq = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
+  const [nativeHomeMounts, setNativeHomeMounts] = useState(0);
+  const handleHomeVisibilityChange = useCallback((visible: boolean) => {
+    setNativeHomeMounts(count => Math.max(0, count + (visible ? 1 : -1)));
+  }, []);
   const [forceShowProfile, setForceShowProfile] = useState(portalAuth === "1");
   const [forceShowRequests, setForceShowRequests] = useState(false);
   const [profileScreenOpen, setProfileScreenOpen] = useState(false);
   const [homeLang, setHomeLang] = useState<HomeLang>("en");
+  const { locale: appLocale, changeLocale } = useAppLanguage();
+  useEffect(() => {
+    setHomeLang(appLocale === "tr" ? "en" : appLocale);
+  }, [appLocale]);
   const [homeLangReady, setHomeLangReady] = useState(false);
   useEffect(() => {
     if (!homeLangReady || Platform.OS !== "web" || typeof window === "undefined") return;
@@ -2031,10 +2061,9 @@ export default function HomeScreen() {
     });
     return () => subscription.remove();
   }, [flightResultsUrl, nativeScreen, esimDestinationSlug, phase]);
-  const changeHomeLanguage = (nextLang: HomeLang) => {
-    setHomeLang(nextLang);
-    AsyncStorage.setItem("home_lang", nextLang).catch(() => {});
-    DeviceEventEmitter.emit("homeLanguageChanged", nextLang);
+  const changeHomeLanguage = (nextLang: AppLocale) => {
+    changeLocale(nextLang);
+    setHomeLang(nextLang === "tr" ? "en" : nextLang);
   };
   const handleBookingsPress = () => setShowBookingChoice(true);
   const handleBookingChoice = (type: "flights" | "hotels") => {
@@ -2054,6 +2083,8 @@ export default function HomeScreen() {
   };
   const nativeHome = (
     <LuxuryHome
+      onOpenChat={() => setShowChatbot(true)}
+      onVisibilityChange={handleHomeVisibilityChange}
       lang={homeLang}
       onChangeLang={changeHomeLanguage}
       onFlights={() => openNativeScreen("flights")}
@@ -2310,7 +2341,7 @@ export default function HomeScreen() {
       {isOffline && <OfflineBanner />}
 
       {/* Chatbot FAB — floats above the tab bar, visible once shell is active */}
-      {phase === "shell" && !profileScreenOpen && !viewportLayout.keyboardViewportReduced && (
+      {phase === "shell" && (nativeHomeMounts === 0 || nativeScreen !== null || flightResultsUrl !== null) && !profileScreenOpen && !viewportLayout.keyboardViewportReduced && (
         <View style={[styles.chatbotFabWrap, { bottom: insets.bottom + 72 }]}>
           {/* Sonar / live-pulse ring */}
           <Animated.View

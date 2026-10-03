@@ -52,13 +52,17 @@ import type {
   EsimQuoteInput,
   EsimQuoteResponse,
   EsimReconcileResponse,
+  FetchPageTranslations200,
   GetAdminHotelProfitDetailsParams,
   GetHotelDealsParams,
   HealthStatus,
   HotelDealsResponse,
+  PageTranslationRequest,
   ReviewAdminEsimPayment200,
   SendEsimPrivateGuestCode200,
-  TrendingDestinationsResponse
+  TranslateUiTexts200,
+  TrendingDestinationsResponse,
+  UiTextTranslationRequest
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -87,6 +91,166 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getTranslateUiTextsUrl = () => {
+
+
+
+
+  return `/api/translate-page`
+}
+
+/**
+ * @summary Translate visible travel interface text with Gemini
+ */
+export const translateUiTexts = async (uiTextTranslationRequest: UiTextTranslationRequest, options?: Parameters<typeof customFetch>[1]): Promise<TranslateUiTexts200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<TranslateUiTexts200>(getTranslateUiTextsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(uiTextTranslationRequest)
+  }
+);}
+
+
+
+
+
+export const getTranslateUiTextsMutationKey = () => ['translateUiTexts'] as const;
+
+export const getTranslateUiTextsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof translateUiTexts>>, TError,TranslateUiTextsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof translateUiTexts>>, TError,TranslateUiTextsMutationVariables, TContext> => {
+
+const mutationKey = getTranslateUiTextsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof translateUiTexts>>, TranslateUiTextsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  translateUiTexts(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TranslateUiTextsMutationResult = NonNullable<Awaited<ReturnType<typeof translateUiTexts>>>
+    export type TranslateUiTextsMutationBody = BodyType<UiTextTranslationRequest>
+    export type TranslateUiTextsMutationError = ErrorType<void>
+    export type TranslateUiTextsMutationVariables = {data: BodyType<UiTextTranslationRequest>}
+
+    /**
+ * @summary Translate visible travel interface text with Gemini
+ */
+export const useTranslateUiTexts = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof translateUiTexts>>, TError,TranslateUiTextsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof translateUiTexts>>,
+        TError,
+        TranslateUiTextsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTranslateUiTextsMutationOptions(options));
+    }
+
+export const getFetchPageTranslationsUrl = () => {
+
+
+
+
+  return `/api/fetch-translate-page`
+}
+
+/**
+ * @summary Translate public booking page text using a server-side fetch
+ */
+export const fetchPageTranslations = async (pageTranslationRequest: PageTranslationRequest, options?: Parameters<typeof customFetch>[1]): Promise<FetchPageTranslations200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<FetchPageTranslations200>(getFetchPageTranslationsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pageTranslationRequest)
+  }
+);}
+
+
+
+
+
+export const getFetchPageTranslationsMutationKey = () => ['fetchPageTranslations'] as const;
+
+export const getFetchPageTranslationsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fetchPageTranslations>>, TError,FetchPageTranslationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof fetchPageTranslations>>, TError,FetchPageTranslationsMutationVariables, TContext> => {
+
+const mutationKey = getFetchPageTranslationsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof fetchPageTranslations>>, FetchPageTranslationsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  fetchPageTranslations(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FetchPageTranslationsMutationResult = NonNullable<Awaited<ReturnType<typeof fetchPageTranslations>>>
+    export type FetchPageTranslationsMutationBody = BodyType<PageTranslationRequest>
+    export type FetchPageTranslationsMutationError = ErrorType<void>
+    export type FetchPageTranslationsMutationVariables = {data: BodyType<PageTranslationRequest>}
+
+    /**
+ * @summary Translate public booking page text using a server-side fetch
+ */
+export const useFetchPageTranslations = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof fetchPageTranslations>>, TError,FetchPageTranslationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof fetchPageTranslations>>,
+        TError,
+        FetchPageTranslationsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getFetchPageTranslationsMutationOptions(options));
+    }
 
 export const getGetAdminHotelProfitDetailsUrl = (params?: GetAdminHotelProfitDetailsParams,) => {
   const normalizedParams = new URLSearchParams();
