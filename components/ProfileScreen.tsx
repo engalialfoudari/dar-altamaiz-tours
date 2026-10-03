@@ -1091,7 +1091,7 @@ export function ProfileScreen({
       <View style={[s.center, { paddingTop: insets.top }]}>
         {onClose && (
           <Pressable onPress={onClose} style={[s.closeButton, s.closeButtonFloating]} accessibilityRole="button" accessibilityLabel="Back">
-            <HotelPortalIcon name="arrow-back" size={20} color="#0F766E" />
+            <HotelPortalIcon name="arrow-back" size={20} color="#003580" />
              <Text style={s.closeButtonText}>{isArabic ? "رجوع" : "Back"}</Text>
           </Pressable>
         )}
@@ -1105,7 +1105,7 @@ export function ProfileScreen({
       <ScrollView style={[s.authContainer, { paddingTop: insets.top + 12 }]} contentContainerStyle={s.authContent}>
         {onClose && (
           <Pressable onPress={onClose} style={s.authCloseButton} accessibilityRole="button" accessibilityLabel="Back">
-            <HotelPortalIcon name="arrow-back" size={20} color="#0F766E" />
+            <HotelPortalIcon name="arrow-back" size={20} color="#003580" />
              <Text style={s.authCloseButtonText}>{isArabic ? "رجوع" : "Back"}</Text>
           </Pressable>
         )}
@@ -1315,7 +1315,7 @@ export function ProfileScreen({
             accessibilityLabel={isArabic ? "العودة إلى حسابي" : "Back to My Account"}
             testID="account-settings-back"
           >
-            <HotelPortalIcon name="arrow-back" size={21} color="#0F766E" />
+            <HotelPortalIcon name="arrow-back" size={21} color="#003580" />
           </Pressable>
           <Text style={s.settingsTitle}>{isArabic ? "الإعدادات" : "Settings"}</Text>
           <View style={s.settingsHeaderSpacer} />
@@ -1411,7 +1411,7 @@ export function ProfileScreen({
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
-            <HotelPortalIcon name="arrow-back" size={18} color="#0F766E" />
+            <HotelPortalIcon name="arrow-back" size={18} color="#003580" />
             <Text style={s.closeButtonText}>{isArabic ? "رجوع" : "Back"}</Text>
           </Pressable>
         )}
@@ -1524,7 +1524,7 @@ export function ProfileScreen({
           testID="account-cart-entry"
         >
           <View style={s.settingsEntryIcon}>
-            <Ionicons name="cart-outline" size={18} color="#0F766E" />
+            <Ionicons name="cart-outline" size={18} color="#003580" />
           </View>
           <View style={s.settingsEntryCopy}>
             <Text style={[s.settingsEntryTitle, isArabic && s.rtlText]}>
@@ -1545,7 +1545,7 @@ export function ProfileScreen({
           testID="account-settings-entry"
         >
           <View style={s.settingsEntryIcon}>
-            <Ionicons name="settings-outline" size={18} color="#0F766E" />
+            <Ionicons name="settings-outline" size={18} color="#003580" />
           </View>
           <View style={s.settingsEntryCopy}>
             <Text style={[s.settingsEntryTitle, isArabic && s.rtlText]}>
@@ -1597,7 +1597,7 @@ export function ProfileScreen({
                   <Text style={s.lockMeta}>{formatBookingDate(lock.checkin)} → {formatBookingDate(lock.checkout)}</Text>
                   <View style={s.lockBottomRow}>
                      <Text style={s.lockPrice}>{lock.lockedPriceKwd ? `KWD ${parseFloat(lock.lockedPriceKwd).toFixed(3)}` : copy.priceHeld}</Text>
-                     <Text style={s.lockAction}>{copy.continue} <Ionicons name="arrow-forward" size={12} color="#0F766E" /></Text>
+                     <Text style={s.lockAction}>{copy.continue} <Ionicons name="arrow-forward" size={12} color="#003580" /></Text>
                   </View>
                    {cd ? <Text style={s.lockExpiry}>{copy.priceProtectedFor(cd)}</Text> : null}
                 </Pressable>
@@ -1836,7 +1836,7 @@ export function ProfileScreen({
               <Text style={[s.infoRowTitle, isArabic && s.rtlText]}>{copy.helpTitle}</Text>
               <Text style={[s.supportLink, isArabic && s.rtlText]}>{copy.supportLink}</Text>
             </View>
-            <Ionicons name="arrow-forward" size={17} color="#0F766E" />
+            <Ionicons name="arrow-forward" size={17} color="#003580" />
           </Pressable>
         </View>
 
@@ -1975,7 +1975,7 @@ export function ProfileScreen({
               <Ionicons
                 name={dialog?.kind === "confirm" ? "help-outline" : dialog?.showSupport ? "alert-outline" : "checkmark-outline"}
                 size={26}
-                color={dialog?.kind === "confirm" ? "#0F766E" : dialog?.showSupport ? "#B42318" : "#147A4B"}
+                color={dialog?.kind === "confirm" ? "#003580" : dialog?.showSupport ? "#B42318" : "#147A4B"}
               />
             </View>
             <Text style={s.dialogTitle}>{dialog?.title}</Text>
@@ -2039,9 +2039,9 @@ const s = StyleSheet.create({
   authContent:     { paddingHorizontal: 24, paddingBottom: 40, flexGrow: 1 },
   closeButton:     { minHeight: 40, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e2e6ed", marginBottom: 12 },
   closeButtonFloating: { position: "absolute", top: 12, left: 16, zIndex: 1 },
-  closeButtonText: { color: "#0F766E", fontSize: 13, fontWeight: "800" },
+  closeButtonText: { color: "#003580", fontSize: 13, fontWeight: "800" },
   authCloseButton: { minHeight: 40, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, borderRadius: 8, backgroundColor: "#fff", borderWidth: 1, borderColor: "#d9e2ec", marginBottom: 28 },
-  authCloseButtonText: { color: "#0F766E", fontSize: 13, fontWeight: "700" },
+  authCloseButtonText: { color: "#003580", fontSize: 13, fontWeight: "700" },
   authHeading:     { marginBottom: 24 },
   authLogoFrame:   { width: 196, height: 42, overflow: "hidden", position: "relative", alignSelf: "center", marginBottom: 10 },
   authLogo:        { position: "absolute", width: 204, height: 204, left: -7, top: -84 },
@@ -2052,17 +2052,17 @@ const s = StyleSheet.create({
   modeTab:         { flex: 1, paddingVertical: 10, borderRadius: 6, alignItems: "center" },
   modeTabActive:   { backgroundColor: "#fff", shadowColor: "#1a1f36", shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
   modeTabText:     { color: "#5a6473", fontSize: 12, fontWeight: "700" },
-  modeTabTextActive:{ color: "#0F766E" },
+  modeTabTextActive:{ color: "#003580" },
   fieldLabel:      { color: "#1a1f36", fontSize: 12, fontWeight: "700", marginBottom: 7 },
   input:           { backgroundColor: "#fff", borderWidth: 1, borderColor: "#aeb9c5", borderRadius: 8, paddingHorizontal: 13, paddingVertical: 12, color: "#1a1f36", marginBottom: 15, fontSize: 14 },
   errorText:       { color: "#c62828", fontSize: 12, marginBottom: 10, textAlign: "center" },
   forgotHint:     { color: "#5a6473", fontSize: 13, lineHeight: 21, textAlign: "center", marginBottom: 16 },
   forgotLink:     { alignSelf: "flex-end", marginTop: -7, marginBottom: 13 },
-  forgotLinkText: { color: "#0F766E", fontSize: 12, fontWeight: "800" },
+  forgotLinkText: { color: "#003580", fontSize: 12, fontWeight: "800" },
   resetMessage:   { color: "#16794C", fontSize: 12, lineHeight: 19, marginBottom: 10, textAlign: "center" },
   backToLogin:    { alignItems: "center", marginTop: 14, paddingVertical: 3 },
-  backToLoginText:{ color: "#0F766E", fontSize: 12, fontWeight: "800" },
-  submitBtn:       { backgroundColor: "#0F766E", borderRadius: 8, padding: 15, alignItems: "center", marginTop: 3 },
+  backToLoginText:{ color: "#003580", fontSize: 12, fontWeight: "800" },
+  submitBtn:       { backgroundColor: "#003580", borderRadius: 8, padding: 15, alignItems: "center", marginTop: 3 },
   submitBtnText:   { color: "#fff", fontWeight: "800", fontSize: 15 },
   authDivider:     { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 16 },
   authDividerLine: { flex: 1, height: 1, backgroundColor: "#d9e2ec" },
@@ -2132,7 +2132,7 @@ const s = StyleSheet.create({
   policyHintCancelled:{ marginTop: 10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: "#F0FDF4", flexDirection: "row", alignItems: "center", gap: 7 },
   policyHintText:     { flex: 1, color: "#38664F", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
   bookingInternalRef:{ color: "#94A3B8", fontSize: 9, marginTop: 9 },
-  primaryAction:      { minHeight: 44, marginTop: 12, borderRadius: 12, paddingHorizontal: 14, backgroundColor: "#0F766E", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  primaryAction:      { minHeight: 44, marginTop: 12, borderRadius: 12, paddingHorizontal: 14, backgroundColor: "#003580", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   primaryActionText:  { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
   cancelAction:       { minHeight: 42, marginTop: 8, borderRadius: 12, paddingHorizontal: 14, backgroundColor: "#FFF7F7", borderWidth: 1, borderColor: "#F5C2C0", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
   cancelActionText:   { color: "#B42318", fontSize: 11.5, fontWeight: "900" },
@@ -2152,7 +2152,7 @@ const s = StyleSheet.create({
   infoRowTitle:       { color: "#253247", fontSize: 11.5, fontWeight: "900", lineHeight: 16 },
   infoRowText:        { color: "#718096", fontSize: 10, lineHeight: 15, marginTop: 3 },
   supportRow:         { flexDirection: "row", alignItems: "center", paddingTop: 12 },
-  supportLink:        { color: "#0F766E", fontSize: 10, fontWeight: "800", marginTop: 3 },
+  supportLink:        { color: "#003580", fontSize: 10, fontWeight: "800", marginTop: 3 },
   tierRow:         { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 10, marginBottom: 6 },
   tierRowActive:   { backgroundColor: "#E6F4F1", borderWidth: 1, borderColor: "#A8D5CC" },
   tierRowEmoji:    { marginRight: 12, width: 24, alignItems: "center" },
@@ -2167,7 +2167,7 @@ const s = StyleSheet.create({
   lockMeta:        { color: "#64748B", fontSize: 10.5, lineHeight: 15, marginTop: 3, marginLeft: 46 },
   lockBottomRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 11, marginLeft: 46 },
   lockPrice:       { color: "#1F2937", fontSize: 14, fontWeight: "900" },
-  lockAction:      { color: "#0F766E", fontSize: 10.5, fontWeight: "900" },
+  lockAction:      { color: "#003580", fontSize: 10.5, fontWeight: "900" },
   lockExpiry:      { color: "#0F766E", fontSize: 9.5, marginTop: 5, marginLeft: 46, fontWeight: "700" },
   dialogBackdrop:  { flex: 1, backgroundColor: "rgba(10,25,47,0.62)", justifyContent: "center", padding: 24 },
   dialogCard:      { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22, alignItems: "center", shadowColor: "#000000", shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
@@ -2194,7 +2194,7 @@ const s = StyleSheet.create({
   dialogSupport:   { minHeight: 45, borderRadius: 12, backgroundColor: "#147A4B", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
   dialogSupportText:{ color: "#FFFFFF", fontSize: 11.5, fontWeight: "900" },
   privacyRow:      { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
-  privacyEmail:    { color: "#0F766E", fontSize: 12, fontWeight: "700", marginTop: 12 },
+  privacyEmail:    { color: "#003580", fontSize: 12, fontWeight: "700", marginTop: 12 },
   settingsEntry: { marginHorizontal: 16, marginTop: 14, minHeight: 72, paddingHorizontal: 16, backgroundColor: "#FFFFFF", borderRadius: 18, borderWidth: 1, borderColor: "#E3E8F2", flexDirection: "row", alignItems: "center" },
   settingsEntryPressed: { opacity: 0.75 },
   settingsEntryIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#E6F4F1", alignItems: "center", justifyContent: "center", marginRight: 12 },
@@ -2214,7 +2214,7 @@ const s = StyleSheet.create({
   settingsOptionHint: { color: "#718096", fontSize: 10.5, marginTop: 4, lineHeight: 15 },
   settingsChoices: { flexDirection: "row", gap: 8 },
   settingsChoice: { flex: 1, minHeight: 42, borderWidth: 1, borderColor: "#CDE5E0", borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
-  settingsChoiceActive: { backgroundColor: "#0F766E", borderColor: "#0F766E" },
+  settingsChoiceActive: { backgroundColor: "#003580", borderColor: "#003580" },
   settingsChoiceText: { color: "#334155", fontSize: 11, fontWeight: "800" },
   settingsChoiceTextActive: { color: "#FFFFFF" },
   settingsDivider: { height: 1, backgroundColor: "#E5E7EB", marginHorizontal: 16 },

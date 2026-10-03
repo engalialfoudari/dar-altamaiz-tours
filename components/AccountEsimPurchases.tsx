@@ -114,7 +114,7 @@ export function AccountEsimPurchases({
         <Pressable accessibilityRole="button" accessibilityLabel={t.refresh}
           onPress={() => setReload((value) => value + 1)} style={styles.refresh}
           testID="account-esim-refresh">
-          <HotelPortalIcon name="refresh" size={18} color="#0F766E" />
+          <HotelPortalIcon name="refresh" size={18} color="#003580" />
         </Pressable>
       </View>
       {display.status === "loading" && <View style={styles.message}>
@@ -155,14 +155,14 @@ export function AccountEsimPurchases({
           {!!onOpenOrders && <Pressable accessibilityRole="button" onPress={() => onOpenOrders(order.orderId)}
             style={styles.action} testID={`account-esim-details-${order.orderId}`}>
             <Text style={styles.actionText}>{ready ? t.install : t.details}</Text>
-            <HotelPortalIcon name={rtl ? "chevron-back" : "chevron-forward"} size={16} color="#0F766E" />
+            <HotelPortalIcon name={rtl ? "chevron-back" : "chevron-forward"} size={16} color="#003580" />
           </Pressable>}
         </View>;
       })}
       {!!onOpenOrders && <Pressable onPress={() => onOpenOrders()} accessibilityRole="button"
         testID="account-esim-entry" style={styles.allOrders}>
         <Text style={styles.actionText}>{t.viewAll}</Text>
-        <HotelPortalIcon name={rtl ? "chevron-back" : "chevron-forward"} size={16} color="#0F766E" />
+        <HotelPortalIcon name={rtl ? "chevron-back" : "chevron-forward"} size={16} color="#003580" />
       </Pressable>}
     </View>
   );
@@ -188,8 +188,8 @@ const styles = StyleSheet.create({
   orderMeta: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
   price: { color: "#374151", fontSize: 13, fontWeight: "700", writingDirection: "ltr" },
   reference: { color: "#64748B", fontSize: 11, lineHeight: 17 },
-  action: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 10, minHeight: 44, paddingHorizontal: 12, backgroundColor: "#F0F8F6" },
-  actionText: { color: "#0F766E", fontSize: 13, fontWeight: "700" },
+  action: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 10, minHeight: 44, paddingHorizontal: 12, backgroundColor: "#EAF3FF" },
+  actionText: { color: "#003580", fontSize: 13, fontWeight: "700" },
   allOrders: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 44, borderTopWidth: 1, borderTopColor: "#E8EEEC" },
   reverse: { flexDirection: "row-reverse" },
   rtl: { textAlign: "right", writingDirection: "rtl" },
