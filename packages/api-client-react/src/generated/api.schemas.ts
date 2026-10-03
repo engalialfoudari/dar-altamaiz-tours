@@ -5,6 +5,25 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AdminHotelProfitDetailsResponseDetailsItem = {
+  bookingReference: string;
+  reasonCode: string;
+  reason: string;
+  /** @nullable */
+  checkedAt: string | null;
+};
+
+export interface AdminHotelProfitDetailsResponse {
+  ok: true;
+  /** @maxItems 50 */
+  details: AdminHotelProfitDetailsResponseDetailsItem[];
+  /**
+     * @nullable
+     * @pattern ^[1-9][0-9]*$
+     */
+  nextCursor: string | null;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -626,6 +645,21 @@ export const EsimReconcileResponseStatus = {
 export interface EsimReconcileResponse {
   status: EsimReconcileResponseStatus;
 }
+
+export type GetAdminHotelProfitDetailsParams = {
+/**
+ * Continue below this booking row ID, as returned by nextCursor.
+ * @maxLength 10
+ * @pattern ^[1-9][0-9]*$
+ */
+cursor?: string;
+/**
+ * Maximum number of details returned; defaults to 25.
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
 
 export type GetHotelDealsParams = {
 active?: boolean;

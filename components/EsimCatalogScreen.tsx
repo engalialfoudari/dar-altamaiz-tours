@@ -35,6 +35,7 @@ type Props = {
   lang: Language;
   onClose: () => void;
   selectedSlug: string | null;
+  initialSelectedPackageId?: string | null;
   initialShowOrders?: boolean;
   paymentReturnSeq?: number;
   paymentReturnRecovery?: boolean;
@@ -183,7 +184,7 @@ function Chip({ label, active, onPress, id }: { label: string; active: boolean; 
 type PackageRow = { type: "heading"; days: number; key: string } | { type: "package"; item: EsimPackage; key: string };
 
 export function EsimCatalogScreen({
-  lang, onClose, selectedSlug, initialShowOrders = false, paymentReturnSeq, paymentReturnRecovery = false,
+  lang, onClose, selectedSlug, initialSelectedPackageId, initialShowOrders = false, paymentReturnSeq, paymentReturnRecovery = false,
   onSelectDestination, onBuy, signedIn = false, onRecoverGuest,
   ownedOrders, ownedOrdersStatus = "unavailable", onRetryOwnedOrders,
   selectedOwnedOrderId, onSelectOwnedOrder, ownedOrderDetail, ownedDetailStatus, onRetryOwnedDetail,
@@ -196,7 +197,9 @@ export function EsimCatalogScreen({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<Category>("popular");
   const [filter, setFilter] = useState<DataFilter>("all");
-  const [selection, setSelection] = useState<{ slug: string; id: string } | null>(null);
+  const [selection, setSelection] = useState<{ slug: string; id: string } | null>(() =>
+    selectedSlug && initialSelectedPackageId ? { slug: selectedSlug, id: initialSelectedPackageId } : null
+  );
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [showOrders, setShowOrders] = useState(initialShowOrders);
   useEffect(() => {
@@ -229,14 +232,14 @@ export function EsimCatalogScreen({
   const term = search.trim().toLocaleLowerCase();
   const destinations = useMemo(() => {
     const all = catalog.data?.destinations ?? [];
-    if (term) return all.filter((item) => [item.title, esimDestinationTitle(item.title), item.countryCode, item.slug].some((field) => field.toLocaleLowerCase().includes(term)));
+    if (term) return all.filter((item) => [item.title, esimDestinationTitle(item.title, lang, item.countryCode), item.countryCode, item.slug].some((field) => field.toLocaleLowerCase().includes(term)));
     if (category === "popular") {
       // Curated shortcuts, not a claimed supplier popularity metric. Fall back to catalog order if none match.
       const curated = POPULAR_CODES.flatMap((code) => all.filter((item) => item.category === "local" && item.countryCode.toUpperCase() === code));
       return curated.length ? curated : all.slice(0, 12);
     }
     return all.filter((item) => item.category === category);
-  }, [catalog.data?.destinations, term, category]);
+  }, [catalog.data?.destinations, term, category, lang]);
   const rows = useMemo<PackageRow[]>(() => {
     const items = (destination?.packages ?? []).filter((item) => filter === "all" || (filter === "unlimited" ? item.isUnlimited : !item.isUnlimited));
     const sorted = [...items].sort((a, b) => a.validityDays - b.validityDays || (a.priceKwd ?? Infinity) - (b.priceKwd ?? Infinity));
@@ -282,13 +285,13 @@ export function EsimCatalogScreen({
   const renderDestination = useCallback(({ item }: { item: EsimCatalogDestination }) => (
     <Pressable
       testID={`esim-destination-${item.slug}`} accessibilityRole="button"
-      accessibilityLabel={`${esimDestinationTitle(item.title)}, ${t.plans(item.packageCount)}${price(item.minPriceKwd) ? `, ${t.from} ${price(item.minPriceKwd)}` : ""}`}
+      accessibilityLabel={`${esimDestinationTitle(item.title, lang, item.countryCode)}, ${t.plans(item.packageCount)}${price(item.minPriceKwd) ? `, ${t.from} ${price(item.minPriceKwd)}` : ""}`}
       onPress={() => chooseDestination(item.slug)}
       style={({ pressed }) => [styles.destinationCard, rtl && styles.reverse, pressed && styles.pressed]}
     >
       <DestinationVisual item={item} />
       <View style={[styles.destinationInfo, rtl && styles.alignEnd]}>
-        <Text style={[styles.destinationTitle, rtl && styles.rtl]} numberOfLines={1}>{esimDestinationTitle(item.title)}</Text>
+        <Text style={[styles.destinationTitle, rtl && styles.rtl]} numberOfLines={1}>{esimDestinationTitle(item.title, lang, item.countryCode)}</Text>
         <Text style={[styles.destinationMeta, rtl && styles.rtl]}>{t.plans(item.packageCount)}</Text>
       </View>
       {price(item.minPriceKwd) && <View style={rtl && styles.alignEnd}><Text style={styles.fromLabel}>{t.from}</Text><Text style={styles.destinationPrice}>{price(item.minPriceKwd)}</Text></View>}
@@ -338,7 +341,7 @@ export function EsimCatalogScreen({
       <Pressable onPress={goBack} hitSlop={8} testID="esim-back" accessibilityRole="button" accessibilityLabel={t.back} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
         <EsimIcon name={rtl ? "arrow-forward" : "arrow-back"} size={23} color={C.gold} />
       </Pressable>
-      <Text style={[styles.headerTitle, rtl && styles.rtl]} numberOfLines={1}>{showOrders ? t.myEsims : selectedSlug ? esimDestinationTitle(destination?.title ?? t.title) : t.title}</Text>
+      <Text style={[styles.headerTitle, rtl && styles.rtl]} numberOfLines={1}>{showOrders ? t.myEsims : selectedSlug ? esimDestinationTitle(destination?.title ?? t.title, lang, destination?.countryCode) : t.title}</Text>
       <View style={styles.headerSpacer} />
     </View>}
 
@@ -349,7 +352,7 @@ export function EsimCatalogScreen({
         ownedDetailStatus === "error" ? <Message icon="cloud-off" title={t.errorTitle} description={paymentStatusOrderId === selectedOwnedOrderId && paymentStatusMessage
           ? `${t.ordersUnavailable} ${paymentStatusMessage}` : t.ordersUnavailable} action={t.retry} onAction={onRetryOwnedDetail} rtl={rtl} /> :
         ownedOrderDetail ? <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 26 }}><View style={styles.orderDetail}>
-          <Text style={[styles.detailTitle, rtl && styles.rtl]}>{esimDestinationTitle(ownedOrderDetail.destinationTitle)}</Text>
+          <Text style={[styles.detailTitle, rtl && styles.rtl]}>{esimDestinationTitle(ownedOrderDetail.destinationTitle, lang)}</Text>
           <Text style={[styles.operator, rtl && styles.rtl]}>{ownedOrderDetail.packageTitle}</Text>
           <Text style={[styles.infoBody, rtl && styles.rtl]}>{t.orderStatus}: {ownedOrderDetail.status === "pending_review" ? (lang === "ar" ? "قيد المراجعة" : "Needs review") : ownedOrderDetail.status}</Text>
           {paymentStatusOrderId === ownedOrderDetail.id && ownedOrderDetail.status !== "completed" && paymentStatusMessage
@@ -365,10 +368,10 @@ export function EsimCatalogScreen({
       ) :
       ownedOrdersStatus === "loading" ? <LoadingCards /> :
        ownedOrdersStatus === "error" ? <Message icon="cloud-off" title={t.errorTitle} description={t.ordersUnavailable} action={onRetryOwnedOrders ? t.retry : undefined} onAction={onRetryOwnedOrders} rtl={rtl} /> :
-        ownedOrdersStatus !== "ready" ? <Message icon="receipt" title={t.ordersUnavailable} description={onRecoverGuest ? (paymentReturnRecovery
+        ownedOrdersStatus !== "ready" ? <>{!!checkoutNotice && <Text testID="esim-guest-payment-status" accessibilityLiveRegion="polite" style={[styles.checkoutNotice, rtl && styles.rtl]}>{checkoutNotice}</Text>}<Message icon="receipt" title={t.ordersUnavailable} description={onRecoverGuest ? (paymentReturnRecovery
           ? (lang === "ar" ? "إذا دفعت كزائر، استعد الطلب باستخدام بريد الشراء. لا يمكن تفعيل الشريحة برقم الطلب وحده؛ لا تبدأ الدفع مرة أخرى." : "If you paid as a guest, recover the order with your purchase email. An order ID alone cannot activate an eSIM; do not pay again.")
           : (lang === "ar" ? "إذا اشتريت كزائر، استعد الشريحة باستخدام بريد الشراء. أو سجّل الدخول لعرض شرائح حسابك." : "Bought as a guest? Recover your eSIM with your purchase email, or sign in to view account orders."))
-          : t.ordersHint} action={onRecoverGuest ? (lang === "ar" ? "استعادة شريحتي" : "Recover my eSIM") : undefined} onAction={onRecoverGuest} rtl={rtl} /> :
+          : t.ordersHint} action={onRecoverGuest ? (lang === "ar" ? "استعادة شريحتي" : "Recover my eSIM") : undefined} onAction={onRecoverGuest} rtl={rtl} /></> :
       <FlatList
         data={ownedOrders ?? []} keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 36 }]}
@@ -377,7 +380,7 @@ export function EsimCatalogScreen({
           <View style={[styles.packageTop, rtl && styles.reverse]}>
              <View style={styles.packageIcon}><EsimIcon name="credit-card" size={21} color={C.gold} /></View>
             <View style={[styles.packageHead, rtl && styles.alignEnd]}>
-              <Text style={[styles.packageTitle, rtl && styles.rtl]}>{esimDestinationTitle(item.destinationTitle)}</Text>
+              <Text style={[styles.packageTitle, rtl && styles.rtl]}>{esimDestinationTitle(item.destinationTitle, lang)}</Text>
               <Text style={[styles.operator, rtl && styles.rtl]}>{item.packageTitle}</Text>
             </View>
           </View>
@@ -405,7 +408,7 @@ export function EsimCatalogScreen({
               <View style={styles.detailBanner}><EsimIcon name={destination?.category === "local" ? "location" : "globe"} size={38} color="#FFFFFF" /><View style={styles.bannerLines}><View style={styles.bannerLine} /><View style={[styles.bannerLine, { width: 54 }]} /></View></View>
             <View style={[styles.detailIntro, rtl && styles.alignEnd]}>
               <Text style={styles.eyebrow}>{destination?.countryCode.toUpperCase()}</Text>
-              <Text style={[styles.detailTitle, rtl && styles.rtl]}>{esimDestinationTitle(destination?.title ?? "")}</Text>
+              <Text style={[styles.detailTitle, rtl && styles.rtl]}>{esimDestinationTitle(destination?.title ?? "", lang, destination?.countryCode)}</Text>
               <Text style={[styles.detailSub, rtl && styles.rtl]}>{t.plans(destination?.packages.length ?? 0)}</Text>
             </View>
             <View style={styles.infoCard}>

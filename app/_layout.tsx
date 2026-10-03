@@ -55,8 +55,9 @@ const bundledClerkProxyUrl =
 
 const API_BASE = (process.env.EXPO_PUBLIC_API_BASE ?? "https://dt-tour.com/api").replace(/\/$/, "");
 // Generated client paths already begin with /api. Native fetch requires an
-// absolute origin, while web must retain same-origin relative requests.
-if (Platform.OS !== "web") {
+// absolute origin. Expo development web has a separate preview host from
+// the API; published web retains its same-origin relative requests.
+if (Platform.OS !== "web" || __DEV__) {
   setBaseUrl(API_BASE.replace(/\/api\/?$/, ""));
 }
 const WEB_PAGE_TITLE = "DT Tours App - Your next trip starts here !";

@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./esim-static": "./src/esim-static.ts"
+    "./esim-static": "./src/esim-static.ts",
+    "./esim-localization": "./src/esim-localization.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.100.9"

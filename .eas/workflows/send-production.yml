@@ -1,11 +1,14 @@
-name: Publish Android production OTA
+name: Publish Android eSIM language and return fixes
 on:
   workflow_dispatch: {}
 jobs:
   update:
     type: update
     environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
     params:
       platform: android
       channel: production
-      message: Verified production update
+      message: eSIM localized countries, flags and secure checkout return

@@ -17,9 +17,11 @@ export function EsimCoverageSheet({ visible, onClose, lang, destination, plan, b
   const rtl = lang === "ar";
   // A local package covers its named destination even when the supplier omits the list.
   // Regional and global coverage must never be inferred from the region's name.
-  const countries = esimDisplayedCountries(destination, plan);
+  const countries = esimDisplayedCountries(destination, plan).map(country => ({
+    ...country, originalName: country.name, name: esimDestinationTitle(country.name, lang, country.code),
+  }));
   const matches = countries
-    .filter(({ name }) => name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+    .filter(({ name, originalName }) => [name, originalName].some(value => value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
   const close = () => { setSearch(""); onClose(); };
 
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
@@ -29,7 +31,7 @@ export function EsimCoverageSheet({ visible, onClose, lang, destination, plan, b
         <View style={[styles.header, rtl && styles.reverse]}>
           <View style={styles.heading}>
             <Text style={[styles.title, rtl && styles.rtl]}>{rtl ? "الدول والشبكات المشمولة" : "Countries & networks"}</Text>
-            <Text style={[styles.subtitle, rtl && styles.rtl]} numberOfLines={2}>{esimDestinationTitle(destination.title)} · {plan.title}</Text>
+            <Text style={[styles.subtitle, rtl && styles.rtl]} numberOfLines={2}>{esimDestinationTitle(destination.title, lang, destination.countryCode)} · {plan.title}</Text>
           </View>
           <Pressable testID="esim-coverage-close" accessibilityRole="button" accessibilityLabel={rtl ? "إغلاق" : "Close"} onPress={close} style={styles.close}>
             <Text style={styles.closeText}>×</Text>

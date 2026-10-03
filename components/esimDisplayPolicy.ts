@@ -1,12 +1,11 @@
 import type { EsimDestination, EsimPackage } from "@workspace/api-client-react";
+import { localizedEsimDestination } from "@workspace/api-client-react/esim-localization";
 
 const REGIONAL_SLUG = "middle-east-and-north-africa";
 
 /** Customer-facing label only; supplier identifiers and order snapshots stay unchanged. */
-export function esimDestinationTitle(title: string): string {
-  return title.trim().toLowerCase() === "middle east and north africa"
-    ? "GCC & North Africa"
-    : title;
+export function esimDestinationTitle(title: string, locale = "en", countryCode?: string): string {
+  return localizedEsimDestination(title, locale, countryCode);
 }
 
 /** Keep names, flags and country codes paired before excluding a displayed country. */

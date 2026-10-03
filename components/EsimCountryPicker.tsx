@@ -2,16 +2,12 @@ import React, { useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { esimCountryName, esimCountryFlag } from "@workspace/api-client-react/esim-localization";
 
 export type EsimCountryOption = { iso: string; name: string; englishName: string; dialCode: string };
 
 function countryName(iso: string, locale: string): string {
-  try {
-    const DisplayNames = Intl.DisplayNames;
-    return DisplayNames ? new DisplayNames([locale], { type: "region" }).of(iso) || iso : iso;
-  } catch {
-    return iso;
-  }
+  return esimCountryName(iso, locale);
 }
 
 export function getEsimCountryOptions(locale = "en"): EsimCountryOption[] {
@@ -65,7 +61,7 @@ export function EsimCountryPicker({ testID, selectedIso, locale, title, placehol
       style={styles.trigger}
     >
       <Text numberOfLines={1} style={[styles.triggerText, !selected && styles.placeholder]}>
-        {selected ? (mode === "dialCode" ? `+${selected.dialCode}  ${selected.name}` : selected.name) : placeholder}
+        {selected ? `${esimCountryFlag(selected.iso)}  ${mode === "dialCode" ? `+${selected.dialCode}  ${selected.name}` : selected.name}` : placeholder}
       </Text>
       <Text style={styles.chevron}>⌄</Text>
     </Pressable>
@@ -105,7 +101,7 @@ export function EsimCountryPicker({ testID, selectedIso, locale, title, placehol
               <Text style={styles.optionText}>
                 {mode === "dialCode" ? `+${item.dialCode}  ${item.name}` : item.name}
               </Text>
-              <Text style={styles.isoText}>{item.iso}</Text>
+              <Text accessibilityElementsHidden style={styles.isoText}>{esimCountryFlag(item.iso)}</Text>
             </Pressable>
           )}
           ListEmptyComponent={<Text style={styles.empty}>{locale.startsWith("ar") ? "لم يتم العثور على دولة" : "No countries found"}</Text>}

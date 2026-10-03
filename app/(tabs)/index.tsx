@@ -1661,6 +1661,11 @@ export default function HomeScreen() {
   const [profileScreenOpen, setProfileScreenOpen] = useState(false);
   const [homeLang, setHomeLang] = useState<HomeLang>("en");
   const [homeLangReady, setHomeLangReady] = useState(false);
+  useEffect(() => {
+    if (!homeLangReady || Platform.OS !== "web" || typeof window === "undefined") return;
+    const requested = new URLSearchParams(window.location.search).get("esimLanguage");
+    if (requested === "ar" || requested === "en") setHomeLang(requested);
+  }, [homeLangReady]);
   const [hotelDisplayPreferences, setHotelDisplayPreferences] = useState<HotelDisplayPreferences>(DEFAULT_HOTEL_DISPLAY_PREFERENCES);
   const [showWhereToGo, setShowWhereToGo] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
@@ -1669,6 +1674,7 @@ export default function HomeScreen() {
   const [showBookingChoice, setShowBookingChoice] = useState(false);
   const [nativeScreen, setNativeScreen] = useState<"flights" | "packages" | "contact" | "store" | "cart" | "members-offers" | "esim" | null>(null);
   const [esimDestinationSlug, setEsimDestinationSlug] = useState<string | null>(null);
+  const [esimInitialPackageId, setEsimInitialPackageId] = useState<string | null>(null);
   const [esimShowOrders, setEsimShowOrders] = useState(false);
   const [esimInitialOrderId, setEsimInitialOrderId] = useState<string | null>(null);
   const [esimPaymentReturnSeq, setEsimPaymentReturnSeq] = useState(0);
@@ -1790,6 +1796,7 @@ export default function HomeScreen() {
     if (!esimLink.open) return;
     setPrivateEsimLink(esimLink.privateTest);
     setEsimDestinationSlug(esimLink.destination);
+    setEsimInitialPackageId(esimLink.packageId ?? null);
     setEsimShowOrders(false);
     setNativeScreen("esim");
     transitionToShell(TABS[0].url);
@@ -2226,6 +2233,7 @@ export default function HomeScreen() {
                 privateTest={privateEsimLink}
                 onClose={closeNativeScreen}
                 selectedSlug={esimDestinationSlug}
+                initialSelectedPackageId={esimInitialPackageId}
                 onSelectDestination={setEsimDestinationSlug}
                 initialShowOrders={esimShowOrders}
                 initialOrderId={esimShowOrders ? esimInitialOrderId : null}

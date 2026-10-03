@@ -3,6 +3,8 @@ import { AppState, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, Sc
 import * as Crypto from "expo-crypto";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import * as WebBrowser from "expo-web-browser";
+import { ESIM_PAYMENT_APP_RETURN_URL, parseEsimPaymentReturnUrl } from "@/lib/esimPaymentReturn";
 import { useAuth, useUser } from "@clerk/expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EsimIcon } from "./EsimIcon";
@@ -12,6 +14,7 @@ import { EsimCountryPicker, getEsimCountryOptions, type EsimCountryOption } from
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateEsimOrder,
+  getEsimPaymentReturnStatus,
   useGetMyEsimBillingProfile,
   downloadMyEsimDocument,
   useGetMyEsimOrder,
@@ -46,6 +49,7 @@ type Props = {
   privateTest?: boolean;
   onClose: () => void;
   selectedSlug: string | null;
+  initialSelectedPackageId?: string | null;
   initialShowOrders?: boolean;
   initialOrderId?: string | null;
   paymentReturnSeq?: number;
@@ -227,6 +231,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
   const paymentReturnSeqRef = useRef(props.paymentReturnSeq ?? 0);
   const paymentStatusReturnSeqRef = useRef(0);
   const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
+  const nativePayment = useRef<{ orderId: string; sessionId: string | null | undefined } | null>(null);
   const inFlight = useRef(false);
   const quoteGate = useRef(new EsimQuoteSequence());
   const generation = useRef(0);
@@ -283,6 +288,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     setRecoveryNotice(null);
     setRecoveryError(null);
     attempt.current = null;
+    nativePayment.current = null;
     quoteGate.current.invalidate();
     setReview(null);
     setCheckoutItem(null);
@@ -362,6 +368,52 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     setPaymentStatusCheck({ orderId, sessionId, startedAt: Date.now(), phase: "checking" });
   }, [props.paymentReturnSeq, props.paymentReturnOrderId, guest, ready, sessionId]);
 
+  useEffect(() => {
+    const orderId = props.paymentReturnOrderId;
+    if (!guest || !orderId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const check = async () => {
+      try {
+        const status = await getEsimPaymentReturnStatus(orderId);
+        if (!active) return;
+        const messages = {
+          completed: ["Your eSIM is ready. Check your email for the invoice, QR and installation instructions.", "شريحتك جاهزة. تحقق من بريدك الإلكتروني للحصول على الفاتورة ورمز QR وتعليمات التثبيت."],
+          pending_review: ["Your eSIM order needs review because payment or supplier fulfillment could not be fully confirmed. Do not pay again. Contact the eSIM team about this same order.", "طلب الشريحة يحتاج إلى مراجعة لأن الدفع أو تسليم المورد لم يُؤكّد بالكامل. لا تدفع مرة أخرى. تواصل مع فريق الشرائح بشأن الطلب نفسه."],
+          payment_pending: ["Payment is still being checked for this same order. Do not pay again.", "جارٍ التحقق من الدفع للطلب نفسه. لا تدفع مرة أخرى."],
+          fulfillment_pending: ["We are confirming your eSIM with the supplier. Your QR will be emailed once ready. Do not pay again.", "جارٍ تأكيد الشريحة مع المورد. سنرسل رمز QR إلى بريدك عند جاهزيته. لا تدفع مرة أخرى."],
+          payment_failed: ["Payment was not confirmed. If your bank shows a charge, contact us before retrying.", "لم يُؤكّد الدفع. إذا ظهر خصم في حسابك البنكي فتواصل معنا قبل إعادة المحاولة."],
+        };
+        setCheckoutNotice(messages[status][props.lang === "ar" ? 1 : 0]);
+        if (status === "completed" || status === "payment_failed") return;
+      } catch {
+        if (!active) return;
+        setCheckoutNotice(props.lang === "ar"
+          ? "تعذر التحقق من حالة الطلب الآن. لا تدفع مرة أخرى؛ تحقق من البريد أو تواصل معنا بشأن الطلب نفسه."
+          : "Order status could not be verified yet. Do not pay again; check your email or contact us about this same order.");
+      }
+      if (active) timer = setTimeout(check, 15000);
+    };
+    void check();
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  }, [guest, props.paymentReturnOrderId, props.paymentReturnSeq, props.lang]);
+
+  useEffect(() => {
+    const launch = nativePayment.current;
+    if (!launch || launch.orderId !== props.paymentReturnOrderId || launch.sessionId !== sessionId) return;
+    // The Linking callback can arrive before openAuthSessionAsync resolves.
+    // Close only this buyer's original checkout, not a newer buyer's form.
+    nativePayment.current = null;
+    quoteGate.current.invalidate();
+    attempt.current = null;
+    setReview(null);
+    setCheckoutItem(null);
+    setCheckoutPending(false);
+    setPendingLink(false);
+    setEmailAcknowledged(false);
+    setCheckoutError(null);
+  }, [props.paymentReturnOrderId, props.paymentReturnSeq, sessionId]);
+
   const headers = ready ? { Authorization: `Bearer ${auth.token}` } : undefined;
   const billing = useGetMyEsimBillingProfile({
     query: { enabled: ready, queryKey: ["esim-billing-profile", accountKey] },
@@ -385,7 +437,11 @@ export function ConnectedEsimCatalogScreen(props: Props) {
   });
   const orderDetailQueryRef = useRef(detail);
   orderDetailQueryRef.current = detail;
-  const create = useCreateEsimOrder({ request: { headers } });
+  const create = useCreateEsimOrder({ request: { headers: {
+    ...headers,
+    "X-DT-Checkout-Surface": Platform.OS === "web" ? "webapp" : "native",
+    "X-DT-Language": props.lang,
+  } } });
   const quotePackage = useQuoteEsimPackage({ request: { headers } });
   const sendRecoveryCode = useSendEsimGuestRecoveryCode();
   const recoverOrders = useRecoverEsimGuestOrders();
@@ -708,8 +764,23 @@ export function ConnectedEsimCatalogScreen(props: Props) {
         if (Platform.OS === "web" && typeof window !== "undefined") {
           window.location.assign(result.paymentUrl);
         } else {
-          await Linking.openURL(result.paymentUrl);
+          // Use a secure in-app browser session, not the standalone browser.
+          // The server returns native checkouts to our registered app callback.
+          nativePayment.current = { orderId: result.order.orderId.toUpperCase(), sessionId: buyerSession };
+          const browserResult = await WebBrowser.openAuthSessionAsync(result.paymentUrl, ESIM_PAYMENT_APP_RETURN_URL);
+          if (sessionRef.current !== buyerSession || checkoutAuthRef.current.mode !== confirmedMode || !quoteGate.current.isCurrent(current)) return;
+          const returnedOrder = browserResult.type === "success" ? parseEsimPaymentReturnUrl(browserResult.url) : null;
+          if (!returnedOrder || returnedOrder.orderId !== result.order.orderId.toUpperCase()) {
+            // Dismissing a browser is not proof that payment failed. Preserve
+            // the original request key so reopening cannot create a new charge.
+            setPendingLink(true);
+            setCheckoutError(props.lang === "ar"
+              ? "أُغلقت نافذة الدفع. لم يُلغَ الطلب؛ يمكنك استئناف الدفع بنفس الطلب. لا تدفع مرة أخرى إذا خُصم المبلغ."
+              : "Payment window closed. The order was not cancelled; resume this same order. Do not pay again if you were charged.");
+            return;
+          }
         }
+        if (sessionRef.current !== buyerSession || checkoutAuthRef.current.mode !== confirmedMode || !quoteGate.current.isCurrent(current)) return;
         attempt.current = null;
         setPendingLink(false);
         setReview(null);
@@ -964,7 +1035,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
           <Text style={modalStyles.kicker}>{step === "customer" ? (props.lang === "ar" ? "٠١ / بيانات العميل" : "01 / CUSTOMER DETAILS") : (props.lang === "ar" ? "٠٢ / طريقة الدفع" : "02 / PAYMENT METHOD")}</Text>
           <Text style={modalStyles.formTitle}>{step === "customer" ? (props.lang === "ar" ? "لمن هذه الشريحة؟" : "Who’s travelling?") : (props.lang === "ar" ? "كيف تود الدفع؟" : "How would you like to pay?")}</Text>
           <Text style={modalStyles.formSubtitle}>{step === "customer" ? (props.lang === "ar" ? "نحتاج بياناتك لإصدار الطلب وإرسال تفاصيل شريحتك." : "These details are needed for your order and installation instructions.") : (props.lang === "ar" ? "اختر وسيلة الدفع، ثم راجع السعر النهائي قبل المتابعة." : "Choose a method, then review your final price before continuing.")}</Text>
-           <View style={modalStyles.productStrip}><EsimIcon name="cellular" size={24} color={BLUE} /><View style={{ flex: 1 }}><Text style={modalStyles.productStripTitle}>{esimDestinationTitle(checkoutItem?.destination.title ?? "")}</Text><Text style={modalStyles.productStripMeta}>{checkoutItem?.item.title}</Text></View><Text style={modalStyles.productStripPrice}>{checkoutItem?.item.priceKwd?.toFixed(3)} KWD</Text></View>
+           <View style={modalStyles.productStrip}><EsimIcon name="cellular" size={24} color={BLUE} /><View style={{ flex: 1 }}><Text style={modalStyles.productStripTitle}>{esimDestinationTitle(checkoutItem?.destination.title ?? "", props.lang, checkoutItem?.destination.countryCode)}</Text><Text style={modalStyles.productStripMeta}>{checkoutItem?.item.title}</Text></View><Text style={modalStyles.productStripPrice}>{checkoutItem?.item.priceKwd?.toFixed(3)} KWD</Text></View>
           {step === "customer" ? <>
               {(["firstName", "lastName", "email"] as const).map((field) => {
                 const labels = props.lang === "ar"
@@ -1067,7 +1138,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
               ? props.lang === "ar" ? "تحدّث السعر — راجعه مجدداً" : "Quote refreshed — review again"
               : props.lang === "ar" ? "تأكيد السعر النهائي" : "Confirm final price"}
           </Text>
-          <Text style={[modalStyles.product, props.lang === "ar" && modalStyles.rtl]}>{esimDestinationTitle(review?.quote.product.destination ?? "")} · {review?.quote.product.title}</Text>
+          <Text style={[modalStyles.product, props.lang === "ar" && modalStyles.rtl]}>{esimDestinationTitle(review?.quote.product.destination ?? "", props.lang)} · {review?.quote.product.title}</Text>
           {!!review && (review.quote.product.isUnlimited || review.quote.product.hasFairUsagePolicy) && (
             <Text style={[modalStyles.note, props.lang === "ar" && modalStyles.rtl]}>
               {props.lang === "ar" ? "قد تُطبّق سياسة الاستخدام العادل أو تخفيض السرعة." : "Fair-use or speed limits may apply."}

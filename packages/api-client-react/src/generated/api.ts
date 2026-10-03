@@ -25,6 +25,7 @@ import type {
   AdminEsimStockImportResponse,
   AdminEsimStockInput,
   AdminEsimStockResponse,
+  AdminHotelProfitDetailsResponse,
   ApiError,
   EsimBillingProfileResponse,
   EsimCatalogResponse,
@@ -51,6 +52,7 @@ import type {
   EsimQuoteInput,
   EsimQuoteResponse,
   EsimReconcileResponse,
+  GetAdminHotelProfitDetailsParams,
   GetHotelDealsParams,
   HealthStatus,
   HotelDealsResponse,
@@ -85,6 +87,91 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAdminHotelProfitDetailsUrl = (params?: GetAdminHotelProfitDetailsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/hotel-profit-details?${stringifiedParams}` : `/api/admin/hotel-profit-details`
+}
+
+/**
+ * Admin-only and read-only. Scans at most 200 paid confirmed/completed bookings per request. Sparse batches may be empty with a next cursor. No guest data, supplier identifiers, supplier lookups or recovery actions are returned or performed.
+ * @summary Read a bounded page of unverified hotel profit details
+ */
+export const getAdminHotelProfitDetails = async (params?: GetAdminHotelProfitDetailsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminHotelProfitDetailsResponse> => {
+
+  return customFetch<AdminHotelProfitDetailsResponse>(getGetAdminHotelProfitDetailsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminHotelProfitDetailsQueryKey = (params?: GetAdminHotelProfitDetailsParams,) => {
+    return [
+    `/api/admin/hotel-profit-details`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminHotelProfitDetailsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminHotelProfitDetails>>, TError = ErrorType<ApiError | void>>(params?: GetAdminHotelProfitDetailsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminHotelProfitDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminHotelProfitDetailsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminHotelProfitDetails>>> = ({ signal }) => getAdminHotelProfitDetails(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminHotelProfitDetails>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminHotelProfitDetailsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminHotelProfitDetails>>>
+export type GetAdminHotelProfitDetailsQueryError = ErrorType<ApiError | void>
+
+
+/**
+ * @summary Read a bounded page of unverified hotel profit details
+ */
+
+export function useGetAdminHotelProfitDetails<TData = Awaited<ReturnType<typeof getAdminHotelProfitDetails>>, TError = ErrorType<ApiError | void>>(
+ params?: GetAdminHotelProfitDetailsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminHotelProfitDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminHotelProfitDetailsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 
