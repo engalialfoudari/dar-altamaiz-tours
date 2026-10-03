@@ -5,6 +5,8 @@ import { EsimIcon, type EsimIconName } from "./EsimIcon";
 import { getEsimRegionImage } from "./EsimRegionImages";
 import { EsimCoverageSheet } from "./EsimCoverageSheet";
 import { EsimFaq } from "./EsimFaq";
+import { useAppLanguage } from "@/localization/provider";
+import { esimFairUseText } from "@/lib/esimFairUse";
 import EsimVerificationProgress from "./EsimVerificationProgress";
 import EsimPaymentSuccess from "./EsimPaymentSuccess";
 import {
@@ -201,6 +203,7 @@ export function EsimCatalogScreen({
   paymentReturnNotice,
   paymentSuccess,
 }: Props) {
+  const { locale } = useAppLanguage();
   const insets = useSafeAreaInsets();
   const rtl = lang === "ar";
   const t = copy[lang];
@@ -331,7 +334,7 @@ export function EsimCatalogScreen({
     const active = selection?.slug === selectedSlug && selection.id === item.id;
     return <Pressable
       testID={`esim-package-${item.id}`} accessibilityRole="button"
-      accessibilityLabel={`${item.title}, ${item.isUnlimited ? t.unlimited : item.data}, ${t.days(item.validityDays)}, ${price(item.priceKwd) ?? t.unavailable}${item.isUnlimited || item.hasFairUsagePolicy ? `, ${lang === "ar" ? "قد تُطبّق سياسة الاستخدام العادل أو تخفيض السرعة" : "Fair-use or speed limits may apply"}${item.fairUsagePolicy ? `: ${item.fairUsagePolicy}` : ""}` : ""}`}
+      accessibilityLabel={`${item.title}, ${item.isUnlimited ? t.unlimited : item.data}, ${t.days(item.validityDays)}, ${price(item.priceKwd) ?? t.unavailable}${item.isUnlimited || item.hasFairUsagePolicy ? `, ${esimFairUseText(item, locale === "tr" ? "tr" : lang)}` : ""}`}
       accessibilityState={{ selected: active }}
       onPress={() => setSelection({ slug: selectedSlug ?? "", id: item.id })}
       style={({ pressed }) => [styles.packageCard, active && styles.packageCardSelected, pressed && styles.pressed]}
@@ -342,8 +345,7 @@ export function EsimCatalogScreen({
           <Text style={[styles.packageTitle, rtl && styles.rtl]} numberOfLines={2}>{item.title}</Text>
           <Text style={styles.packageMeta}>{item.isUnlimited ? t.unlimited : (item.data || t.fixed)} · {t.days(item.validityDays)}</Text>
           {(item.isUnlimited || item.hasFairUsagePolicy) && <Text style={[styles.packageMeta, rtl && styles.rtl]}>
-            {lang === "ar" ? "قد تُطبّق سياسة الاستخدام العادل أو تخفيض السرعة." : "Fair-use or speed limits may apply."}
-            {item.fairUsagePolicy ? ` ${item.fairUsagePolicy}` : ""}
+            {esimFairUseText(item, locale === "tr" ? "tr" : lang)}
           </Text>}
         </View>
         <View style={rtl && styles.alignEnd}>

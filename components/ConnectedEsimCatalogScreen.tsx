@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getAppLocale } from "@/localization/engine";
 import { AppState, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Crypto from "expo-crypto";
 import { File, Paths } from "expo-file-system";
@@ -9,6 +10,8 @@ import { useAuth, useUser } from "@clerk/expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EsimIcon } from "./EsimIcon";
 import { esimDestinationTitle } from "./esimDisplayPolicy";
+import { useAppLanguage } from "@/localization/provider";
+import { esimFairUseText } from "@/lib/esimFairUse";
 import { EMPTY_BILLING, isValidE164, normalizeNationalPhone, parseBilling, serializeBilling, type BillingFields } from "./esimBilling";
 import { EsimCountryPicker, getEsimCountryOptions, type EsimCountryOption } from "./EsimCountryPicker";
 import { useQueryClient } from "@tanstack/react-query";
@@ -193,6 +196,7 @@ function parseUnambiguousProfilePhone(value: string): { iso: string; nationalNum
 }
 
 export function ConnectedEsimCatalogScreen(props: Props) {
+  const { locale } = useAppLanguage();
   const privateTestAvailable = isPrivateEsimTestEnabled(__DEV__, process.env.EXPO_PUBLIC_ESIM_PRIVATE_TEST);
   const privateCheckoutRestricted = props.privateTest === true
     || (!__DEV__ && process.env.EXPO_PUBLIC_ESIM_PRIVATE_TEST === "true");
@@ -949,8 +953,8 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     let handedToSharing = false;
     try {
       const pdf = (guestDownload
-        ? await downloadEsimGuestDocument({ ...recoveryProof!, orderId: id }, { headers: { Accept: "application/pdf" }, responseType: "arrayBuffer" })
-        : await downloadMyEsimDocument(id, { headers: { Authorization: `Bearer ${auth!.token}`, Accept: "application/pdf" }, responseType: "arrayBuffer" })) as unknown as ArrayBuffer;
+        ? await downloadEsimGuestDocument({ ...recoveryProof!, orderId: id }, { headers: { Accept: "application/pdf", "Accept-Language": getAppLocale() }, responseType: "arrayBuffer" })
+        : await downloadMyEsimDocument(id, { headers: { Authorization: `Bearer ${auth!.token}`, Accept: "application/pdf", "Accept-Language": getAppLocale() }, responseType: "arrayBuffer" })) as unknown as ArrayBuffer;
       if (!stillCurrent()) return;
       const bytes = new Uint8Array(pdf);
       if (bytes.length < 5 || String.fromCharCode(...bytes.subarray(0, 5)) !== "%PDF-") throw new Error("Invalid PDF document");
@@ -1261,8 +1265,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
           <Text style={[modalStyles.product, props.lang === "ar" && modalStyles.rtl]}>{esimDestinationTitle(review?.quote.product.destination ?? "", props.lang)} · {review?.quote.product.title}</Text>
           {!!review && (review.quote.product.isUnlimited || review.quote.product.hasFairUsagePolicy) && (
             <Text style={[modalStyles.note, props.lang === "ar" && modalStyles.rtl]}>
-              {props.lang === "ar" ? "قد تُطبّق سياسة الاستخدام العادل أو تخفيض السرعة." : "Fair-use or speed limits may apply."}
-              {review.quote.product.fairUsagePolicy ? ` ${review.quote.product.fairUsagePolicy}` : ""}
+              {esimFairUseText(review.quote.product, locale === "tr" ? "tr" : props.lang)}
             </Text>
           )}
           {!!review?.promoCode && <Text style={[modalStyles.promo, props.lang === "ar" && modalStyles.rtl]}>{props.lang === "ar" ? "رمز الخصم" : "Promo code"}: {review.promoCode}</Text>}
