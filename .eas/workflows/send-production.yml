@@ -1,6 +1,10 @@
 name: Publish Android eSIM language and return fixes
 on:
   workflow_dispatch: {}
+defaults:
+  image: sdk-54
+  tools:
+    node: "22.14.0"
 jobs:
   update:
     type: update
