@@ -54,6 +54,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import colors from "@/constants/colors";
 import {
   hotelPortalPrefillJavaScript,
+  HOTEL_PORTAL_HEADER_PRESENTATION_JS,
   requiresHotelPortalNavigation,
   hotelPortalUrlFor,
   hotelPortalUrlWithLanguage,
@@ -177,6 +178,7 @@ function hotelPortalInjectedJavaScript(token: string | null): string {
         };
       }
     })();
+    ${HOTEL_PORTAL_HEADER_PRESENTATION_JS}
     ${INJECTED_JS}
   `;
 }
@@ -1035,7 +1037,7 @@ export function WebShell({
               javaScriptCanOpenWindowsAutomatically
               userAgent={ANDROID_CHROME_USER_AGENT}
               injectedJavaScriptBeforeContentLoaded={hotelPortalInjectedJavaScript(hotelPortalToken ?? null)}
-              injectedJavaScript={INJECTED_JS}
+              injectedJavaScript={HOTEL_PORTAL_HEADER_PRESENTATION_JS + INJECTED_JS}
               injectedJavaScriptForMainFrameOnly
               onLoad={() => {
                 hotelPortalRef.current?.injectJavaScript?.(

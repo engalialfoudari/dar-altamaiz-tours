@@ -4,6 +4,25 @@ export const HOTEL_PAYMENT_APP_RETURN_URL = "dttours://hotel-payment-return";
 export const STORE_PAYMENT_APP_RETURN_URL = "dttours://store-payment-return";
 export const HOTEL_DISPLAY_PREFERENCES_STORAGE_KEY = "dt_hotel_display_preferences";
 
+// Keep the native portal logo-only even while its hosted HTML is awaiting
+// publication. Literal script text is safe for Metro/WebView serialization.
+export const HOTEL_PORTAL_HEADER_PRESENTATION_JS = String.raw`
+(function(){
+  function applyHotelHeaderPresentation(){
+    if(document.getElementById('dt-native-hotel-header-presentation'))return;
+    var parent=document.head||document.documentElement;
+    if(!parent)return;
+    var style=document.createElement('style');
+    style.id='dt-native-hotel-header-presentation';
+    style.textContent='.bk-header .bk-brand-name,.bk-header .bk-brand-sub{display:none!important}';
+    parent.appendChild(style);
+  }
+  applyHotelHeaderPresentation();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',applyHotelHeaderPresentation,{once:true});
+})();
+true;
+`;
+
 export type HotelDisplayPreferences = {
   priceDisplay: "per-night" | "total-stay";
   currency: "KWD" | "USD";
