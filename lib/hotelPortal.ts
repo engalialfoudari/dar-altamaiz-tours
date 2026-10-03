@@ -14,7 +14,7 @@ export const HOTEL_PORTAL_HEADER_PRESENTATION_JS = String.raw`
     if(!parent)return;
     var style=document.createElement('style');
     style.id='dt-native-hotel-header-presentation';
-    style.textContent='.bk-header .bk-brand-name,.bk-header .bk-brand-sub{display:none!important}';
+    style.textContent='.bk-header .bk-brand-name,.bk-header .bk-brand-sub{display:none!important}@media(max-width:480px){.bk-header{padding:13.2px 0!important}}';
     parent.appendChild(style);
   }
   applyHotelHeaderPresentation();
@@ -249,7 +249,7 @@ export function hotelPortalUrlFor(apiBase: string | undefined, isDevelopment: bo
   return `${normalizedApiBase.replace(/\/api$/, "")}/hotels?portalBuild=${DEVELOPMENT_HOTEL_PORTAL_BUILD}`;
 }
 
-export function hotelPortalUrlWithLanguage(portalUrl: string, language: "en" | "ar"): string {
+export function hotelPortalUrlWithLanguage(portalUrl: string, language: "en" | "ar" | "tr"): string {
   const url = new URL(portalUrl);
   url.searchParams.set("lang", language);
   return url.toString();
