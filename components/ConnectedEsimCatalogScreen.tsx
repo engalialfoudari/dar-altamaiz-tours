@@ -140,7 +140,8 @@ function validQuote(quote: EsimQuoteResponse, slug: string, packageId: string, p
     && Number.isSafeInteger(quote.baseAmountFils) && quote.baseAmountFils > 0
     && Number.isSafeInteger(quote.paymentFeeFils) && quote.paymentFeeFils >= 0
     && quote.baseAmountFils + quote.paymentFeeFils === quote.amountFils
-    && quote.paymentFeeFils === (paymentMethod === "knet" ? 0 : Math.round(quote.baseAmountFils * 0.025))
+    // The signed server quote owns pricing. Do not hard-code a gateway
+    // surcharge here: old and fee-free servers may coexist during rollout.
     && Math.round(quote.amountKwd * 1000) === quote.amountFils
     && quote.paymentMethod === paymentMethod
     && Number.isSafeInteger(quote.discountFils) && quote.discountFils >= 0
