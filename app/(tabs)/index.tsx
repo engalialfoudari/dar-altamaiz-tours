@@ -1680,6 +1680,12 @@ export default function HomeScreen() {
   const [esimPaymentReturnSeq, setEsimPaymentReturnSeq] = useState(0);
   const [esimPaymentReturnOrderId, setEsimPaymentReturnOrderId] = useState<string | null>(null);
   const [esimPaymentReturnRecovery, setEsimPaymentReturnRecovery] = useState(false);
+  useEffect(() => {
+    if (nativeScreen !== "esim") {
+      setEsimPaymentReturnOrderId(null);
+      setEsimPaymentReturnRecovery(false);
+    }
+  }, [nativeScreen]);
   const [privateEsimLink, setPrivateEsimLink] = useState(false);
   const canOpenEsim = isEsimReleased || privateEsimLink;
   const [showHotelPortal, setShowHotelPortal] = useState(false);

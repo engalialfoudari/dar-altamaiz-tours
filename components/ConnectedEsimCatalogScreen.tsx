@@ -1070,14 +1070,18 @@ export function ConnectedEsimCatalogScreen(props: Props) {
   return <>
     <EsimCatalogScreen
     {...props}
+    paymentReturnSeq={props.paymentReturnOrderId ? props.paymentReturnSeq : undefined}
     signedIn={ready}
     paymentStatusOrderId={paymentStatusCheck?.orderId}
     paymentStatusMessage={paymentStatusMessage}
     verificationActive={guest ? guestVerificationActive && !guestPayment : !!paymentStatusMessage && paymentStatusCheck?.phase === "checking"}
     verificationNextCheckAt={verificationNextCheckAt}
     paymentReturnNotice={guest && !guestPayment && props.paymentReturnOrderId && !guestVerificationActive ? checkoutNotice : null}
-    paymentSuccess={guest ? guestPayment : ownedDetail && (ownedDetail.paymentConfirmedAt || ownedDetail.status === "completed")
-      ? { confirmedAt: ownedDetail.paymentConfirmedAt ?? new Date().toISOString(), completed: ownedDetail.status === "completed", review: ownedDetail.status === "pending_review" } : null}
+    paymentSuccess={props.paymentReturnOrderId && (guest ? guestPayment : ownedDetail?.id === props.paymentReturnOrderId
+      && (ownedDetail.paymentConfirmedAt || ownedDetail.status === "completed"))
+      ? { noticeKey: `${props.paymentReturnOrderId}:${props.paymentReturnSeq ?? 0}`,
+          ...(guest ? guestPayment! : { confirmedAt: ownedDetail!.paymentConfirmedAt ?? new Date().toISOString(),
+            completed: ownedDetail!.status === "completed", review: ownedDetail!.status === "pending_review" }) } : null}
     paymentReturnRecovery={props.paymentReturnRecovery}
     onRecoverGuest={guest ? () => setRecoveryOpen(true) : undefined}
     onBuy={onBuy}

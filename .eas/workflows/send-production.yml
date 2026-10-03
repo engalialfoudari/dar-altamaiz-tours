@@ -1,4 +1,4 @@
-name: Publish Android eSIM payment success
+name: Publish temporary eSIM payment confirmation
 on:
   workflow_dispatch: {}
 defaults:
@@ -15,4 +15,4 @@ jobs:
     params:
       platform: android
       channel: production
-      message: Green verified eSIM payment success with asynchronous delivery guidance
+      message: Dismiss eSIM success confirmation after eight seconds or leaving the payment view

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EsimIcon, type EsimIconName } from "./EsimIcon";
@@ -47,7 +47,7 @@ type Props = {
   verificationActive?: boolean;
   verificationNextCheckAt?: number | null;
   paymentReturnNotice?: string | null;
-  paymentSuccess?: { confirmedAt: string; completed: boolean; review: boolean } | null;
+  paymentSuccess?: { noticeKey: string; confirmedAt: string; completed: boolean; review: boolean } | null;
   onSelectDestination: (slug: string | null) => void;
   /** Opens the customer-details step; guest checkout is supported. */
   onBuy?: (item: EsimPackage, destination: EsimDestination) => void;
@@ -212,6 +212,21 @@ export function EsimCatalogScreen({
   );
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [showOrders, setShowOrders] = useState(initialShowOrders);
+  const [dismissedSuccessKey, setDismissedSuccessKey] = useState<string | null>(null);
+  const successDeadline = useRef<{ key: string; expiresAt: number } | null>(null);
+  const successKey = paymentSuccess?.noticeKey ?? null;
+  const showPaymentSuccess = !!successKey && successKey !== dismissedSuccessKey;
+  useEffect(() => {
+    if (!showPaymentSuccess || !successKey) return;
+    if (successDeadline.current?.key !== successKey) {
+      successDeadline.current = { key: successKey, expiresAt: Date.now() + 8_000 };
+    }
+    const timer = setTimeout(
+      () => setDismissedSuccessKey(successKey),
+      Math.max(0, successDeadline.current.expiresAt - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [successKey, showPaymentSuccess]);
   useEffect(() => {
     if (paymentReturnSeq) setShowOrders(true);
   }, [paymentReturnSeq]);
@@ -281,17 +296,19 @@ export function EsimCatalogScreen({
     : null;
 
   const goBack = () => {
+    setDismissedSuccessKey(successKey);
     if (showOrders && selectedOwnedOrderId) onSelectOwnedOrder?.(null);
     else if (showOrders) setShowOrders(false);
     else if (selectedSlug) onSelectDestination(null);
     else onClose();
   };
   const chooseDestination = useCallback((slug: string) => {
+    setDismissedSuccessKey(successKey);
     setFilter("all");
     setSelection(null);
     setCoverageOpen(false);
     onSelectDestination(slug);
-  }, [onSelectDestination]);
+  }, [onSelectDestination, successKey]);
   const renderDestination = useCallback(({ item }: { item: EsimCatalogDestination }) => (
     <Pressable
       testID={`esim-destination-${item.slug}`} accessibilityRole="button"
@@ -356,7 +373,7 @@ export function EsimCatalogScreen({
     </View>}
 
     {verificationActive && <EsimVerificationProgress lang={lang} nextCheckAt={verificationNextCheckAt} />}
-    {paymentSuccess && <EsimPaymentSuccess lang={lang} signedIn={signedIn} {...paymentSuccess} />}
+    {showPaymentSuccess && paymentSuccess && <EsimPaymentSuccess lang={lang} signedIn={signedIn} {...paymentSuccess} />}
     {!!paymentReturnNotice && <Text testID="esim-payment-return-notice" accessibilityRole="text" style={[styles.infoBody, { marginHorizontal: 16, marginVertical: 8 }, rtl && styles.rtl]}>{paymentReturnNotice}</Text>}
     {showOrders ? (
       selectedOwnedOrderId ? (
