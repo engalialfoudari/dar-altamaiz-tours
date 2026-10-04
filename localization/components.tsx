@@ -41,7 +41,12 @@ function directedTextStyle(style: Native.StyleProp<Native.TextStyle>, direction:
   const centered = Native.StyleSheet.flatten(style)?.textAlign === "center";
   // Keep intentional centred controls; override accidental left-aligned Arabic
   // paragraphs without changing parent layout or the device's RTL setting.
-  return [style, { direction, writingDirection: direction, textAlign: centered ? "center" : direction === "rtl" ? "right" : "left" }];
+  // Android Fabric resolves left/right relative to Yoga's direction and then
+  // resolves them again against the script. An RTL Yoga text box therefore
+  // flips physical right alignment to the left. Keep its box LTR; only the
+  // text's reading direction is RTL. Parent rows and icon positions are intact.
+  const boxDirection = Native.Platform.OS === "android" ? "ltr" : direction;
+  return [style, { direction: boxDirection, writingDirection: direction, textAlign: centered ? "center" : direction === "rtl" ? "right" : "left" }];
 }
 export const Text = forwardRef<Native.Text, LocalizedTextProps>(({ dtDisplayData, ...props }, ref) => {
   useAppLanguage();
@@ -49,7 +54,12 @@ export const Text = forwardRef<Native.Text, LocalizedTextProps>(({ dtDisplayData
   const arabic = hasArabicCopy(children);
   const style = arabic ? directedTextStyle(props.style, "rtl")
     : dtDisplayData ? [props.style, { direction: "ltr" as const, writingDirection: "ltr" as const }] : props.style;
-  return <Native.Text {...propsCopy(props)} style={style} ref={ref}>{arabic ? isolateContacts(children) : children}</Native.Text>;
+  const display = arabic ? isolateContacts(children) : children;
+  // writingDirection is iOS-only in React Native. A zero-width RTL mark makes
+  // Android's first-strong heuristic read mixed Arabic/Latin paragraphs RTL,
+  // including sentences that begin with a Latin product name.
+  const directed = arabic && Native.Platform.OS === "android" ? ["\u200f", display] : display;
+  return <Native.Text {...propsCopy(props)} style={style} ref={ref}>{directed}</Native.Text>;
 });
 Text.displayName = "LocalizedText";
 export const TextInput = forwardRef<Native.TextInput, Native.TextInputProps>((props, ref) => {

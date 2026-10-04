@@ -250,7 +250,7 @@ export function ContactScreen({ lang, onStartRequest, onBack }: ContactScreenPro
           <Text style={[styles.intro, isRtl && styles.rtlText]}>{copy.intro}</Text>
         </View>
 
-        <View style={styles.sectionHeader}>
+        <View style={[styles.sectionHeader, isRtl && { flexDirection: "row-reverse" }]}>
           <Text style={[styles.sectionTitle, isRtl && styles.rtlText]}>{copy.details}</Text>
           <View style={styles.sectionLine} />
         </View>
@@ -326,7 +326,7 @@ export function ContactScreen({ lang, onStartRequest, onBack }: ContactScreenPro
           <HotelPortalIcon name={isRtl ? "chevron-back" : "chevron-forward"} size={19} color={navy} />
         </Pressable>
 
-        <View style={styles.sectionHeader}>
+        <View style={[styles.sectionHeader, isRtl && { flexDirection: "row-reverse" }]}>
           <Text style={[styles.sectionTitle, isRtl && styles.rtlText]}>{copy.legalTitle}</Text>
           <View style={styles.sectionLine} />
         </View>
