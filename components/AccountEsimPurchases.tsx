@@ -25,7 +25,7 @@ const labels = {
     viewAll: "View all", refresh: "Refresh eSIM orders",
     loading: "Loading your eSIMs…", error: "We couldn’t load your eSIMs.",
     retry: "Try again", empty: "No eSIM orders yet",
-    emptyBody: "eSIMs bought with this account will appear here. Guest purchases remain available through your purchase email.",
+    emptyBody: "Account purchases and guest purchases made with your verified account email appear here.",
     details: "View details", install: "Installation & download",
     reference: "Order", fallback: "Travel eSIM",
     statuses: {
@@ -38,7 +38,7 @@ const labels = {
     viewAll: "عرض الكل", refresh: "تحديث طلبات الشرائح",
     loading: "جارٍ تحميل شرائحك…", error: "تعذّر تحميل شرائحك الإلكترونية.",
     retry: "حاول مرة أخرى", empty: "لا توجد طلبات شرائح بعد",
-    emptyBody: "ستظهر هنا الشرائح التي اشتريتها بهذا الحساب. مشتريات الزوار متاحة عبر بريد الشراء.",
+    emptyBody: "تظهر هنا مشتريات الحساب ومشتريات الزائر التي تمت ببريد حسابك الموثّق.",
     details: "عرض التفاصيل", install: "التثبيت والتنزيل",
     reference: "الطلب", fallback: "شريحة سفر",
     statuses: {

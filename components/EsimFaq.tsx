@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppLanguage } from "@/localization/provider";
+import { EsimGuideModal, ESIM_GUIDE_COPY } from "./EsimGuideModal";
 
-const questions = {
+export const ESIM_FAQS = {
   en: [
     {
       question: "When should I buy an eSIM?",
@@ -78,10 +79,23 @@ export function EsimFaq({ lang }: { lang: "en" | "ar" }) {
   const { locale } = useAppLanguage();
   const displayLanguage = locale === "tr" ? "tr" : lang;
   const [open, setOpen] = useState<number | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const rtl = displayLanguage === "ar";
   return <View style={styles.section}>
     <Text style={[styles.title, rtl && styles.rtl]}>{displayLanguage === "tr" ? "Sıkça sorulan sorular" : rtl ? "الأسئلة الشائعة" : "Frequently asked questions"}</Text>
-    {questions[displayLanguage].map(({ question, answer }, index) => (
+    <View style={styles.card}>
+      <Pressable testID="esim-watch-guide" accessibilityRole="button"
+        accessibilityLabel={`${ESIM_GUIDE_COPY[displayLanguage].watch} — ${ESIM_GUIDE_COPY[displayLanguage].narration}`}
+        style={[styles.row, rtl && styles.reverse]} onPress={() => setGuideOpen(true)}>
+        <View style={styles.guideCopy}>
+          <Text style={[styles.question, styles.guideTitle, rtl && styles.rtl]}>{ESIM_GUIDE_COPY[displayLanguage].watch}</Text>
+          <Text style={[styles.guideNarration, rtl && styles.rtl]}>{ESIM_GUIDE_COPY[displayLanguage].narration}</Text>
+        </View>
+        <Text style={styles.chevron}>▷</Text>
+      </Pressable>
+    </View>
+    {guideOpen && <EsimGuideModal language={displayLanguage} onClose={() => setGuideOpen(false)} />}
+    {ESIM_FAQS[displayLanguage].map(({ question, answer }, index) => (
       <View key={index} style={styles.card}>
         <Pressable
           testID={`esim-faq-${index}`}
@@ -105,6 +119,9 @@ const styles = StyleSheet.create({
   title: { color: "#202A36", fontSize: 18, fontWeight: "800", marginBottom: 3 },
   card: { borderRadius: 12, borderWidth: 1, borderColor: "#D8DFE7", backgroundColor: "#FFFFFF", overflow: "hidden" },
   row: { minHeight: 58, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 10 },
+  guideCopy: { flex: 1, paddingVertical: 12, gap: 4 },
+  guideTitle: { flex: 0 },
+  guideNarration: { color: "#687583", fontSize: 13, lineHeight: 20 },
   reverse: { flexDirection: "row-reverse" },
   question: { flex: 1, color: "#202A36", fontSize: 14, fontWeight: "700" },
   chevron: { color: "#003580", fontSize: 22, lineHeight: 26 },

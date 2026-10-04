@@ -11,7 +11,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HotelPortalIcon } from "@/components/HotelPortalIcon";
+import { ESIM_FAQS } from "@/components/EsimFaq";
 import { CUSTOMER_BOOKING_GUIDANCE } from "@/lib/bookingRules";
+import { useAppLanguage } from "@/localization/provider";
 
 export type Language = "en" | "ar";
 
@@ -21,7 +23,7 @@ export type FaqItem = {
   answer: string;
 };
 
-type FaqCategory = "flights" | "hotels" | "packages" | "payments" | "account" | "support";
+type FaqCategory = "flights" | "hotels" | "packages" | "esim" | "payments" | "account" | "support";
 
 const colors = {
   navy: "#003580",
@@ -35,6 +37,7 @@ const colors = {
 
 export const FAQS: Record<Language, FaqItem[]> = {
   en: [
+    ...ESIM_FAQS.en.map((item): FaqItem => ({ ...item, category: "esim" })),
     {
       category: "packages",
       question: "What can I arrange through the DT Tours app?",
@@ -407,6 +410,7 @@ export const FAQS: Record<Language, FaqItem[]> = {
     },
   ],
   ar: [
+    ...ESIM_FAQS.ar.map((item): FaqItem => ({ ...item, category: "esim" })),
     {
       category: "packages",
       question: "ما الخدمات التي يمكنني ترتيبها عبر تطبيق DT Tours؟",
@@ -785,6 +789,7 @@ const CATEGORY_LABELS: Record<Language, Record<FaqCategory, string>> = {
     flights: "Flights",
     hotels: "Hotels",
     packages: "Packages",
+    esim: "eSIM",
     payments: "Payments",
     account: "Account",
     support: "Support",
@@ -793,13 +798,14 @@ const CATEGORY_LABELS: Record<Language, Record<FaqCategory, string>> = {
     flights: "الطيران",
     hotels: "الفنادق",
     packages: "الباقات",
+    esim: "eSIM",
     payments: "الدفع",
     account: "الحساب",
     support: "الدعم",
   },
 };
 
-const CATEGORIES: FaqCategory[] = ["flights", "hotels", "packages", "payments", "account", "support"];
+const CATEGORIES: FaqCategory[] = ["flights", "hotels", "packages", "esim", "payments", "account", "support"];
 
 export function FaqModal({
   visible,
@@ -811,21 +817,30 @@ export function FaqModal({
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const isRtl = lang === "ar";
-  const title = isRtl ? "الأسئلة الشائعة" : "Frequently asked questions";
+  const { locale } = useAppLanguage();
+  const isTurkish = locale === "tr";
+  const isRtl = !isTurkish && lang === "ar";
+  const title = isTurkish ? "Sıkça sorulan sorular" : isRtl ? "الأسئلة الشائعة" : "Frequently asked questions";
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<FaqCategory>("flights");
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleFaqs = useMemo(
-    () =>
-      FAQS[lang].filter(
+    () => {
+      const faqs = isTurkish
+        ? [
+            ...FAQS.en.filter((item) => item.category !== "esim"),
+            ...ESIM_FAQS.tr.map((item): FaqItem => ({ ...item, category: "esim" })),
+          ]
+        : FAQS[lang];
+      return faqs.filter(
         (item) =>
           (normalizedQuery.length > 0 || item.category === activeCategory) &&
           (normalizedQuery.length === 0 ||
             `${item.question} ${item.answer}`.toLocaleLowerCase().includes(normalizedQuery)),
-      ),
-    [activeCategory, lang, normalizedQuery],
+      );
+    },
+    [activeCategory, lang, isTurkish, normalizedQuery],
   );
 
   return (
@@ -845,7 +860,7 @@ export function FaqModal({
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={isRtl ? "إغلاق الأسئلة الشائعة" : "Close frequently asked questions"}
+            accessibilityLabel={isTurkish ? "Sıkça sorulan soruları kapat" : isRtl ? "إغلاق الأسئلة الشائعة" : "Close frequently asked questions"}
             onPress={onClose}
             style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
             testID="faq-close"
@@ -865,10 +880,10 @@ export function FaqModal({
                 setQuery(value);
                 setExpandedQuestion(null);
               }}
-              placeholder={isRtl ? "كيف يمكننا مساعدتك؟" : "How can we help you?"}
+              placeholder={isTurkish ? "Size nasıl yardımcı olabiliriz?" : isRtl ? "كيف يمكننا مساعدتك؟" : "How can we help you?"}
               placeholderTextColor="#94A3B8"
               style={[styles.searchInput, isRtl && styles.rtlText]}
-              accessibilityLabel={isRtl ? "البحث في الأسئلة الشائعة" : "Search frequently asked questions"}
+              accessibilityLabel={isTurkish ? "Sıkça sorulan sorularda ara" : isRtl ? "البحث في الأسئلة الشائعة" : "Search frequently asked questions"}
               testID="faq-search"
             />
             {query.length > 0 && (
@@ -878,7 +893,7 @@ export function FaqModal({
                   setExpandedQuestion(null);
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={isRtl ? "مسح البحث" : "Clear search"}
+                accessibilityLabel={isTurkish ? "Aramayı temizle" : isRtl ? "مسح البحث" : "Clear search"}
                 style={styles.clearSearch}
                 testID="faq-search-clear"
               >
@@ -910,7 +925,7 @@ export function FaqModal({
                   testID={`faq-tab-${category}`}
                 >
                   <Text style={[styles.tabText, selected && styles.tabTextActive]}>
-                    {CATEGORY_LABELS[lang][category]}
+                    {CATEGORY_LABELS[isTurkish ? "en" : lang][category]}
                   </Text>
                 </Pressable>
               );
@@ -958,10 +973,10 @@ export function FaqModal({
             <View style={styles.emptyState}>
               <HotelPortalIcon name="search" size={32} color={colors.muted} />
               <Text style={[styles.emptyTitle, isRtl && styles.rtlText]}>
-                {isRtl ? "لم نعثر على سؤال مطابق" : "No matching question found"}
+                {isTurkish ? "Eşleşen soru bulunamadı" : isRtl ? "لم نعثر على سؤال مطابق" : "No matching question found"}
               </Text>
               <Text style={[styles.emptyText, isRtl && styles.rtlText]}>
-                {isRtl ? "جرّب كلمات أخرى أو اختر فئة مختلفة." : "Try different words or choose another category."}
+                {isTurkish ? "Farklı kelimeler deneyin veya başka bir kategori seçin." : isRtl ? "جرّب كلمات أخرى أو اختر فئة مختلفة." : "Try different words or choose another category."}
               </Text>
             </View>
           )}

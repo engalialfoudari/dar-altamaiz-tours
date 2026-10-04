@@ -6,7 +6,7 @@ export const ESIM_LEGAL_DISCLOSURE: Record<"en" | "ar" | "tr", readonly string[]
     "The travel licences and IATA accreditation listed above relate to the stated travel activities; they do not imply telecommunications-operator licensing or regulatory approval for eSIM services. This disclosure does not relieve DT Tours of its own legal obligations concerning sales, payments and customer support, or restrict mandatory consumer rights under Kuwaiti law, including Consumer Protection Law No. 39 of 2014.",
   ],
   ar: [
-    "إفصاح بشأن خدمات شرائح الاتصال الإلكترونية (eSIM): دار التميز تورز (DT Tours) شركة سياحة وسفر، وليست شركة اتصالات أو مشغّلاً لشبكة اتصالات متنقلة. تُعرض باقات eSIM للسفر عبر التطبيق من خلال Airalo (AirGSM Pte. Ltd.)، وهي منصة خارجية لتجميع وتوفير خدمات الاتصال.",
+    "إفصاح بشأن خدمات شرائح الاتصال الإلكترونية (eSIM): دار التميز تورز (DT Tours) شركة سياحية، وليست شركة اتصالات أو مشغّلاً لشبكة اتصالات متنقلة. تُعرض باقات eSIM للسفر عبر التطبيق من خلال Airalo (AirGSM Pte. Ltd.)، وهي منصة خارجية لتجميع وتوفير خدمات الاتصال.",
     "تتولى دار التميز تورز بيع هذه الباقات ومعالجة مدفوعات العملاء وتقديم المساعدة لهم. تُقدَّم خدمة الاتصال عبر مزوّدي الشبكات المشاركين لدى Airalo. وتُحدد التغطية والتفعيل والصلاحية والسرعة وحدود الاستخدام العادل بحسب معلومات الباقة المختارة وشروط مزوّد الخدمة ذات الصلة، وعلى العميل الاطلاع عليها قبل الشراء.",
     "التراخيص السياحية واعتماد IATA المبينة أعلاه تتعلق بأنشطة السفر المذكورة، ولا يُستدل بها على ترخيص لتشغيل شبكة اتصالات أو اعتماد تنظيمي لخدمات eSIM. ولا يترتب على هذا الإفصاح إعفاء دار التميز تورز من التزاماتها القانونية الخاصة بالبيع والمدفوعات وخدمة العملاء، أو تقييد الحقوق الإلزامية للمستهلك بموجب التشريعات الكويتية، بما فيها القانون رقم 39 لسنة 2014 بشأن حماية المستهلك.",
   ],

@@ -74,6 +74,9 @@ import {
   serializeHotelDisplayPreferencesMessage,
 } from "@/lib/hotelPortal";
 import { HotelPortalIcon } from "@/components/HotelPortalIcon";
+import { HotelDocumentStatus } from "@/components/HotelDocumentStatus";
+import { requiresHotelDocumentReadiness, useHotelDocumentReadiness } from "@/lib/hotelDocumentReadiness";
+import { useBookingPageLocale, useBookingDocumentLocale, bookingLocaleInjection, bookingLocaleMessage } from "@/lib/bookingPageLocale";
 
 const { gold, navy } = colors.light;
 
@@ -516,7 +519,6 @@ export function WebShell({
   const { getToken, isSignedIn, sessionId } = useAuth();
   const { addItems } = useCart();
   const webviewRef = useRef<any>(null);
-  const { locale: portalDisplayLocale } = useAppLanguage();
   const canGoBack = useRef(false);
   const hotelPortalRef = useRef<any>(null);
   const hotelPortalNativeCanGoBack = useRef(false);
@@ -541,22 +543,31 @@ export function WebShell({
 
   const [hotelPortalToken, setHotelPortalToken] = useState<string | null | undefined>(undefined);
   const [nativeSessionVersion, setNativeSessionVersion] = useState(0);
-  const hotelPortalSourceLanguage = useRef(activeLang ?? "en");
+  const { locale: pageLocale } = useAppLanguage();
+  const hotelPortalSourceLanguage = useBookingDocumentLocale(hotelPortalUrl, hotelPortalVisible, pageLocale);
+  const injectLegacyLocale = useCallback((script: string) => {
+    webviewRef.current?.injectJavaScript?.(script);
+  }, []);
+  const legacyLocale = useBookingPageLocale(API_BASE, pageLocale, initialUrl, injectLegacyLocale);
+  useEffect(() => {
+    hotelPortalRef.current?.injectJavaScript?.(bookingLocaleInjection(pageLocale));
+  }, [pageLocale]);
   const localizedHotelPortalUrl = hotelPortalUrlWithLanguage(
     hotelPortalUrl,
-    hotelPortalSourceLanguage.current,
+    hotelPortalSourceLanguage,
   );
   const hotelPortalSource = useMemo(() => ({
     uri: localizedHotelPortalUrl,
   }), [hotelPortalInstance, localizedHotelPortalUrl]);
+  const hotelDocument = useHotelDocumentReadiness(
+    `${hotelPortalInstance}:${localizedHotelPortalUrl}`,
+    (message) => hotelPortalRef.current?.injectJavaScript?.(
+      `window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(message)}}));true;`,
+    ),
+    requiresHotelDocumentReadiness(localizedHotelPortalUrl),
+  );
   const lastExternalPaymentUrl = useRef("");
   const hotelPortalDismissed = useRef(false);
-  useEffect(() => {
-    if (!hotelPortalVisible) return;
-    hotelPortalRef.current?.injectJavaScript?.(
-      `if(typeof window.setLang==='function')window.setLang(${JSON.stringify(portalDisplayLocale)});true;`,
-    );
-  }, [portalDisplayLocale, hotelPortalVisible]);
 
   useEffect(() => {
     if (hotelPortalVisible) hotelPortalDismissed.current = false;
@@ -588,7 +599,6 @@ export function WebShell({
     if (!hotelPortalVisible) {
       hotelPortalNativeCanGoBack.current = false;
       hotelPortalInPageCanGoBack.current = false;
-      hotelPortalSourceLanguage.current = activeLang ?? "en";
     }
   }, [activeLang, hotelPortalVisible]);
 
@@ -945,6 +955,7 @@ export function WebShell({
           onNavigationStateChange={(navState: any) => {
             canGoBack.current = navState.canGoBack;
             setCanGoBackState(navState.canGoBack);
+            legacyLocale.navigated(navState.url);
           }}
           onLoadStart={() => {
             // Only show loading overlay on the very first load of the session.
@@ -961,9 +972,10 @@ export function WebShell({
               setLoading(false);
             }
           }}
-          onLoadEnd={() => {
+          onLoadEnd={({ nativeEvent }: any) => {
             hasInitiallyLoaded.current = true;
             setLoading(false);
+            legacyLocale.loaded(nativeEvent.url);
           }}
           userAgent={ANDROID_CHROME_USER_AGENT}
           onError={(syntheticEvent: any) => {
@@ -1039,7 +1051,13 @@ export function WebShell({
               injectedJavaScriptBeforeContentLoaded={hotelPortalInjectedJavaScript(hotelPortalToken ?? null)}
               injectedJavaScript={HOTEL_PORTAL_HEADER_PRESENTATION_JS + INJECTED_JS}
               injectedJavaScriptForMainFrameOnly
+              onError={() => hotelDocument.fail()}
+              onHttpError={(event: any) => {
+                if (event.nativeEvent?.statusCode >= 400) hotelDocument.fail();
+              }}
               onLoad={() => {
+                hotelDocument.probe();
+                hotelPortalRef.current?.injectJavaScript?.(bookingLocaleInjection(pageLocale));
                 hotelPortalRef.current?.injectJavaScript?.(
                   hotelPortalPrefillJavaScript(hotelPortalOverrideUrl),
                 );
@@ -1054,14 +1072,16 @@ export function WebShell({
                 hotelPortalRef.current?.injectJavaScript?.(
                   `window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(serialized)}}));true;`,
                 );
-                hotelPortalRef.current?.injectJavaScript?.(
-                  `if(typeof window.setLang==='function')window.setLang(${JSON.stringify(portalDisplayLocale)});true;`,
-                );
               }}
               onMessage={(event: any) => {
                 const rawMessage = event.nativeEvent?.data ?? "";
                 try {
                   const message = JSON.parse(rawMessage);
+                  if (message?.type === "dt-hotel-document-ready") {
+                    if (new URL(String(event.nativeEvent?.url ?? "")).origin ===
+                        new URL(hotelPortalUrl).origin) hotelDocument.acknowledge(message);
+                    return;
+                  }
                   if (message?.type === "dt-open-native-account") {
                     hotelPortalDismissed.current = true;
                     onCloseHotelPortal("profile");
@@ -1111,9 +1131,16 @@ export function WebShell({
               showsHorizontalScrollIndicator={false}
               showsVerticalScrollIndicator={false}
             />
+            <HotelDocumentStatus state={hotelDocument.state} language={pageLocale}
+              onRetry={() => setHotelPortalInstance(value => value + 1)} />
         </View>
 
         {loading && !hasError && !showNativeHome && !hotelPortalVisible && <SkeletonLoader />}
+        {legacyLocale.error && !showNativeHome && !hotelPortalVisible && (
+          <Pressable onPress={() => void legacyLocale.retry()} accessibilityRole="button">
+            <Text>{legacyLocale.error}</Text>
+          </Pressable>
+        )}
 
         {webError !== null && (
           <View style={[StyleSheet.absoluteFillObject, styles.webErrorScreen]}>
@@ -1282,7 +1309,6 @@ export function WebIframeShell({
   const { getToken, isSignedIn, sessionId } = useAuth();
   const { addItems } = useCart();
   const { width, height } = useWindowDimensions();
-  const { locale: portalDisplayLocale } = useAppLanguage();
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [webUrl, setWebUrl] = useState(initialUrl);
   const [showInfo, setShowInfo] = useState(false);
@@ -1301,18 +1327,43 @@ export function WebIframeShell({
   }, [hotelPortalOverrideUrl]);
   const [hotelPortalToken, setHotelPortalToken] = useState<string | null>(null);
   const hotelPortalFrameRef = useRef<any>(null);
-  const hotelPortalSourceLanguage = useRef(activeLang ?? "en");
-  const localizedHotelPortalUrl = hotelPortalUrlWithLanguage(hotelPortalUrl, hotelPortalSourceLanguage.current);
-  const hotelPortalDismissed = useRef(false);
-  const sendHotelPortalLanguage = useCallback(() => {
-    hotelPortalFrameRef.current?.contentWindow?.postMessage(
-      { source: "dt-portal-display-language", language: portalDisplayLocale },
-      new URL(localizedHotelPortalUrl).origin,
-    );
-  }, [portalDisplayLocale, localizedHotelPortalUrl]);
+  const legacyFrameRef = useRef<any>(null);
+  const [legacyDocumentVersion, setLegacyDocumentVersion] = useState(0);
+  const { locale: pageLocale } = useAppLanguage();
   useEffect(() => {
-    if (hotelPortalVisible) sendHotelPortalLanguage();
-  }, [hotelPortalVisible, sendHotelPortalLanguage]);
+    let active = true;
+    async function synchronizeLegacyFrame() {
+      let map = {};
+      if (pageLocale !== "en") {
+        const response = await fetch(`${API_BASE}/fetch-translate-page`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: webUrl, lang: pageLocale }),
+        });
+        if (!response.ok) return;
+        map = (await response.json()).map;
+      }
+      if (active) legacyFrameRef.current?.contentWindow?.postMessage(
+        { type: "dt-legacy-locale", language: pageLocale, map }, new URL(webUrl).origin,
+      );
+    }
+    void synchronizeLegacyFrame().catch(() => {});
+    return () => { active = false; };
+  }, [pageLocale, webUrl, legacyDocumentVersion]);
+  const hotelPortalSourceLanguage = useBookingDocumentLocale(hotelPortalUrl, hotelPortalVisible, pageLocale);
+  useEffect(() => {
+    hotelPortalFrameRef.current?.contentWindow?.postMessage(
+      bookingLocaleMessage(pageLocale), new URL(hotelPortalUrl).origin,
+    );
+  }, [pageLocale, hotelPortalUrl]);
+  const localizedHotelPortalUrl = hotelPortalUrlWithLanguage(hotelPortalUrl, hotelPortalSourceLanguage);
+  const hotelDocument = useHotelDocumentReadiness(
+    `${hotelPortalInstance}:${localizedHotelPortalUrl}`,
+    (message) => hotelPortalFrameRef.current?.contentWindow?.postMessage(
+      message, new URL(localizedHotelPortalUrl).origin,
+    ),
+    requiresHotelDocumentReadiness(localizedHotelPortalUrl),
+  );
+  const hotelPortalDismissed = useRef(false);
 
   useEffect(() => {
     if (isSignedIn === false) {
@@ -1356,7 +1407,6 @@ export function WebIframeShell({
 
   useEffect(() => {
     if (hotelPortalVisible) hotelPortalDismissed.current = false;
-    else hotelPortalSourceLanguage.current = activeLang ?? "en";
   }, [activeLang, hotelPortalVisible]);
 
   const handleProfileAuthenticated = useCallback(() => {
@@ -1394,6 +1444,16 @@ export function WebIframeShell({
         : JSON.stringify(event.data);
       try {
         const message = JSON.parse(rawMessage);
+        if (message?.type === "dt-hotel-document-ready") {
+          if (hotelDocument.acknowledge(message)) {
+            sendHotelPortalToken();
+            sendHotelPortalDisplayPreferences();
+            hotelPortalFrameRef.current?.contentWindow?.postMessage(
+              bookingLocaleMessage(pageLocale), expectedOrigin,
+            );
+          }
+          return;
+        }
         if (message?.type === "dt-add-to-cart") {
           if (Array.isArray(message.items)) {
             addItems(message.items);
@@ -1426,7 +1486,9 @@ export function WebIframeShell({
     };
     window.addEventListener("message", handlePortalMessage);
     return () => window.removeEventListener("message", handlePortalMessage);
-  }, [localizedHotelPortalUrl, onCloseHotelPortal, onHotelPortalLanguageChange, onHotelPortalLoggedOut]);
+  }, [localizedHotelPortalUrl, hotelDocument.acknowledge, sendHotelPortalToken,
+    sendHotelPortalDisplayPreferences, pageLocale, onCloseHotelPortal,
+    onHotelPortalLanguageChange, onHotelPortalLoggedOut]);
 
   // Keep the Account icon native in browser preview as well as iOS/Android.
   useEffect(() => {
@@ -1571,6 +1633,8 @@ export function WebIframeShell({
       )}
       <View style={styles.webArea}>
         {!hotelPortalVisible && (showNativeHome && nativeHome ? nativeHome : <iframe
+          ref={legacyFrameRef}
+          onLoad={() => setLegacyDocumentVersion(version => version + 1)}
           src={webUrl}
           // sandbox without allow-popups forces target="_blank" hotel/tour links
           // to navigate inside the iframe (treated as _self per HTML spec)
@@ -1594,11 +1658,20 @@ export function WebIframeShell({
               ref={hotelPortalFrameRef}
               key={`hotel-portal-${hotelPortalInstance}`}
               src={localizedHotelPortalUrl}
-              onLoad={() => { sendHotelPortalToken(); sendHotelPortalDisplayPreferences(); sendHotelPortalLanguage(); }}
+              onError={() => hotelDocument.fail()}
+              onLoad={() => {
+                hotelDocument.probe();
+                sendHotelPortalToken(); sendHotelPortalDisplayPreferences();
+                hotelPortalFrameRef.current?.contentWindow?.postMessage(
+                  bookingLocaleMessage(pageLocale), new URL(hotelPortalUrl).origin,
+                );
+              }}
               sandbox="allow-scripts allow-forms allow-same-origin allow-top-navigation-by-user-activation allow-modals"
               style={{ flex: 1, width: "100%", height: "100%", border: "none" } as any}
               title="D.T. Tours Hotels"
             />
+            <HotelDocumentStatus state={hotelDocument.state} language={pageLocale}
+              onRetry={() => setHotelPortalInstance(value => value + 1)} />
         </View>
         {showRequests && (
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#0A1628" }]}>
@@ -1734,7 +1807,7 @@ export default function HomeScreen() {
   useEffect(() => {
     AsyncStorage.getItem("home_lang")
       .then((l) => {
-        if (l === "ar" || l === "en") setHomeLang(l);
+        if (l === "ar" || l === "en" || l === "tr") setHomeLang(l === "tr" ? "en" : l);
       })
       .catch(() => {})
       .finally(() => setHomeLangReady(true));
@@ -1760,8 +1833,8 @@ export default function HomeScreen() {
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener(
       "homeLanguageChanged",
-      (language: HomeLang) => {
-        if (language === "ar" || language === "en") setHomeLang(language);
+      (language: AppLocale) => {
+        if (language === "ar" || language === "en" || language === "tr") setHomeLang(language === "tr" ? "en" : language);
       },
     );
     return () => subscription.remove();

@@ -24,6 +24,7 @@ import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
 import { isEsimReleased } from "@/lib/esimRelease";
 import { useAccountRequestGuard } from "@/hooks/useAccountRequestGuard";
 import { AccountEsimPurchases } from "./AccountEsimPurchases";
+import { AccountSecuritySettings } from "./AccountSecuritySettings";
 import {
   DEFAULT_HOTEL_DISPLAY_PREFERENCES,
   formatHotelDisplayPrice,
@@ -252,7 +253,7 @@ export function ProfileScreen({
 }) {
   const insets = useSafeAreaInsets();
   const { startGoogleAuthenticationFlow } = useSignInWithGoogle();
-  const { client, setActive: setClerkActive } = useClerk();
+  const { client, setActive: setClerkActive, user: clerkUser, session: clerkSession } = useClerk();
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
   const {
@@ -264,6 +265,7 @@ export function ProfileScreen({
     userId,
   } = useAuth();
   const isArabic = language === "ar";
+  const [securityRefreshVersion, setSecurityRefreshVersion] = useState(0);
   const copy = isArabic
     ? {
         eyebrow: "دار التميز للسفريات · حسابي",
@@ -336,7 +338,7 @@ export function ProfileScreen({
     : {
         eyebrow: "D.T. TOURS · MY ACCOUNT",
         bookings: "Bookings",
-        points: "Tamayuz points",
+        points: "Tamaiz points",
         currentLevel: "Current level",
         savedBookings: "Saved bookings",
         savedBookingsSubtitle: "Act before the price hold expires",
@@ -555,7 +557,8 @@ export function ProfileScreen({
           return null;
         }
       } catch {
-        if (isCurrentAccountGeneration(generation)) setProfile(null);
+        // Identity changes already clear the profile. Keep the current form
+        // mounted during refresh failures so email changes can roll back.
         return null;
       } finally {
         if (isCurrentAccountGeneration(generation)) setLoading(false);
@@ -1086,7 +1089,7 @@ export function ProfileScreen({
 
   if (!visible) return null;
 
-  if (loading) {
+  if (loading && !profile) {
     return (
       <View style={[s.center, { paddingTop: insets.top }]}>
         {onClose && (
@@ -1288,7 +1291,7 @@ export function ProfileScreen({
             </>
           )}
         </View>
-        <Text style={s.authNote}>{isArabic ? "سجّل حسابك لتتبع حجوزاتك وتجميع نقاط التميز والحصول على استرداد نقدي." : "Create an account to track bookings, earn Tamayuz points, and get cashback."}</Text>
+        <Text style={s.authNote}>{isArabic ? "سجّل حسابك لتتبع حجوزاتك وتجميع نقاط التميز والحصول على استرداد نقدي." : "Create an account to track bookings, earn Tamaiz points, and get cashback."}</Text>
       </ScrollView>
     );
   }
@@ -1296,7 +1299,7 @@ export function ProfileScreen({
   const tier = profile.loyaltyTier || "new";
   const tierLabel = isArabic
     ? (TIER_LABELS[tier] || tier)
-    : ({ new: "New Tamayuz", silver: "Silver Tamayuz", gold: "Gold Tamayuz" }[tier] || tier);
+    : ({ new: "New Tamaiz", silver: "Silver Tamaiz", gold: "Gold Tamaiz" }[tier] || tier);
   const expiringSoonPoints = loyaltyBalance?.expiringSoonPoints ?? 0;
   const expiryDate = formatExpiryDate(loyaltyBalance?.expiringSoonEarliest);
   // Some Samsung Android navigation modes report a zero bottom inset even
@@ -1379,6 +1382,18 @@ export function ProfileScreen({
               </View>
             </View>
           </View>
+          <AccountSecuritySettings
+            user={clerkUser}
+            session={clerkSession}
+            language={language ?? "en"}
+            onEmailChanged={async (email) => {
+              const updated = await loadProfile();
+              if (!updated || updated.email.toLowerCase() !== email.trim().toLowerCase()) {
+                throw new Error(isArabic ? "تعذّر تحديث بريد الحساب. حاول مجدداً." : "Could not update the account email. Please try again.");
+              }
+              setSecurityRefreshVersion((value) => value + 1);
+            }}
+          />
           <View style={s.settingsPreviewCard}>
             <Text style={[s.settingsPreviewLabel, isArabic && s.rtlText]}>
               {isArabic ? "معاينة" : "Preview"}
@@ -1512,7 +1527,7 @@ export function ProfileScreen({
           accountKey={accountKey}
           request={clerkFetch}
           language={language}
-          refreshVersion={sessionRefreshVersion}
+          refreshVersion={sessionRefreshVersion + securityRefreshVersion}
           onOpenOrders={onOpenEsims}
         />}
 
@@ -1844,9 +1859,9 @@ export function ProfileScreen({
       <View style={s.section}>
         <Text style={s.sectionTitle}>{copy.programTiers}</Text>
         {[
-          { key: "new",    label: isArabic ? "متميز جديد" : "New Tamayuz", cashback: "1.5%", req: copy.defaultTier },
-          { key: "silver", label: isArabic ? "متميز فضي" : "Silver Tamayuz", cashback: "2.0%", req: isArabic ? "5 حجوزات / 500 د.ك" : "5 bookings / 500 KWD" },
-          { key: "gold",   label: isArabic ? "متميز ذهبي" : "Gold Tamayuz", cashback: "3.0%", req: isArabic ? "15 حجزاً / 1500 د.ك" : "15 bookings / 1500 KWD" },
+          { key: "new",    label: isArabic ? "متميز جديد" : "New Tamaiz", cashback: "1.5%", req: copy.defaultTier },
+          { key: "silver", label: isArabic ? "متميز فضي" : "Silver Tamaiz", cashback: "2.0%", req: isArabic ? "5 حجوزات / 500 د.ك" : "5 bookings / 500 KWD" },
+          { key: "gold",   label: isArabic ? "متميز ذهبي" : "Gold Tamaiz", cashback: "3.0%", req: isArabic ? "15 حجزاً / 1500 د.ك" : "15 bookings / 1500 KWD" },
         ].map((t) => (
           <View key={t.key} style={[s.tierRow, t.key === tier && s.tierRowActive]}>
             <View style={s.tierRowEmoji}><Ionicons name={TIER_ICONS[t.key] || "ribbon-outline"} size={20} color={TIER_COLORS[t.key] || "#0F766E"} /></View>

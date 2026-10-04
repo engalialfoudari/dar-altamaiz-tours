@@ -22,7 +22,7 @@ import p19 from "./tr/part-19.json";
 export const turkishCopy: Record<string, string> = Object.assign(
   {}, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19,
   {
-    English: "İngilizce", Arabic: "Arapça", Turkish: "Türkçe", EN: "İngilizce", عربي: "Arapça",
+    English: "İngilizce", Arabic: "Arapça", Turkish: "Türkçe", EN: "EN", TR: "TR", عربي: "عربي",
     completed: "Tamamlandı", payment_pending: "Ödeme bekleniyor", fulfillment_pending: "Hazırlanıyor",
     pending_review: "İnceleme gerekiyor", payment_failed: "Ödeme başarısız", confirmed: "Onaylandı",
     cancelled: "İptal edildi", pending: "Bekliyor", failed: "Başarısız",

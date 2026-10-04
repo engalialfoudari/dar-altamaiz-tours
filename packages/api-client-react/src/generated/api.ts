@@ -92,6 +92,83 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
+export const getGetArabicEsimGuideUrl = () => {
+
+
+
+
+  return `/api/esim/guide/ar.mp4`
+}
+
+/**
+ * @summary Public Arabic eSIM tutorial stored in App Storage
+ */
+export const getArabicEsimGuide = async ( options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetArabicEsimGuideUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetArabicEsimGuideQueryKey = () => {
+    return [
+    `/api/esim/guide/ar.mp4`
+    ] as const;
+    }
+
+
+export const getGetArabicEsimGuideQueryOptions = <TData = Awaited<ReturnType<typeof getArabicEsimGuide>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getArabicEsimGuide>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetArabicEsimGuideQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getArabicEsimGuide>>> = ({ signal }) => getArabicEsimGuide({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getArabicEsimGuide>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetArabicEsimGuideQueryResult = NonNullable<Awaited<ReturnType<typeof getArabicEsimGuide>>>
+export type GetArabicEsimGuideQueryError = ErrorType<void>
+
+
+/**
+ * @summary Public Arabic eSIM tutorial stored in App Storage
+ */
+
+export function useGetArabicEsimGuide<TData = Awaited<ReturnType<typeof getArabicEsimGuide>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getArabicEsimGuide>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetArabicEsimGuideQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getTranslateUiTextsUrl = () => {
 
 
