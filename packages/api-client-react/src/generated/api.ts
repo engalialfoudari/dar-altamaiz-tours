@@ -27,7 +27,9 @@ import type {
   AdminEsimStockResponse,
   AdminHotelProfitDetailsResponse,
   ApiError,
+  ApproveAdminEsimCapture200,
   EsimBillingProfileResponse,
+  EsimCaptureApprovalInput,
   EsimCatalogResponse,
   EsimCheckoutResponse,
   EsimDestinationResponse,
@@ -1658,6 +1660,88 @@ export const useReviewAdminEsimPayment = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getReviewAdminEsimPaymentMutationOptions(options));
+    }
+
+export const getApproveAdminEsimCaptureUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/admin/esim/orders/${orderId}/capture-rounding-approval`
+}
+
+/**
+ * Admin-only, explicit staff approval for a positive difference of at most five fils at the nearest two-decimal amount. Fresh gateway verification must prove captured status, exact merchant reference, explicit KWD, Apple Pay and the approved amount. Only an unfulfilled standalone on-demand payment-amount review can be released. Preserves the original quote and records the staff decision; never creates a charge or supplier purchase.
+ * @summary Approve a verified Apple Pay captured-amount rounding difference
+ */
+export const approveAdminEsimCapture = async (orderId: string,
+    esimCaptureApprovalInput: EsimCaptureApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<ApproveAdminEsimCapture200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<ApproveAdminEsimCapture200>(getApproveAdminEsimCaptureUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(esimCaptureApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getApproveAdminEsimCaptureMutationKey = () => ['approveAdminEsimCapture'] as const;
+
+export const getApproveAdminEsimCaptureMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAdminEsimCapture>>, TError,ApproveAdminEsimCaptureMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveAdminEsimCapture>>, TError,ApproveAdminEsimCaptureMutationVariables, TContext> => {
+
+const mutationKey = getApproveAdminEsimCaptureMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveAdminEsimCapture>>, ApproveAdminEsimCaptureMutationVariables> = (props) => {
+          const {orderId,data} = props ?? {};
+
+          return  approveAdminEsimCapture(orderId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveAdminEsimCaptureMutationResult = NonNullable<Awaited<ReturnType<typeof approveAdminEsimCapture>>>
+    export type ApproveAdminEsimCaptureMutationBody = BodyType<EsimCaptureApprovalInput>
+    export type ApproveAdminEsimCaptureMutationError = ErrorType<void>
+    export type ApproveAdminEsimCaptureMutationVariables = {orderId: string;data: BodyType<EsimCaptureApprovalInput>}
+
+    /**
+ * @summary Approve a verified Apple Pay captured-amount rounding difference
+ */
+export const useApproveAdminEsimCapture = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAdminEsimCapture>>, TError,ApproveAdminEsimCaptureMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveAdminEsimCapture>>,
+        TError,
+        ApproveAdminEsimCaptureMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveAdminEsimCaptureMutationOptions(options));
     }
 
 export const getReviewAdminEsimEmailUrl = (orderId: string,) => {

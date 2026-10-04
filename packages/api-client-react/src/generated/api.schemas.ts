@@ -403,6 +403,18 @@ export interface EsimEmailReviewInput {
   evidence: string;
 }
 
+export interface EsimCaptureApprovalInput {
+  /** @minimum 1 */
+  quotedAmountFils: number;
+  /** @minimum 1 */
+  capturedAmountFils: number;
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  evidence: string;
+}
+
 export interface EsimPaymentRecoveryInput {
   /**
      * @minLength 4
@@ -744,6 +756,10 @@ active?: boolean;
 };
 
 export type ReviewAdminEsimPayment200 = {
+  ok: boolean;
+};
+
+export type ApproveAdminEsimCapture200 = {
   ok: boolean;
 };
 
