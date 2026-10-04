@@ -647,5 +647,5 @@ const styles = StyleSheet.create({
    messageTitle: { fontSize: 18, fontWeight: "800", color: C.ink, textAlign: "center" },
   messageBody: { fontSize: 14, lineHeight: 21, color: C.muted, textAlign: "center", marginTop: 8 },
    retry: { backgroundColor: C.gold, borderRadius: 11, paddingVertical: 12, paddingHorizontal: 24, marginTop: 20, minHeight: 44 },
-   retryText: { color: C.navy, fontWeight: "800", fontSize: 14 },
+   retryText: { color: C.surface, fontWeight: "800", fontSize: 14 },
 });
