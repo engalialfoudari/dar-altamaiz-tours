@@ -23,15 +23,46 @@ function propsCopy(props: Record<string, any>) {
   return result;
 }
 type LocalizedTextProps = Native.TextProps & { dtDisplayData?: boolean };
+function hasArabicCopy(children: React.ReactNode): boolean {
+  if (typeof children === "string") return /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufefc]/.test(children);
+  if (Array.isArray(children)) return children.some(hasArabicCopy);
+  if (React.isValidElement<{ children?: React.ReactNode; dtDisplayData?: boolean }>(children)) {
+    return hasArabicCopy(children.props.dtDisplayData ? children.props.children : childrenCopy(children.props.children));
+  }
+  return false;
+}
+function isolateContacts(children: React.ReactNode): React.ReactNode {
+  if (Array.isArray(children)) return children.map(isolateContacts);
+  if (typeof children !== "string") return children;
+  return children.split(/([\u2066-\u2068][^\u2069]*\u2069)/).map((part, index) => index % 2 ? part
+    : part.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|\+\d[\d ()-]{6,}\d/g, value => `\u2066${value}\u2069`)).join("");
+}
+function directedTextStyle(style: Native.StyleProp<Native.TextStyle>, direction: "rtl" | "ltr"): Native.StyleProp<Native.TextStyle> {
+  const centered = Native.StyleSheet.flatten(style)?.textAlign === "center";
+  // Keep intentional centred controls; override accidental left-aligned Arabic
+  // paragraphs without changing parent layout or the device's RTL setting.
+  return [style, { direction, writingDirection: direction, textAlign: centered ? "center" : direction === "rtl" ? "right" : "left" }];
+}
 export const Text = forwardRef<Native.Text, LocalizedTextProps>(({ dtDisplayData, ...props }, ref) => {
   useAppLanguage();
-  return <Native.Text {...propsCopy(props)} ref={ref}>{dtDisplayData ? props.children : childrenCopy(props.children)}</Native.Text>;
+  const children = dtDisplayData ? props.children : childrenCopy(props.children);
+  const arabic = hasArabicCopy(children);
+  const style = arabic ? directedTextStyle(props.style, "rtl")
+    : dtDisplayData ? [props.style, { direction: "ltr" as const, writingDirection: "ltr" as const }] : props.style;
+  return <Native.Text {...propsCopy(props)} style={style} ref={ref}>{arabic ? isolateContacts(children) : children}</Native.Text>;
 });
 Text.displayName = "LocalizedText";
 export const TextInput = forwardRef<Native.TextInput, Native.TextInputProps>((props, ref) => {
   useAppLanguage();
   // Never translate the user's editable value, password or account information.
-  return <Native.TextInput {...propsCopy(props)} ref={ref} />;
+  const copy = propsCopy(props);
+  const ltrData = props.secureTextEntry || ["email-address", "phone-pad", "number-pad", "numeric", "decimal-pad", "url"].includes(props.keyboardType ?? "")
+    || ["email", "tel", "one-time-code", "sms-otp"].includes(props.autoComplete ?? "")
+    || ["emailAddress", "telephoneNumber", "oneTimeCode"].includes(props.textContentType ?? "");
+  const displayed = props.value || props.defaultValue || copy.placeholder;
+  const arabicPlaceholder = props.value === "" && hasArabicCopy(copy.placeholder);
+  const style = ltrData && !arabicPlaceholder ? directedTextStyle(props.style, "ltr") : hasArabicCopy(displayed) ? directedTextStyle(props.style, "rtl") : props.style;
+  return <Native.TextInput {...copy} style={style} ref={ref} />;
 });
 TextInput.displayName = "LocalizedTextInput";
 Object.assign(TextInput, { State: Native.TextInput.State });

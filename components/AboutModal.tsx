@@ -14,6 +14,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HotelPortalIcon } from "@/components/HotelPortalIcon";
+import { ESIM_LEGAL_DISCLOSURE } from "@/lib/esimLegalDisclosure";
+import { useAppLanguage } from "@/localization/provider";
 
 type Language = "en" | "ar";
 
@@ -149,6 +151,8 @@ export function AboutModal({
   lang: Language;
   onClose: () => void;
 }) {
+  const { locale } = useAppLanguage();
+  const disclosureLanguage = locale === "tr" ? "tr" : lang;
   const insets = useSafeAreaInsets();
   const isRtl = lang === "ar";
   const [expanded, setExpanded] = useState(0);
@@ -248,7 +252,9 @@ export function AboutModal({
                   </Pressable>
                   {isExpanded ? (
                     <View style={styles.sectionBody}>
-                      {section.paragraphs.map((paragraph) => (
+                      {(index === 1
+                        ? [...section.paragraphs, ...ESIM_LEGAL_DISCLOSURE[disclosureLanguage]]
+                        : section.paragraphs).map((paragraph) => (
                         <Text key={paragraph} style={[styles.paragraph, isRtl && styles.rtlText]}>
                           {paragraph}
                         </Text>

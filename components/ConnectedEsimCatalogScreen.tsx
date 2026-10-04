@@ -1109,7 +1109,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     <Modal visible={recoveryOpen && guest} animationType="slide" onRequestClose={closeRecovery}>
       <View style={[modalStyles.fullScreen, { paddingTop: Math.max(insets.top, 18) }]}>
         <View style={modalStyles.formHeader}>
-          <Text style={modalStyles.headerTitle}>{props.lang === "ar" ? "استعادة شريحة eSIM" : "Recover your eSIM"}</Text>
+          <Text style={[modalStyles.headerTitle, props.lang === "ar" && { flex: 1, textAlign: "right", writingDirection: "rtl" }]}>{props.lang === "ar" ? "استعادة شريحة eSIM" : "Recover your eSIM"}</Text>
           <Pressable testID="esim-recovery-close" accessibilityRole="button" accessibilityLabel="Close recovery" onPress={closeRecovery} style={modalStyles.headerBack}><EsimIcon name="close" size={22} color={BLUE_LIGHT} /></Pressable>
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[modalStyles.formContent, { paddingBottom: Math.max(insets.bottom, 24) + 30 }]}>
