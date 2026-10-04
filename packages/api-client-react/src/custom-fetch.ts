@@ -1,5 +1,9 @@
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "arrayBuffer" | "auto";
+  /** Request-scoped authenticated token, resolved immediately before fetching.
+   * A missing token rejects the request; it must never downgrade to guest.
+   */
+  getAuthToken?: AuthTokenGetter;
 };
 
 export type ErrorType<T = unknown> = ApiError<T>;
@@ -329,7 +333,7 @@ export async function customFetch<T = unknown>(
   options: CustomFetchOptions = {},
 ): Promise<T> {
   input = applyBaseUrl(input);
-  const { responseType = "auto", headers: headersInit, ...init } = options;
+  const { responseType = "auto", headers: headersInit, getAuthToken, ...init } = options;
 
   const method = resolveMethod(input, init.method);
 
@@ -353,7 +357,13 @@ export async function customFetch<T = unknown>(
 
   // Attach bearer token when an auth getter is configured and no
   // Authorization header has been explicitly provided.
-  if (_authTokenGetter && !headers.has("authorization")) {
+  if (getAuthToken) {
+    const token = await getAuthToken();
+    if (!token) {
+      throw Object.assign(new Error("Authentication required"), { status: 401 });
+    }
+    headers.set("authorization", `Bearer ${token}`);
+  } else if (_authTokenGetter && !headers.has("authorization")) {
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);

@@ -285,6 +285,23 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     }
   }, [isSignedIn, sessionId, queryClient]);
 
+  const getRequestToken = useCallback(async () => {
+    // The token stored in `auth` is only a readiness marker. Clerk session
+    // tokens expire while customers browse or fill in checkout details.
+    const requestedSession = sessionId;
+    if (!requestedSession || sessionRef.current !== requestedSession) {
+      throw Object.assign(new Error("Authentication required"), { status: 401 });
+    }
+    const token = await requestClerkToken({
+      sessionId: requestedSession,
+      getToken: () => getTokenRef.current(),
+    });
+    if (!token || sessionRef.current !== requestedSession) {
+      throw Object.assign(new Error("Authentication required"), { status: 401 });
+    }
+    return token;
+  }, [sessionId]);
+
   useEffect(() => {
     void refreshToken();
     return () => { generation.current += 1; };
@@ -389,8 +406,11 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     reconciledReturns.current.add(key);
     // Start verification promptly; all subsequent observation is read-only.
     // The backend's existing payment and supplier claims own fulfillment.
-    void reconcileEsimReturnedPayment(orderId, ready ? { Authorization: `Bearer ${auth.token}` } : undefined).catch(() => {});
-  }, [props.paymentReturnOrderId, props.paymentReturnSeq, guest, ready, auth]);
+    void (async () => {
+      const headers = ready ? { Authorization: `Bearer ${await getRequestToken()}` } : undefined;
+      await reconcileEsimReturnedPayment(orderId, headers);
+    })().catch(() => {});
+  }, [props.paymentReturnOrderId, props.paymentReturnSeq, guest, ready, getRequestToken]);
 
   useEffect(() => {
     const orderId = props.paymentReturnOrderId;
@@ -482,14 +502,19 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     setCheckoutError(null);
   }, [props.paymentReturnOrderId, props.paymentReturnSeq, sessionId]);
 
-  const headers = ready ? { Authorization: `Bearer ${auth.token}` } : undefined;
+  const authRequest = ready ? { getAuthToken: getRequestToken } : {};
+  const sessionExpiredMessage = locale === "tr"
+    ? "Oturumunuz sona erdi. Devam etmeden önce tekrar giriş yapın."
+    : props.lang === "ar"
+      ? "انتهت جلسة تسجيل الدخول. سجّل الدخول مجدداً قبل المتابعة."
+      : "Your sign-in session has expired. Please sign in again before continuing.";
   const billing = useGetMyEsimBillingProfile({
     query: { enabled: ready, queryKey: ["esim-billing-profile", accountKey] },
-    request: { headers },
+    request: authRequest,
   });
   const orders = useListMyEsimOrders({
     query: { enabled: ready, queryKey: orderKey, refetchOnWindowFocus: true },
-    request: { headers },
+    request: authRequest,
   });
   const appliedInitialOrder = useRef<string | null>(null);
   useEffect(() => {
@@ -501,16 +526,15 @@ export function ConnectedEsimCatalogScreen(props: Props) {
 
   const detail = useGetMyEsimOrder(selectedOrderId ?? "", {
     query: { enabled: ready && !!selectedOrderId, queryKey: detailKey, refetchOnWindowFocus: true },
-    request: { headers },
+    request: authRequest,
   });
   const orderDetailQueryRef = useRef(detail);
   orderDetailQueryRef.current = detail;
-  const create = useCreateEsimOrder({ request: { headers: {
-    ...headers,
+  const create = useCreateEsimOrder({ request: { ...authRequest, headers: {
     "X-DT-Checkout-Surface": Platform.OS === "web" ? "webapp" : "native",
     "X-DT-Language": props.lang,
   } } });
-  const quotePackage = useQuoteEsimPackage({ request: { headers } });
+  const quotePackage = useQuoteEsimPackage({ request: authRequest });
   const sendRecoveryCode = useSendEsimGuestRecoveryCode();
   const recoverOrders = useRecoverEsimGuestOrders();
   const ownedOrders = useMemo(() => ready ? (orders.data?.orders ?? []).map(orderForDisplay) : undefined, [ready, orders.data?.orders]);
@@ -764,7 +788,8 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     } catch (error) {
       if (sessionRef.current === buyerSession && checkoutAuthRef.current.mode === quotedMode && quoteGate.current.isCurrent(current)) {
         const outOfStock = typeof error === "object" && error !== null && "status" in error && error.status === 409;
-        setCheckoutError(outOfStock
+        const authRequired = (error as { status?: number })?.status === 401;
+        setCheckoutError(authRequired ? sessionExpiredMessage : outOfStock
           ? (props.lang === "ar" ? "نفدت هذه الشريحة. اختر باقة أخرى؛ لم يتم إنشاء دفعة." : "This eSIM is out of stock. Choose another plan; no payment was created.")
           : (props.lang === "ar" ? "تعذر عرض السعر النهائي. حاول مجدداً." : "Couldn't get a final price. Please try again."));
       }
@@ -918,6 +943,8 @@ export function ConnectedEsimCatalogScreen(props: Props) {
           : props.lang === "ar"
             ? "لا يمكن متابعة هذا الطلب. قد يوجد رابط دفع سابق ببيانات أو طريقة دفع مختلفة. تواصل معنا لمراجعته؛ لا تبدأ دفعة أخرى."
             : "This checkout cannot continue. An earlier payment link may use different details or a different payment method. Contact us to review it; do not start another payment.");
+      } else if ((error as { status?: number })?.status === 401) {
+        setCheckoutError(sessionExpiredMessage);
       } else if ((error as { status?: number })?.status === 403) {
         setCheckoutError(props.lang === "ar" ? "هذه الباقة أو هذا الحساب غير متاح للشراء التجريبي. لم يُنشأ رابط دفع." : "This plan or account isn't enabled for the private test. No payment link was created.");
       } else if (
@@ -954,7 +981,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     try {
       const pdf = (guestDownload
         ? await downloadEsimGuestDocument({ ...recoveryProof!, orderId: id }, { headers: { Accept: "application/pdf", "Accept-Language": getAppLocale() }, responseType: "arrayBuffer" })
-        : await downloadMyEsimDocument(id, { headers: { Authorization: `Bearer ${auth!.token}`, Accept: "application/pdf", "Accept-Language": getAppLocale() }, responseType: "arrayBuffer" })) as unknown as ArrayBuffer;
+        : await downloadMyEsimDocument(id, { headers: { Authorization: `Bearer ${await getRequestToken()}`, Accept: "application/pdf", "Accept-Language": getAppLocale() }, responseType: "arrayBuffer" })) as unknown as ArrayBuffer;
       if (!stillCurrent()) return;
       const bytes = new Uint8Array(pdf);
       if (bytes.length < 5 || String.fromCharCode(...bytes.subarray(0, 5)) !== "%PDF-") throw new Error("Invalid PDF document");
