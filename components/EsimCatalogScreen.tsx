@@ -331,10 +331,13 @@ export function EsimCatalogScreen({
   const renderPackage = useCallback(({ item: row }: { item: PackageRow }) => {
     if (row.type === "heading") return <Text style={[styles.groupTitle, rtl && styles.rtl]}>{t.days(row.days)}</Text>;
     const item = row.item;
+    const fairUseText = (item.isUnlimited || item.hasFairUsagePolicy)
+      ? esimFairUseText(item, locale === "tr" ? "tr" : lang)
+      : "";
     const active = selection?.slug === selectedSlug && selection.id === item.id;
     return <Pressable
       testID={`esim-package-${item.id}`} accessibilityRole="button"
-      accessibilityLabel={`${item.title}, ${item.isUnlimited ? t.unlimited : item.data}, ${t.days(item.validityDays)}, ${price(item.priceKwd) ?? t.unavailable}${item.isUnlimited || item.hasFairUsagePolicy ? `, ${esimFairUseText(item, locale === "tr" ? "tr" : lang)}` : ""}`}
+      accessibilityLabel={`${item.title}, ${item.isUnlimited ? t.unlimited : item.data}, ${t.days(item.validityDays)}, ${price(item.priceKwd) ?? t.unavailable}${fairUseText ? `, ${fairUseText}` : ""}`}
       accessibilityState={{ selected: active }}
       onPress={() => setSelection({ slug: selectedSlug ?? "", id: item.id })}
       style={({ pressed }) => [styles.packageCard, active && styles.packageCardSelected, pressed && styles.pressed]}
@@ -344,8 +347,8 @@ export function EsimCatalogScreen({
         <View style={[styles.packageHead, rtl && styles.alignEnd]}>
           <Text style={[styles.packageTitle, rtl && styles.rtl]} numberOfLines={2}>{item.title}</Text>
           <Text style={styles.packageMeta}>{item.isUnlimited ? t.unlimited : (item.data || t.fixed)} · {t.days(item.validityDays)}</Text>
-          {(item.isUnlimited || item.hasFairUsagePolicy) && <Text style={[styles.packageMeta, rtl && styles.rtl]}>
-            {esimFairUseText(item, locale === "tr" ? "tr" : lang)}
+          {!!fairUseText && <Text style={[styles.packageMeta, rtl && styles.rtl]}>
+            {fairUseText}
           </Text>}
         </View>
         <View style={rtl && styles.alignEnd}>
@@ -354,7 +357,7 @@ export function EsimCatalogScreen({
         </View>
       </View>
     </Pressable>;
-  }, [rtl, t, selection, selectedSlug, lang]);
+  }, [rtl, t, selection, selectedSlug, lang, locale]);
 
   // A normal browser already positions the viewport below its own chrome.
   // Only an installed, edge-to-edge web app needs an extra status-bar reserve.

@@ -1263,7 +1263,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
               : props.lang === "ar" ? "تأكيد السعر النهائي" : "Confirm final price"}
           </Text>
           <Text style={[modalStyles.product, props.lang === "ar" && modalStyles.rtl]}>{esimDestinationTitle(review?.quote.product.destination ?? "", props.lang)} · {review?.quote.product.title}</Text>
-          {!!review && (review.quote.product.isUnlimited || review.quote.product.hasFairUsagePolicy) && (
+          {!!review && (review.quote.product.isUnlimited || review.quote.product.hasFairUsagePolicy) && !!esimFairUseText(review.quote.product, locale === "tr" ? "tr" : props.lang) && (
             <Text style={[modalStyles.note, props.lang === "ar" && modalStyles.rtl]}>
               {esimFairUseText(review.quote.product, locale === "tr" ? "tr" : props.lang)}
             </Text>

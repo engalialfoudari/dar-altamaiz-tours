@@ -24,10 +24,6 @@ export function esimFairUseText(plan: FairUsePlan, locale: Locale): string {
     // Preserve unfamiliar supplier terms verbatim rather than inventing limits.
     return policy;
   }
-  if (!plan.isUnlimited && !plan.hasFairUsagePolicy) return "";
-  return {
-    en: "The supplier has not provided this plan's exact high-speed allowance or reduced speed. See the fair-use FAQs before buying.",
-    ar: "لم يزوّدنا المورّد بكمية البيانات عالية السرعة أو السرعة المخفّضة المحددة لهذه الباقة. راجع أسئلة الاستخدام العادل قبل الشراء.",
-    tr: "Sağlayıcı bu paketin kesin yüksek hızlı veri miktarını veya düşürülmüş hızını belirtmedi. Satın almadan önce adil kullanım SSS bölümünü inceleyin.",
-  }[locale];
+  // Show only actual supplier terms, never a missing-information warning.
+  return "";
 }
