@@ -143,6 +143,7 @@ function validQuote(quote: EsimQuoteResponse, slug: string, packageId: string, p
     && Number.isSafeInteger(quote.baseAmountFils) && quote.baseAmountFils > 0
     && Number.isSafeInteger(quote.paymentFeeFils) && quote.paymentFeeFils >= 0
     && quote.baseAmountFils + quote.paymentFeeFils === quote.amountFils
+    && (quote.priceRoundingFils === undefined || Number.isSafeInteger(quote.priceRoundingFils))
     // The signed server quote owns pricing. Do not hard-code a gateway
     // surcharge here: old and fee-free servers may coexist during rollout.
     && Math.round(quote.amountKwd * 1000) === quote.amountFils
@@ -1300,13 +1301,17 @@ export function ConnectedEsimCatalogScreen(props: Props) {
           <View style={modalStyles.divider} />
             <View style={[modalStyles.amountRow, props.lang === "ar" && modalStyles.reverse]}>
               <Text style={[modalStyles.lineLabel, props.lang === "ar" && modalStyles.rtl]}>{props.lang === "ar" ? "سعر الباقة" : "Package subtotal"}</Text>
-             <Text style={modalStyles.lineAmount}>{review ? ((review.quote.baseAmountFils + review.quote.discountFils) / 1000).toFixed(3) : ""} KWD</Text>
+             <Text style={modalStyles.lineAmount}>{review ? ((review.quote.baseAmountFils - (review.quote.priceRoundingFils ?? 0) + review.quote.discountFils) / 1000).toFixed(3) : ""} KWD</Text>
            </View>
            {!!review?.quote.discountFils && <View style={[modalStyles.amountRow, props.lang === "ar" && modalStyles.reverse]}>
              <Text style={[modalStyles.lineLabel, props.lang === "ar" && modalStyles.rtl]}>{props.lang === "ar" ? "الخصم" : "Discount"}</Text>
             <Text style={modalStyles.discount}>− {(review.quote.discountFils / 1000).toFixed(3)} KWD</Text>
           </View>}
-             {!!review?.quote.paymentFeeFils && <View style={[modalStyles.amountRow, props.lang === "ar" && modalStyles.reverse]}>
+           {!!review?.quote.priceRoundingFils && <View style={[modalStyles.amountRow, props.lang === "ar" && modalStyles.reverse]}>
+             <Text style={[modalStyles.lineLabel, props.lang === "ar" && modalStyles.rtl]}>{locale === "tr" ? "Apple Pay fiyat yuvarlaması" : props.lang === "ar" ? "تقريب سعر أبل باي" : "Apple Pay price rounding"}</Text>
+             <Text testID="esim-price-rounding" style={modalStyles.lineAmount}>{review.quote.priceRoundingFils > 0 ? "+" : "−"} {(Math.abs(review.quote.priceRoundingFils) / 1000).toFixed(3)} KWD</Text>
+           </View>}
+           {!!review?.quote.paymentFeeFils && <View style={[modalStyles.amountRow, props.lang === "ar" && modalStyles.reverse]}>
                <Text style={[modalStyles.lineLabel, props.lang === "ar" && modalStyles.rtl]}>{props.lang === "ar" ? "رسوم طريقة الدفع" : "Payment method fee"}</Text>
               <Text style={modalStyles.lineAmount}>+ {(review.quote.paymentFeeFils / 1000).toFixed(3)} KWD</Text>
             </View>}

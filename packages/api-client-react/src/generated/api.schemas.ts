@@ -509,6 +509,8 @@ export interface EsimQuoteResponse {
   baseAmountFils: number;
   /** @minimum 0 */
   paymentFeeFils: number;
+  /** Signed selling-price rounding adjustment included in baseAmountFils; not a payment fee. Absent for legacy quotes. */
+  priceRoundingFils?: number;
   /** @minimum 1 */
   amountFils: number;
   /** @minimum 0 */
