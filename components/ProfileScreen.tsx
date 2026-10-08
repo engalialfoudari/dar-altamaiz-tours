@@ -651,7 +651,17 @@ export function ProfileScreen({
       if (!authenticatedProfile) throw new Error("Could not load your DT Tours profile");
       showWelcomeForProfile(authenticatedProfile);
     } catch (authError: any) {
-      setError(authError?.errors?.[0]?.longMessage || authError?.message || "Authentication failed");
+      const detail = authError?.errors?.[0];
+      const message = detail?.longMessage || authError?.message || "Authentication failed";
+      const compromisedPassword = detail?.code === "form_password_pwned"
+        || /password.*(?:data breach|compromised)/i.test(message);
+      setError(mode === "register" && compromisedPassword
+        ? (isArabic
+          ? "لم يتم إنشاء الحساب أو إرسال رمز التحقق لأن كلمة المرور ظهرت في تسريب بيانات. اختر كلمة مرور مختلفة وفريدة، ثم اضغط إنشاء حساب مرة أخرى."
+          : language === "tr"
+          ? "Bu parola bir veri ihlalinde bulunduğu için hesabınız oluşturulmadı ve doğrulama kodu gönderilmedi. Farklı ve benzersiz bir parola seçin, ardından Hesap Oluştur düğmesine tekrar dokunun."
+          : "Your account was not created and no verification code was sent because this password was found in a data breach. Choose a different, unique password, then tap Create Account again.")
+        : message);
     } finally {
       setSubmitting(false);
     }
@@ -1105,7 +1115,18 @@ export function ProfileScreen({
 
   if (!profile) {
     return (
-      <ScrollView style={[s.authContainer, { paddingTop: insets.top + 12 }]} contentContainerStyle={s.authContent}>
+      <ScrollView
+        testID="account-auth-scroll"
+        style={s.authContainer}
+        contentContainerStyle={[
+          s.authContent,
+          { paddingTop: insets.top + 12, paddingBottom: 40 + insets.bottom },
+        ]}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
+      >
         {onClose && (
           <Pressable onPress={onClose} style={s.authCloseButton} accessibilityRole="button" accessibilityLabel="Back">
             <HotelPortalIcon name="arrow-back" size={20} color="#003580" />
@@ -2050,7 +2071,7 @@ export function ProfileScreen({
 const s = StyleSheet.create({
   center:          { flex: 1, backgroundColor: "#f2f2f2", alignItems: "center", justifyContent: "center" },
   container:       { flex: 1, backgroundColor: "#f2f2f2" },
-  authContainer:   { flex: 1, backgroundColor: "#f5f7fa" },
+  authContainer:   { flex: 1, flexBasis: 0, minHeight: 0, backgroundColor: "#f5f7fa" },
   authContent:     { paddingHorizontal: 24, paddingBottom: 40, flexGrow: 1 },
   closeButton:     { minHeight: 40, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#e2e6ed", marginBottom: 12 },
   closeButtonFloating: { position: "absolute", top: 12, left: 16, zIndex: 1 },
