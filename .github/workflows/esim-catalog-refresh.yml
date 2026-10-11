@@ -1,0 +1,106 @@
+name: Keep Airalo catalog fresh
+
+on:
+  schedule:
+    # Offset from the top of the hour, when GitHub queues are busiest.
+    - cron: '7,22,37,52 * * * *'
+    # Keep scheduled workflows active even when this repository is quiet.
+    - cron: '43 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: airalo-catalog-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake website and verify a fresh catalog
+        env:
+          CATALOG_URL: https://dt-tour.com/api/esim/catalog
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { setTimeout as sleep } from 'node:timers/promises';
+
+          const base = new URL(process.env.CATALOG_URL);
+          assert.equal(base.protocol, 'https:');
+          assert.equal(base.pathname, '/api/esim/catalog');
+          let succeeded = false;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const url = new URL(base);
+              url.searchParams.set('scheduled_sync', `${Date.now()}-${attempt}`);
+              const response = await fetch(url, {
+                method: 'GET',
+                redirect: 'error',
+                headers: { 'Cache-Control': 'no-cache', Accept: 'application/json' },
+                signal: AbortSignal.timeout(60_000),
+              });
+              assert.equal(response.status, 200, `Catalog HTTP ${response.status}`);
+              assert.match(response.headers.get('cache-control') ?? '', /no-store/i);
+              const catalog = await response.json();
+              const fetchedAt = Date.parse(catalog.updatedAt);
+              assert.ok(Number.isFinite(fetchedAt), 'Missing supplier refresh timestamp');
+              const ageMs = Date.now() - fetchedAt;
+              assert.ok(ageMs >= -5 * 60_000 && ageMs < 45 * 60_000, 'Supplier catalog is not fresh');
+              assert.ok(Array.isArray(catalog.destinations) && catalog.destinations.length > 0,
+                'Supplier catalog is empty');
+              assert.ok(catalog.destinations.every(d => Number.isInteger(d.packageCount) && d.packageCount >= 0),
+                'Invalid package counts');
+              const packages = catalog.destinations.reduce((sum, d) => sum + d.packageCount, 0);
+              assert.ok(packages > 0, 'Supplier catalog has no packages');
+              console.log(`Catalog verified: ${catalog.destinations.length} destinations, ${packages} packages, updated ${new Date(fetchedAt).toISOString()}`);
+              succeeded = true;
+              break;
+            } catch (error) {
+              console.error(`Catalog check ${attempt + 1}/3 failed: ${error.message}`);
+              if (attempt < 2) await sleep((attempt + 1) * 15_000);
+            }
+          }
+          if (!succeeded) process.exitCode = 1;
+          JS
+
+  keep-schedule-active:
+    if: github.event_name == 'schedule' && github.event.schedule == '43 3 * * 0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    steps:
+      - name: Record scheduler activity to prevent the 60-day inactivity shutdown
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+          const path = '.github/esim-scheduler-heartbeat.json';
+          const endpoint = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+          const headers = {
+            Authorization: `Bearer ${process.env.GH_TOKEN}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Content-Type': 'application/json',
+          };
+          const existing = await fetch(endpoint, { headers, signal: AbortSignal.timeout(30_000) });
+          let sha;
+          if (existing.status === 200) sha = (await existing.json()).sha;
+          else if (existing.status !== 404) throw new Error(`Heartbeat lookup HTTP ${existing.status}`);
+          const content = Buffer.from(JSON.stringify({
+            service: 'esim-catalog-scheduler', checkedAt: new Date().toISOString(),
+          }) + '\n').toString('base64');
+          const response = await fetch(endpoint, {
+            method: 'PUT', headers, signal: AbortSignal.timeout(30_000),
+            body: JSON.stringify({
+              message: 'Maintain unattended eSIM catalog schedule [skip ci]',
+              branch: process.env.GITHUB_REF_NAME, content, ...(sha ? { sha } : {}),
+            }),
+          });
+          if (!response.ok) throw new Error(`Heartbeat update HTTP ${response.status}`);
+          console.log('Scheduler activity recorded; application code was not changed.');
+          JS
