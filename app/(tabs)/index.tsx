@@ -67,6 +67,7 @@ import {
   parseHotelPortalAccountAction,
   parseHotelPortalHistoryMessage,
   parseHotelPortalLanguageMessage,
+  parseHotelPortalSafeAreaColor,
   parseHotelDisplayPreferences,
   parseHotelPaymentHandoffMessage,
   parseHotelPaymentReturnUrl,
@@ -542,6 +543,7 @@ export function WebShell({
   const [hotelPortalInstance, setHotelPortalInstance] = useState(0);
 
   const [hotelPortalToken, setHotelPortalToken] = useState<string | null | undefined>(undefined);
+  const [hotelSafeAreaColor, setHotelSafeAreaColor] = useState<string>(colors.light.hotelPortalHeader);
   const [nativeSessionVersion, setNativeSessionVersion] = useState(0);
   const { locale: pageLocale } = useAppLanguage();
   const hotelPortalSourceLanguage = useBookingDocumentLocale(hotelPortalUrl, hotelPortalVisible, pageLocale);
@@ -1028,7 +1030,14 @@ export function WebShell({
           style={[
             styles.hotelPortalLayer,
             hotelPortalVisible
-              ? [StyleSheet.absoluteFillObject, styles.hotelPortalVisible, { paddingTop: insets.top + 8, backgroundColor: colors.light.hotelPortalHeader }]
+              ? [
+                  StyleSheet.absoluteFillObject,
+                  styles.hotelPortalVisible,
+                  {
+                    paddingTop: insets.top + 8,
+                    backgroundColor: hotelSafeAreaColor,
+                  },
+                ]
               : styles.hotelPortalPreload,
           ]}
         >
@@ -1074,6 +1083,11 @@ export function WebShell({
                 );
               }}
               onMessage={(event: any) => {
+                const safeAreaColor = parseHotelPortalSafeAreaColor(event.nativeEvent.data);
+                if (safeAreaColor) {
+                  setHotelSafeAreaColor(safeAreaColor);
+                  return;
+                }
                 const rawMessage = event.nativeEvent?.data ?? "";
                 try {
                   const message = JSON.parse(rawMessage);
@@ -1326,6 +1340,7 @@ export function WebIframeShell({
     }
   }, [hotelPortalOverrideUrl]);
   const [hotelPortalToken, setHotelPortalToken] = useState<string | null>(null);
+  const [hotelSafeAreaColor, setHotelSafeAreaColor] = useState<string>(colors.light.hotelPortalHeader);
   const hotelPortalFrameRef = useRef<any>(null);
   const insets = useSafeAreaInsets();
   const legacyFrameRef = useRef<any>(null);
@@ -1443,6 +1458,11 @@ export function WebIframeShell({
       const rawMessage = typeof event.data === "string"
         ? event.data
         : JSON.stringify(event.data);
+      const safeAreaColor = parseHotelPortalSafeAreaColor(rawMessage);
+      if (safeAreaColor) {
+        setHotelSafeAreaColor(safeAreaColor);
+        return;
+      }
       try {
         const message = JSON.parse(rawMessage);
         if (message?.type === "dt-hotel-document-ready") {
@@ -1651,7 +1671,11 @@ export function WebIframeShell({
           style={[
             styles.hotelPortalLayer,
             hotelPortalVisible
-              ? [StyleSheet.absoluteFillObject, styles.hotelPortalVisible, { paddingTop: insets.top, backgroundColor: colors.light.hotelPortalHeader }]
+              ? [
+                  StyleSheet.absoluteFillObject,
+                  styles.hotelPortalVisible,
+                  { paddingTop: insets.top, backgroundColor: hotelSafeAreaColor },
+                ]
               : styles.hotelPortalPreload,
           ]}
         >

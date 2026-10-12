@@ -1,0 +1,38 @@
+name: Adaptive hotel safe-area color on every OTA channel
+on:
+  workflow_dispatch: {}
+defaults:
+  image: sdk-54
+  tools:
+    node: "22.14.0"
+jobs:
+  production:
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: production
+      message: "Hotel safe-area matches page background; Android runtime 1.0.6"
+  preview:
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: preview
+      message: "Hotel safe-area matches page background; Android runtime 1.0.6"
+  dttoursRetention:
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: dttoursRetention
+      message: "Hotel safe-area matches page background; Android runtime 1.0.6"

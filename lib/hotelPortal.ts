@@ -1,3 +1,5 @@
+import { PAGE_SAFE_AREA_COLOR_JS } from "./page-safe-area-color.cjs";
+
 export const PUBLIC_HOTEL_PORTAL_URL = "https://dt-tour.com/hotels";
 const DEVELOPMENT_HOTEL_PORTAL_BUILD = "20260911-phase3-1";
 export const HOTEL_PAYMENT_APP_RETURN_URL = "dttours://hotel-payment-return";
@@ -14,14 +16,28 @@ export const HOTEL_PORTAL_HEADER_PRESENTATION_JS = String.raw`
     if(!parent)return;
     var style=document.createElement('style');
     style.id='dt-native-hotel-header-presentation';
+    // The native container already reserves the device inset and breathing
+    // room. Do not apply the standalone document's safe area a second time.
     style.textContent=':root{--hotel-safe-top:0px}.bk-header .bk-brand-name,.bk-header .bk-brand-sub{display:none!important}@media(max-width:480px){.bk-header{padding:13.2px 0!important}}';
     parent.appendChild(style);
   }
   applyHotelHeaderPresentation();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',applyHotelHeaderPresentation,{once:true});
 })();
+${PAGE_SAFE_AREA_COLOR_JS}
 true;
 `;
+
+export function parseHotelPortalSafeAreaColor(raw: string): string | null {
+  try {
+    const message = JSON.parse(raw);
+    return message?.type === "dt-page-safe-area-color" &&
+      typeof message.color === "string" && /^#[0-9a-f]{6}$/i.test(message.color)
+      ? message.color.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
 
 export type HotelDisplayPreferences = {
   priceDisplay: "per-night" | "total-stay";
