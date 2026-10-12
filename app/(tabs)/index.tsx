@@ -1028,7 +1028,7 @@ export function WebShell({
           style={[
             styles.hotelPortalLayer,
             hotelPortalVisible
-              ? [StyleSheet.absoluteFillObject, styles.hotelPortalVisible]
+              ? [StyleSheet.absoluteFillObject, styles.hotelPortalVisible, { paddingTop: insets.top + 8, backgroundColor: colors.light.hotelPortalHeader }]
               : styles.hotelPortalPreload,
           ]}
         >
@@ -1327,6 +1327,7 @@ export function WebIframeShell({
   }, [hotelPortalOverrideUrl]);
   const [hotelPortalToken, setHotelPortalToken] = useState<string | null>(null);
   const hotelPortalFrameRef = useRef<any>(null);
+  const insets = useSafeAreaInsets();
   const legacyFrameRef = useRef<any>(null);
   const [legacyDocumentVersion, setLegacyDocumentVersion] = useState(0);
   const { locale: pageLocale } = useAppLanguage();
@@ -1650,7 +1651,7 @@ export function WebIframeShell({
           style={[
             styles.hotelPortalLayer,
             hotelPortalVisible
-              ? [StyleSheet.absoluteFillObject, styles.hotelPortalVisible]
+              ? [StyleSheet.absoluteFillObject, styles.hotelPortalVisible, { paddingTop: insets.top, backgroundColor: colors.light.hotelPortalHeader }]
               : styles.hotelPortalPreload,
           ]}
         >

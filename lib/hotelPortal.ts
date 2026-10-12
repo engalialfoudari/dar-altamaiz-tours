@@ -14,7 +14,7 @@ export const HOTEL_PORTAL_HEADER_PRESENTATION_JS = String.raw`
     if(!parent)return;
     var style=document.createElement('style');
     style.id='dt-native-hotel-header-presentation';
-    style.textContent='.bk-header .bk-brand-name,.bk-header .bk-brand-sub{display:none!important}@media(max-width:480px){.bk-header{padding:13.2px 0!important}}';
+    style.textContent=':root{--hotel-safe-top:0px}.bk-header .bk-brand-name,.bk-header .bk-brand-sub{display:none!important}@media(max-width:480px){.bk-header{padding:13.2px 0!important}}';
     parent.appendChild(style);
   }
   applyHotelHeaderPresentation();
