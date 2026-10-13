@@ -420,7 +420,7 @@ export function LuxuryHome({
           </View>
         </View>
         <View style={[styles.heroCopy, rtl && styles.rtlHero]}>
-          <Text style={[styles.brand, rtl && styles.rtlText]}>{s.brand}</Text>
+          <Text dtDisplayData testID="home-brand-name" style={[styles.brand, rtl && styles.rtlText]}>{s.brand}</Text>
           <Text style={[styles.tagline, rtl && styles.rtlText]}>{s.tagline}</Text>
           <View style={[styles.accentHairline, rtl && { alignSelf: "flex-end" }]} />
         </View>

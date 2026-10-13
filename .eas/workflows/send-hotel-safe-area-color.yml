@@ -1,4 +1,4 @@
-name: Adaptive hotel safe-area color on every OTA channel
+name: Exact Arabic Home brand on every Android OTA channel
 on:
   workflow_dispatch: {}
 defaults:
@@ -15,7 +15,7 @@ jobs:
     params:
       platform: android
       channel: production
-      message: "Hotel safe-area matches page background; Android runtime 1.0.6"
+      message: "Home Arabic heading: دار التميز تورز; Android runtime 1.0.6"
   preview:
     type: update
     environment: production
@@ -25,7 +25,7 @@ jobs:
     params:
       platform: android
       channel: preview
-      message: "Hotel safe-area matches page background; Android runtime 1.0.6"
+      message: "Home Arabic heading: دار التميز تورز; Android runtime 1.0.6"
   dttoursRetention:
     type: update
     environment: production
@@ -35,4 +35,4 @@ jobs:
     params:
       platform: android
       channel: dttoursRetention
-      message: "Hotel safe-area matches page background; Android runtime 1.0.6"
+      message: "Home Arabic heading: دار التميز تورز; Android runtime 1.0.6"
