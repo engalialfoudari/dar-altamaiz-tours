@@ -52,7 +52,7 @@ type Props = {
   paymentSuccess?: { noticeKey: string; confirmedAt: string; completed: boolean; review: boolean } | null;
   onSelectDestination: (slug: string | null) => void;
   /** Opens the customer-details step; guest checkout is supported. */
-  onBuy?: (item: EsimPackage, destination: EsimDestination) => void;
+  onBuy?: (item: EsimPackage, destination: EsimDestination, quantity: number) => void;
   onCheckoutInputChange?: () => void;
   ownedOrders?: EsimOwnedOrder[];
   ownedOrdersStatus?: "loading" | "error" | "ready" | "unavailable";
@@ -207,6 +207,8 @@ export function EsimCatalogScreen({
   const insets = useSafeAreaInsets();
   const rtl = lang === "ar";
   const t = copy[lang];
+  const [quantity, setQuantity] = useState(1);
+  useEffect(() => { setQuantity(1); }, [selectedSlug, initialSelectedPackageId]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<Category>("popular");
   const [filter, setFilter] = useState<DataFilter>("all");
@@ -282,20 +284,16 @@ export function EsimCatalogScreen({
     }
     return result;
   }, [destination?.packages, filter]);
-  const liveAvailabilityConfirmed = detail.isSuccess
-    && detail.isFetchedAfterMount
-    && !detail.isFetching
-    && !detail.isStale;
+  // Browsing (including bundled/offline data) may open customer details.
+  // Only the authoritative checkout quote can approve the payable amount.
+  // Background refreshes must not repeatedly disable an already visible plan.
   const buyEnabled = !!selected
-    && liveAvailabilityConfirmed
     && selected.isInStock !== false
     && price(selected.priceKwd) !== null
     && !!onBuy
     && !checkoutPending;
   const availabilityHint = selected
-    ? liveAvailabilityConfirmed
-      ? selected.isInStock === false ? t.outOfStock : t.availabilityUnconfirmed
-      : detail.isError || detail.isRefetchError ? t.availabilityUnavailable : t.availabilityChecking
+    ? selected.isInStock === false ? t.outOfStock : t.availabilityUnconfirmed
     : null;
 
   const goBack = () => {
@@ -470,13 +468,21 @@ export function EsimCatalogScreen({
         <View style={[styles.buyBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 12) }]}>
           <View style={[styles.buySummary, rtl && styles.reverse]}>
             <Text style={styles.buySummaryLabel}>{selected ? selected.title : t.select}</Text>
-            <Text style={styles.buySummaryPrice}>{selected ? price(selected.priceKwd) ?? t.unavailable : ""}</Text>
+            <Text style={styles.buySummaryPrice}>{selected ? price(selected.priceKwd === null ? null : selected.priceKwd * quantity) ?? t.unavailable : ""}</Text>
           </View>
+          {!!selected && <View style={[styles.buySummary, rtl && styles.reverse]}>
+            <Text style={styles.buySummaryLabel}>{locale === "tr" ? "eSIM sayısı" : rtl ? "عدد الشرائح" : "Number of eSIMs"}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+              <Pressable testID="esim-quantity-minus" accessibilityRole="button" accessibilityLabel={locale === "tr" ? "eSIM sayısını azalt" : rtl ? "تقليل عدد الشرائح" : "Decrease eSIM quantity"} accessibilityState={{ disabled: quantity <= 1 || checkoutPending }} disabled={quantity <= 1 || checkoutPending} hitSlop={10} onPress={() => setQuantity((value) => Math.max(1, value - 1))}><Text style={styles.buySummaryPrice}>−</Text></Pressable>
+              <Text testID="esim-quantity" style={styles.buySummaryPrice}>{quantity}</Text>
+              <Pressable testID="esim-quantity-plus" accessibilityRole="button" accessibilityLabel={locale === "tr" ? "eSIM sayısını artır" : rtl ? "زيادة عدد الشرائح" : "Increase eSIM quantity"} accessibilityState={{ disabled: quantity >= 10 || checkoutPending }} disabled={quantity >= 10 || checkoutPending} hitSlop={10} onPress={() => setQuantity((value) => Math.min(10, value + 1))}><Text style={styles.buySummaryPrice}>+</Text></Pressable>
+            </View>
+          </View>}
           <Pressable
             testID="esim-buy-now" accessibilityRole="button" accessibilityLabel={t.buy} accessibilityHint={availabilityHint ?? undefined}
             accessibilityState={{ disabled: !buyEnabled }}
             disabled={!buyEnabled}
-            onPress={() => { if (buyEnabled && selected && destination) onBuy?.(selected, destination); }}
+            onPress={() => { if (buyEnabled && selected && destination) onBuy?.(selected, destination, quantity); }}
             style={({ pressed }) => [styles.buyButton, !buyEnabled && styles.buyDisabled, pressed && styles.pressed]}
             ><Text style={styles.buyText}>{checkoutPending ? t.checkoutWorking : t.buy}</Text><EsimIcon name={rtl ? "arrow-back" : "arrow-forward"} size={19} color="#FFFFFF" /></Pressable>
           {!!availabilityHint && <Text style={styles.buyHint}>{availabilityHint}</Text>}

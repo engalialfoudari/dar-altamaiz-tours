@@ -460,6 +460,12 @@ export const EsimPaymentMethod = {
 
 export interface EsimQuoteInput {
   /**
+     * Number of separate eSIMs of this plan; defaults to one.
+     * @minimum 1
+     * @maximum 10
+     */
+  quantity?: number;
+  /**
      * @maxLength 100
      * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
      */
@@ -504,6 +510,11 @@ export interface EsimQuoteProduct {
 }
 
 export interface EsimQuoteResponse {
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  quantity?: number;
   paymentMethod: EsimPaymentMethod;
   /** @minimum 1 */
   baseAmountFils: number;
@@ -528,6 +539,12 @@ export interface EsimPrivateGuestCodeInput {
 }
 
 export interface EsimOrderInput {
+  /**
+     * Must match the reviewed quote; defaults to one.
+     * @minimum 1
+     * @maximum 10
+     */
+  quantity?: number;
   /**
      * @maxLength 100
      * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$

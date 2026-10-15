@@ -222,7 +222,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
   const [pendingLink, setPendingLink] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
-  const [checkoutItem, setCheckoutItem] = useState<{ item: EsimPackage; destination: EsimDestination } | null>(null);
+  const [checkoutItem, setCheckoutItem] = useState<{ item: EsimPackage; destination: EsimDestination; quantity: number } | null>(null);
   const [step, setStep] = useState<CheckoutStep>("customer");
   const [customer, setCustomer] = useState<Customer>(EMPTY_CUSTOMER);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof Customer, string>>>({});
@@ -664,7 +664,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     orderKey,
   ]);
 
-  const onBuy = (item: EsimPackage, destination: EsimDestination) => {
+  const onBuy = (item: EsimPackage, destination: EsimDestination, quantity = 1) => {
     if (item.isInStock === false) return;
     if (privateCheckoutRestricted && !isPrivateEsimTrialPackage(destination.slug, item.id)) {
       setCheckoutError(privateCheckoutMessage);
@@ -691,7 +691,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     setFormErrors({});
     setPromoCode("");
     setPaymentMethod("cc");
-    setCheckoutItem({ item, destination });
+    setCheckoutItem({ item, destination, quantity });
     setStep("customer");
   };
 
@@ -754,7 +754,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
       setCheckoutError(props.lang === "ar" ? "ننتظر تأكيد تسجيل الدخول. أعد محاولة الاتصال قبل المتابعة." : "Waiting for your sign-in to finish. Retry connection before continuing.");
       return;
     }
-    const { item, destination } = checkoutItem;
+    const { item, destination, quantity } = checkoutItem;
     if (privateCheckoutRestricted
       && (!isPrivateEsimTrialPackage(destination.slug, item.id) || promoCode !== "")) {
       setCheckoutError(privateCheckoutMessage);
@@ -771,10 +771,11 @@ export function ConnectedEsimCatalogScreen(props: Props) {
     setCheckoutPending(true);
     try {
       const authoritative = await quotePackage.mutateAsync({
-         data: { slug: destination.slug, packageId: item.id, paymentMethod, ...(promoCode ? { promoCode: promoCode.toUpperCase() } : {}) },
+         data: { slug: destination.slug, packageId: item.id, paymentMethod, ...(quantity > 1 ? { quantity } : {}), ...(promoCode ? { promoCode: promoCode.toUpperCase() } : {}) },
       });
       if (sessionRef.current !== buyerSession || checkoutAuthRef.current.mode !== quotedMode || !quoteGate.current.isCurrent(current)) return;
        if (!validQuote(authoritative, destination.slug, item.id, paymentMethod)) throw new Error("Invalid quote");
+       if ((authoritative.quantity ?? 1) !== quantity) throw new Error("Invalid quantity in quote");
        if (privateCheckoutRestricted
          && !isPrivateEsimTrialQuote(destination.slug, item.id, paymentMethod, promoCode, authoritative.amountFils)) {
          setCheckoutError(privateCheckoutMessage);
@@ -828,7 +829,8 @@ export function ConnectedEsimCatalogScreen(props: Props) {
       return;
     }
     if (!validQuote(quote, destination.slug, item.id, paymentMethod)) return;
-    const fingerprint = JSON.stringify([buyerSession, destination.slug, item.id, promoCode, paymentMethod, buyer]);
+    const quantity = quote.quantity ?? 1;
+    const fingerprint = JSON.stringify([buyerSession, destination.slug, item.id, quantity, promoCode, paymentMethod, buyer]);
     const dialCountry = getEsimCountryOptions(props.lang).find((option) => option.iso === buyer.phoneDialCountryIso);
     if (!dialCountry || !isValidE164(dialCountry.dialCode, buyer.phoneNumber)) return;
     if (attempt.current?.fingerprint !== fingerprint) {
@@ -841,6 +843,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
       const result = await create.mutateAsync({
         data: {
             slug: destination.slug, packageId: item.id, paymentMethod, expectedAmountFils: quote.amountFils,
+            ...(quantity > 1 ? { quantity } : {}),
             firstName: buyer.firstName, lastName: buyer.lastName, email: buyer.email,
             customerMobile: `+${dialCountry.dialCode}${normalizeNationalPhone(buyer.phoneNumber)}`,
             billingAddress: serializeBilling(buyer),
@@ -922,10 +925,11 @@ export function ConnectedEsimCatalogScreen(props: Props) {
         setEmailAcknowledged(false);
         try {
           const updated = await quotePackage.mutateAsync({
-             data: { slug: destination.slug, packageId: item.id, paymentMethod, ...(promoCode ? { promoCode } : {}) },
+             data: { slug: destination.slug, packageId: item.id, paymentMethod, ...(quantity > 1 ? { quantity } : {}), ...(promoCode ? { promoCode } : {}) },
           });
           if (sessionRef.current !== buyerSession || !quoteGate.current.isCurrent(current)) return;
            if (!validQuote(updated, destination.slug, item.id, paymentMethod)) throw new Error("Invalid quote");
+           if ((updated.quantity ?? 1) !== quantity) throw new Error("Invalid quantity in quote");
             setReview({ item, destination, promoCode, paymentMethod, customer: buyer, quote: updated, changed: true });
         } catch {
           if (sessionRef.current === buyerSession && quoteGate.current.isCurrent(current)) {
@@ -1187,7 +1191,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
           <Text style={modalStyles.kicker}>{step === "customer" ? (props.lang === "ar" ? "٠١ / بيانات العميل" : "01 / CUSTOMER DETAILS") : (props.lang === "ar" ? "٠٢ / طريقة الدفع" : "02 / PAYMENT METHOD")}</Text>
           <Text style={modalStyles.formTitle}>{step === "customer" ? (props.lang === "ar" ? "لمن هذه الشريحة؟" : "Who’s travelling?") : (props.lang === "ar" ? "كيف تود الدفع؟" : "How would you like to pay?")}</Text>
           <Text style={modalStyles.formSubtitle}>{step === "customer" ? (props.lang === "ar" ? "نحتاج بياناتك لإصدار الطلب وإرسال تفاصيل شريحتك." : "These details are needed for your order and installation instructions.") : (props.lang === "ar" ? "اختر وسيلة الدفع، ثم راجع السعر النهائي قبل المتابعة." : "Choose a method, then review your final price before continuing.")}</Text>
-           <View style={modalStyles.productStrip}><EsimIcon name="cellular" size={24} color={BLUE} /><View style={{ flex: 1 }}><Text style={modalStyles.productStripTitle}>{esimDestinationTitle(checkoutItem?.destination.title ?? "", props.lang, checkoutItem?.destination.countryCode)}</Text><Text style={modalStyles.productStripMeta}>{checkoutItem?.item.title}</Text></View><Text style={modalStyles.productStripPrice}>{checkoutItem?.item.priceKwd?.toFixed(3)} KWD</Text></View>
+           <View style={modalStyles.productStrip}><EsimIcon name="cellular" size={24} color={BLUE} /><View style={{ flex: 1 }}><Text style={modalStyles.productStripTitle}>{esimDestinationTitle(checkoutItem?.destination.title ?? "", props.lang, checkoutItem?.destination.countryCode)}</Text><Text style={modalStyles.productStripMeta}>{checkoutItem?.item.title} × {checkoutItem?.quantity ?? 1}</Text></View><Text style={modalStyles.productStripPrice}>{checkoutItem?.item.priceKwd == null ? "" : (checkoutItem.item.priceKwd * checkoutItem.quantity).toFixed(3)} KWD</Text></View>
           {step === "customer" ? <>
               {(["firstName", "lastName", "email"] as const).map((field) => {
                 const labels = props.lang === "ar"
@@ -1291,6 +1295,7 @@ export function ConnectedEsimCatalogScreen(props: Props) {
               : props.lang === "ar" ? "تأكيد السعر النهائي" : "Confirm final price"}
           </Text>
           <Text style={[modalStyles.product, props.lang === "ar" && modalStyles.rtl]}>{esimDestinationTitle(review?.quote.product.destination ?? "", props.lang)} · {review?.quote.product.title}</Text>
+          {!!review && <Text testID="esim-review-quantity" style={[modalStyles.promo, props.lang === "ar" && modalStyles.rtl]}>{locale === "tr" ? "eSIM sayısı" : props.lang === "ar" ? "عدد الشرائح" : "Number of eSIMs"}: {review.quote.quantity ?? 1}</Text>}
           {!!review && (review.quote.product.isUnlimited || review.quote.product.hasFairUsagePolicy) && !!esimFairUseText(review.quote.product, locale === "tr" ? "tr" : props.lang) && (
             <Text style={[modalStyles.note, props.lang === "ar" && modalStyles.rtl]}>
               {esimFairUseText(review.quote.product, locale === "tr" ? "tr" : props.lang)}
