@@ -55,7 +55,7 @@ type FlightDiagnostic = {
 };
 const DIAGNOSTIC_CATEGORIES = new Set([
   "none", "form_missing", "field_missing", "form_incomplete", "dt_error",
-  "dt_timeout", "navigation_blocked", "webview_error", "prepare_error", "script_error", "unknown",
+  "dt_timeout", "navigation_blocked", "webview_error", "prepare_error", "supplier_unavailable", "script_error", "unknown",
 ]);
 
 function isTrustedFlightUrl(url: string) {
@@ -147,6 +147,8 @@ export function flightSearchInjection(search: DtFlightSearch) {
       }
       function supplierResponse() {
         var text = (document.body && document.body.innerText || '').toLowerCase();
+        var pageText = (document.body && document.body.textContent || text).toLowerCase();
+        if (!document.getElementById('flight_form') && /flight booking is on its way/.test(pageText)) return 'flight_service_unavailable';
         if (/a php error was encountered|array to string conversion|models\\/flight_model\\.php/.test(text)) return 'php_flight_model_error';
         if (/could not process your request|flight booking engine/.test(text)) return 'flight_booking_engine_could_not_process';
         if (/payment got failed|payment failed/.test(text)) return 'payment_failed';
@@ -236,6 +238,7 @@ export function flightSearchInjection(search: DtFlightSearch) {
         try {
         var form = document.getElementById('flight_form');
         if (!form) {
+          if (supplierResponse() === 'flight_service_unavailable') { fail('supplier_unavailable'); return; }
           if (attempt < 80) return setTimeout(function() { submitSearch(attempt + 1); }, 250);
           fail('form_missing');
           return;
@@ -465,6 +468,7 @@ export function FlightResultsScreen({
   const [search, setSearch] = useState<DtFlightSearch | null>(null);
   const [webViewKey, setWebViewKey] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
+  const [supplierUnavailable, setSupplierUnavailable] = useState(false);
   const handoffWebViewRef = useRef<any>(null);
   const latestUrl = useRef(DT_HOME);
   const lastDiagnostic = useRef("");
@@ -490,6 +494,8 @@ export function FlightResultsScreen({
       ? diagnostic.failureCategory!
       : "unknown";
     const cardCount = Math.max(0, Math.min(500, Math.trunc(diagnostic.cardCount ?? 0)));
+    if (failureCategory === "supplier_unavailable") setSupplierUnavailable(true);
+    if (!["failed", "timeout", "watchdog_timeout", "prepare_failed", "webview_error", "navigation_blocked"].includes(stage)) return;
     const detail = typeof diagnostic.detail === "string"
       ? diagnostic.detail.replace(/[^a-z0-9 _-]/gi, " ").slice(0, 160)
       : "";
@@ -527,11 +533,16 @@ export function FlightResultsScreen({
   useEffect(() => {
     if (Platform.OS === "web") return;
     const controller = new AbortController();
+    setPhase("preparing");
+    setSearch(null);
+    setSupplierUnavailable(false);
     const prepareSearch = async () => {
       try {
         const response = await fetch(payloadUrl(url), { signal: controller.signal });
         const data = await response.json() as { ok?: boolean; search?: DtFlightSearch };
-        if (!response.ok || !data.ok || !data.search || controller.signal.aborted) {
+        // A superseded request must never fail the next search or emit an alert.
+        if (controller.signal.aborted) return;
+        if (!response.ok || !data.ok || !data.search) {
           reportDiagnostic({ stage: "prepare_failed", failureCategory: "prepare_error" });
           setPhase("failed");
           return;
@@ -671,7 +682,11 @@ export function FlightResultsScreen({
             <HotelPortalIcon name="airplane" size={32} color={P.navy} />
             <Text style={styles.errorTitle}>{isRtl ? "تعذر إكمال البحث" : "We couldn't complete this search"}</Text>
             <Text style={styles.errorText}>
-              {isRtl
+              {supplierUnavailable
+                ? (isRtl ? "خدمة حجز الطيران غير متاحة حاليًا لدى مزود الحجز. يرجى المحاولة لاحقًا."
+                  : lang === "tr" ? "Rezervasyon sağlayıcısının uçuş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."
+                  : "The booking provider's flight service is currently unavailable. Please try again later.")
+                : isRtl
                 ? "لم تعرض DT Tours نتائج لهذه الرحلة. عدّل بحثك ثم حاول مرة أخرى."
                 : "DT Tours did not return flight results for this search. Edit your details and try again."}
             </Text>
