@@ -6,6 +6,7 @@ import { HotelPortalIcon } from "@/components/HotelPortalIcon";
 import { InfoModal } from "@/components/InfoModal";
 import type { HomeLang } from "@/components/LuxuryHome";
 import { dateIsValid, type FlightSearchValues } from "@/lib/flightSearch";
+import { useAppLanguage } from "@/localization/provider";
 
 // These are the existing flight-search screen colours; no shared theme or button colour changes.
 const P = {
@@ -13,6 +14,7 @@ const P = {
   muted: "#697586", border: "#D8DEE8", paleBlue: "#EAF1FC",
   green: "#16794C", paleGreen: "#EAF6EF", red: "#B42318", paleRed: "#FDEDEC",
 };
+export const FLIGHT_SEARCH_TIMEOUT_MS = 60_000;
 
 type Flight = {
   id: string; airline: string; airlineCode: string; departure: string; arrival: string;
@@ -166,8 +168,12 @@ export function FlightApiResultsScreen({
 }) {
   const insets = useSafeAreaInsets();
   const ar = lang === "ar";
+  const tr = useAppLanguage().locale === "tr";
   const [flights, setFlights] = useState<Flight[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
+  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [timedOut, setTimedOut] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<Flight | null>(null);
   const [passengers, setPassengers] = useState<Passenger[]>(() =>
     Array.from({ length: Math.max(1, (values?.adults ?? 1) + (values?.children ?? 0) + (values?.infants ?? 0)) }, blankPassenger));
@@ -193,14 +199,34 @@ export function FlightApiResultsScreen({
 
   useEffect(() => {
     const controller = new AbortController();
+    let settled = false;
+    const deadline = Date.now() + FLIGHT_SEARCH_TIMEOUT_MS;
     setStatus("loading");
+    setFlights([]);
+    setTimedOut(false);
+    setSecondsLeft(60);
     clearFilters();
+    const expire = () => {
+      if (settled) return;
+      settled = true;
+      controller.abort();
+      clearInterval(ticker);
+      setSecondsLeft(0);
+      setTimedOut(true);
+      setStatus("error");
+    };
+    const ticker = setInterval(() => {
+      setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+      if (Date.now() >= deadline) expire();
+    }, 1000);
+    const timeout = setTimeout(expire, FLIGHT_SEARCH_TIMEOUT_MS);
     fetch(url, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Flight search returned ${response.status}`);
-        const data = await response.json() as { configured?: boolean; flights?: Flight[]; quota_exceeded?: boolean };
-        if (!data.configured || data.quota_exceeded || !Array.isArray(data.flights)) throw new Error("Flight search unavailable");
-        if (controller.signal.aborted) return;
+        const data = await response.json() as { configured?: boolean; flights?: Flight[]; quota_exceeded?: boolean; error?: string };
+        if (!data.configured || data.quota_exceeded || data.error || !Array.isArray(data.flights)) throw new Error("Flight search unavailable");
+        if (settled || controller.signal.aborted) return;
+        if (Date.now() >= deadline) { expire(); return; }
         const valid = data.flights.filter((flight) =>
           typeof flight.id === "string" && typeof flight.airline === "string"
           && Number.isFinite(Number(flight.price)) && Number(flight.price) > 0
@@ -208,9 +234,19 @@ export function FlightApiResultsScreen({
         setFlights(valid);
         setStatus(valid.length ? "ready" : "empty");
       })
-      .catch(() => { if (!controller.signal.aborted) setStatus("error"); });
-    return () => controller.abort();
-  }, [url]);
+      .catch(() => { if (!settled && !controller.signal.aborted) setStatus("error"); })
+      .finally(() => {
+        settled = true;
+        clearInterval(ticker);
+        clearTimeout(timeout);
+      });
+    return () => {
+      settled = true;
+      controller.abort();
+      clearInterval(ticker);
+      clearTimeout(timeout);
+    };
+  }, [url, attempt]);
 
   if (!values) return null;
   const update = (index: number, key: keyof Passenger, text: string) => {
@@ -368,12 +404,15 @@ export function FlightApiResultsScreen({
           {values.origin?.iata} → {values.destination?.iata} · {values.departure}
           {values.tripType === "roundtrip" ? ` → ${values.returnDate}` : ""} · {values.cabinClass}
         </Text>
-        {status === "loading" && <View style={styles.center}><ActivityIndicator color={P.navy} /><Text style={styles.note}>{ar ? "جارٍ البحث عن الرحلات…" : "Searching for flights…"}</Text></View>}
+        {status === "loading" && <View style={styles.center} accessibilityLiveRegion="polite"><ActivityIndicator color={P.navy} /><Text style={styles.note}>{tr ? "Uçuşlar aranıyor…" : ar ? "جارٍ البحث عن الرحلات…" : "Searching for flights…"}</Text><Text style={styles.note} testID="flight-search-countdown">{tr ? `En fazla ${secondsLeft} saniye kaldı` : ar ? `متبقي ${secondsLeft} ثانية كحد أقصى` : `Up to ${secondsLeft}s remaining`}</Text></View>}
         {(status === "error" || status === "empty") && (
           <View style={styles.center}>
-            <Text style={styles.note}>{status === "empty"
+            <Text style={styles.note}>{timedOut
+              ? tr ? "Uçuş araması zaman aşımına uğradı. Tekrar deneyin." : ar ? "انتهت مهلة البحث عن الرحلات. حاول مرة أخرى." : "Flight search timed out. Please try again."
+              : status === "empty"
               ? ar ? "لم نجد رحلات متاحة لهذا البحث. عدّل بحثك وحاول مجدداً." : "No flights found for this search. Edit your search and try again."
               : ar ? "تعذر تحميل الرحلات الآن. عدّل بحثك وحاول مجدداً." : "Flights could not be loaded. Edit your search and try again."}</Text>
+            {status === "error" && <Pressable onPress={() => setAttempt((n) => n + 1)} style={styles.button}><Text style={styles.buttonText}>{tr ? "Tekrar dene" : ar ? "إعادة المحاولة" : "Try again"}</Text></Pressable>}
             <Pressable onPress={onBack} style={styles.button}><Text style={styles.buttonText}>{ar ? "تعديل البحث" : "Edit search"}</Text></Pressable>
           </View>
         )}
