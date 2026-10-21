@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useAppLanguage } from "@/localization/provider";
+import { useAiConsent, aiConsentHeaders, aiConsentFailure, aiConsentErrorCopy } from "@/lib/aiConsent";
 import {
   ActivityIndicator,
   Linking,
@@ -433,6 +435,8 @@ export function PackageBuilderScreen({
 }) {
   const insets = useSafeAreaInsets();
   const s = STR[lang];
+  const { locale } = useAppLanguage();
+  const requestAiConsent = useAiConsent(visible, locale);
   const rtl = lang === "ar";
 
   const [step, setStep] = useState(0);
@@ -442,7 +446,7 @@ export function PackageBuilderScreen({
   const [style, setStyle] = useState<"luxury" | "premium" | "comfort">("premium");
   const [interests, setInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"build" | "consent" | "update" | null>(null);
   const [result, setResult] = useState<Estimate | null>(null);
   const [suggestedHotelStars, setSuggestedHotelStars] = useState<number | null>(null);
   const [fingerprint, setFingerprint] = useState("");
@@ -472,7 +476,7 @@ export function PackageBuilderScreen({
     if (!visible) return;
     reqRef.current++;
     setResult(null);
-    setError(false);
+    setError(null);
     setLoading(false);
     setStyle("premium");
     setInterests([]);
@@ -588,10 +592,12 @@ export function PackageBuilderScreen({
 
   const build = async () => {
     if (!fingerprint || !entitlement || entitlementLoading || entitlementError || !entitlement.allowed) return;
+    if (error === "update") return;
+    if (await requestAiConsent(error === "consent") !== "accepted") return;
     const reqId = ++reqRef.current;
     const requestKey = `package-${fingerprint}-${Date.now()}-${reqId}`;
     setLoading(true);
-    setError(false);
+    setError(null);
     setResult(null);
     try {
       const request = () =>
@@ -601,8 +607,9 @@ export function PackageBuilderScreen({
             "Content-Type": "application/json",
             "x-device-id": fingerprint,
             "x-idempotency-key": requestKey,
+            ...aiConsentHeaders(locale),
           },
-          body: JSON.stringify({ destination, nights, travelers, style, interests, lang, fingerprint }),
+          body: JSON.stringify({ destination, nights, travelers, style, interests, lang: locale, fingerprint }),
         });
       let response: Response;
       try {
@@ -613,6 +620,7 @@ export function PackageBuilderScreen({
       }
       const data = (await response.json()) as Estimate & {
         error?: string;
+        requiredVersion?: string;
         blocked?: boolean;
         builder?: BuilderEntitlement;
       };
@@ -620,12 +628,12 @@ export function PackageBuilderScreen({
       if (response.ok) {
         if (reqRef.current === reqId) setResult(data);
       } else if (data.blocked) {
-        if (reqRef.current === reqId) setError(false);
+        if (reqRef.current === reqId) setError(null);
       } else if (reqRef.current === reqId) {
-        setError(true);
+        setError(aiConsentFailure(data) ?? "build");
       }
     } catch {
-      if (reqRef.current === reqId) setError(true);
+      if (reqRef.current === reqId) setError("build");
     } finally {
       if (reqRef.current === reqId) setLoading(false);
     }
@@ -836,7 +844,7 @@ export function PackageBuilderScreen({
     setStyle("premium");
     setInterests([]);
     setResult(null);
-    setError(false);
+    setError(null);
   };
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
@@ -887,10 +895,10 @@ export function PackageBuilderScreen({
 
           {error && (
             <View style={styles.loadingWrap}>
-              <Text style={styles.errorText}>{s.error}</Text>
-              <Pressable style={styles.retryBtn} onPress={build}>
+              <Text style={styles.errorText} testID="pb-build-error">{error === "consent" || error === "update" ? aiConsentErrorCopy[locale][error] : s.error}</Text>
+              {error !== "update" && <Pressable style={styles.retryBtn} onPress={build} testID="pb-retry">
                 <Text style={styles.retryText}>{s.retry}</Text>
-              </Pressable>
+              </Pressable>}
             </View>
           )}
 
