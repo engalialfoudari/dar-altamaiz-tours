@@ -1,0 +1,40 @@
+name: Remove AI permission popup from Android Package Builder
+on:
+  workflow_dispatch: {}
+defaults:
+  image: sdk-54
+  tools:
+    node: "22.14.0"
+jobs:
+  preview:
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: preview
+      message: "Remove AI permission popup; direct Build and Retry with inline disclosure; Android runtime 1.0.6"
+  production:
+    needs: [preview]
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: production
+      message: "Remove AI permission popup; direct Build and Retry with inline disclosure; Android runtime 1.0.6"
+  dttoursRetention:
+    needs: [preview]
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: dttoursRetention
+      message: "Remove AI permission popup; direct Build and Retry with inline disclosure; Android runtime 1.0.6"

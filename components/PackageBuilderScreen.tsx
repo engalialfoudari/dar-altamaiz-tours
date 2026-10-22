@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAppLanguage } from "@/localization/provider";
-import { useAiConsent, aiConsentHeaders, aiConsentFailure, aiConsentErrorCopy } from "@/lib/aiConsent";
+import { useAiConsent, aiConsentHeaders, aiConsentFailure, aiConsentErrorCopy, aiSharingNotice } from "@/lib/aiConsent";
 import {
   ActivityIndicator,
   Linking,
@@ -896,6 +896,7 @@ export function PackageBuilderScreen({
           {error && (
             <View style={styles.loadingWrap}>
               <Text style={styles.errorText} testID="pb-build-error">{error === "consent" || error === "update" ? aiConsentErrorCopy[locale][error] : s.error}</Text>
+              {error !== "update" && <Text style={[styles.quotaCopy, rtl && styles.rtlText]}>{aiSharingNotice[locale].builder}</Text>}
               {error !== "update" && <Pressable style={styles.retryBtn} onPress={build} testID="pb-retry">
                 <Text style={styles.retryText}>{s.retry}</Text>
               </Pressable>}
@@ -1050,6 +1051,11 @@ export function PackageBuilderScreen({
                 </>
               )}
 
+              {step === 2 && (
+                <Text testID="pb-ai-sharing-notice" style={[styles.quotaCopy, rtl && styles.rtlText]}>
+                  {aiSharingNotice[locale].builder}
+                </Text>
+              )}
               <View style={[styles.navRow, rtl && { flexDirection: "row-reverse" }]}>
                 {step > 0 ? (
                   <Pressable style={styles.backNav} onPress={() => setStep(step - 1)} testID="pb-back">

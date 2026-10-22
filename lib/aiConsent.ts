@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Alert, Platform } from "react-native";
 import { useAuth } from "@clerk/expo";
 
 type ConsentLocale = "ar" | "en" | "tr";
@@ -13,20 +12,20 @@ export function aiConsentFailure(body: { error?: string; requiredVersion?: strin
 
 export const aiConsentErrorCopy = {
   en: {
-    consent: "AI-sharing permission is required. Tap Retry to review the privacy notice and allow AI before building your package.",
+    consent: "Your AI request could not be verified. Tap Retry to build your package using the sharing notice shown below.",
     update: "This app needs an update to show the latest AI privacy notice. Update DT Tours and reopen it, then allow AI sharing. Ordinary travel search and booking are still available.",
   },
   ar: {
-    consent: "يلزم السماح بمشاركة البيانات مع الذكاء الاصطناعي. اضغط «إعادة المحاولة» لمراجعة إشعار الخصوصية والموافقة قبل إنشاء باقتك.",
+    consent: "تعذر التحقق من طلب الذكاء الاصطناعي. اضغط «إعادة المحاولة» لإنشاء باقتك وفق إشعار المشاركة أدناه.",
     update: "يحتاج التطبيق إلى تحديث لعرض أحدث إشعار لخصوصية الذكاء الاصطناعي. حدّث تطبيق دار التميز تورز وأعد فتحه، ثم وافق على المشاركة. يظل البحث والحجز العاديان متاحين.",
   },
   tr: {
-    consent: "Yapay zekâ ile veri paylaşımına izin vermeniz gerekiyor. Gizlilik bildirimini incelemek ve paketinizi oluşturmadan önce izin vermek için Tekrar Dene’ye dokunun.",
+    consent: "Yapay zekâ isteğiniz doğrulanamadı. Aşağıdaki paylaşım bildirimiyle paketinizi oluşturmak için Tekrar Dene’ye dokunun.",
     update: "En güncel yapay zekâ gizlilik bildirimini göstermek için uygulama güncellenmelidir. DT Tours’u güncelleyip yeniden açın ve veri paylaşımına izin verin. Normal seyahat arama ve rezervasyon kullanılabilir.",
   },
 };
 
-/** Send only after the session gate has returned accepted. */
+/** Send only after an explicit Build/Send action beside the inline sharing notice. */
 export function aiConsentHeaders(locale: ConsentLocale) {
   return {
     "x-ai-consent-version": AI_CONSENT_VERSION,
@@ -52,6 +51,22 @@ export const aiConsentCopy = {
     body: "Yapay zekâ yanıtları Replit üzerinden Google Gemini kullanır. Yanıt oluşturmak için görünen adınız (belirttiyseniz), son 20 sohbet mesajına kadar olan içerik veya seyahat oluşturucu tercihleriniz bu sağlayıcılara gönderilir. Şifre, pasaport numarası veya ödeme bilgisi paylaşmayın. Reddedip normal seyahat arama ve rezervasyon özelliklerini kullanabilirsiniz. İzin yalnızca bu özellik oturumu içindir; özelliği kapatmak veya hesap değiştirmek izni sıfırlar.",
     allow: "İzin ver",
     decline: "Şimdi değil",
+  },
+};
+
+/** Non-modal disclosure: Build/Send is the user's sharing action, never opening a feature. */
+export const aiSharingNotice = {
+  en: {
+    builder: "By tapping Build or Retry, you agree to share your trip preferences with Google Gemini via Replit to create your package. Do not enter sensitive information.",
+    chat: "By sending, you agree to share your display name and up to 20 recent messages with Google Gemini via Replit for AI replies. Do not send sensitive information.",
+  },
+  ar: {
+    builder: "بالضغط على إنشاء أو إعادة المحاولة، توافق على مشاركة تفضيلات رحلتك مع Google Gemini عبر Replit لإنشاء باقتك. لا تُدخل معلومات حساسة.",
+    chat: "بإرسال رسالتك، توافق على مشاركة اسم العرض وما يصل إلى 20 رسالة حديثة مع Google Gemini عبر Replit للرد بالذكاء الاصطناعي. لا ترسل معلومات حساسة.",
+  },
+  tr: {
+    builder: "Oluştur veya Tekrar Dene’ye dokunarak paketinizi hazırlamak için seyahat tercihlerinizi Replit üzerinden Google Gemini ile paylaşmayı kabul edersiniz. Hassas bilgi girmeyin.",
+    chat: "Göndererek yapay zekâ yanıtları için görünen adınızı ve en son 20 mesajınızı Replit üzerinden Google Gemini ile paylaşmayı kabul edersiniz. Hassas bilgi göndermeyin.",
   },
 };
 
@@ -98,23 +113,12 @@ export class AiConsentGate {
   }
 }
 
-function promptForAiConsent(locale: ConsentLocale): Promise<boolean> {
-  const copy = aiConsentCopy[locale];
-  if (Platform.OS === "web") {
-    return Promise.resolve(typeof window !== "undefined" && window.confirm(`${copy.title}\n\n${copy.body}`));
-  }
-  return new Promise(resolve => {
-    Alert.alert(copy.title, copy.body, [
-      { text: copy.decline, style: "cancel", onPress: () => resolve(false) },
-      { text: copy.allow, onPress: () => resolve(true) },
-    ], { cancelable: true, onDismiss: () => resolve(false) });
-  });
-}
-
 export function useAiConsent(visible: boolean, locale: ConsentLocale, subject = "") {
   const { sessionId, userId } = useAuth();
   const gateRef = useRef<AiConsentGate | null>(null);
-  if (!gateRef.current) gateRef.current = new AiConsentGate(promptForAiConsent);
+  // Called only from Build/Send handlers whose controls display aiSharingNotice.
+  // Never show an Alert/confirm, including after reopening, account changes or retries.
+  if (!gateRef.current) gateRef.current = new AiConsentGate(async () => true);
   const gate = gateRef.current;
   const scope = visible ? JSON.stringify([userId ?? "guest", sessionId ?? "", subject]) : null;
   gate.setScope(scope);
