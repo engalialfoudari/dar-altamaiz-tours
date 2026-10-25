@@ -27,6 +27,8 @@ import * as Updates from "expo-updates";
 import { fetch as expoFetch } from "expo/fetch";
 import { BOOKING_RULES, CUSTOMER_BOOKING_GUIDANCE } from "@/lib/bookingRules";
 import { getAdminTokenExpiry, isAdminSessionExpiredMessage } from "@/lib/adminSession";
+import { useAiConsent, useAiSharingChoice, aiConsentHeaders, aiChatConsentError } from "@/lib/aiConsent";
+import { AiSharingConsent } from "@/components/AiSharingConsent";
 const GOLD = "#D4AF37";
 const BLACK = "#000000";
 const NAVY_BG = "#0A1628";
@@ -4126,6 +4128,8 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
   const { height: screenHeight } = useWindowDimensions();
   const [language, setLanguage] = useState<Language | null>(null);
   const [userName, setUserName] = useState("");
+  const aiSharing = useAiSharingChoice(visible, userName.trim());
+  const requestAiConsent = useAiConsent(visible, selectedLocale, userName.trim(), aiSharing.allowed);
   const [nameError, setNameError] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -4950,6 +4954,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
   // ── Another Option: AI sends a higher-budget package alternative ──
   const onAnotherOption = useCallback(async () => {
     if (loading) return;
+    if (await requestAiConsent() !== "accepted") return;
     const text = isAr
       ? "أعطني خياراً آخر للباقة بسعر أعلى — طيران أفضل وفندق أفضل مع تفاصيل السعر"
       : "Give me another package option with a higher budget — better airline and better hotel, with full pricing details";
@@ -4974,10 +4979,16 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
     try {
       const res = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp, ...(adminToken ? { "x-admin-token": adminToken } : {}) },
+        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp, ...aiConsentHeaders(selectedLocale), ...(adminToken ? { "x-admin-token": adminToken } : {}) },
         body: JSON.stringify({ messages: historyForApi, userName: userName.trim(), language: getAppLocale() === "tr" ? "tr" : language ?? "ar", fingerprint: deviceFp }),
       });
-      const data = (await res.json()) as { ok: boolean; content?: string; hotelParams?: { city: string; checkin: string; checkout: string; stars: number; breakfast?: boolean }; hotelNameParams?: { hotelName: string; hotelNames: string[]; checkin: string; checkout: string; adults: number; rooms: number } };
+      const data = (await res.json()) as { ok: boolean; error?: string; requiredVersion?: string; content?: string; hotelParams?: { city: string; checkin: string; checkout: string; stars: number; breakfast?: boolean }; hotelNameParams?: { hotelName: string; hotelNames: string[]; checkin: string; checkout: string; adults: number; rooms: number } };
+      const consentError = aiChatConsentError(data, selectedLocale);
+      if (consentError) {
+        aiSharing.setAllowed(false);
+        setMessages((prev) => [...prev, { id: `consent_${Date.now()}`, role: "assistant", content: consentError }]);
+        return;
+      }
       const raw = data.content ?? (isAr ? "عذراً، صار خطأ." : "Sorry, an error occurred.");
 
       const hotelMatch = HOTEL_SIGNAL_RE.exec(raw);
@@ -5023,7 +5034,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, [messages, loading, deviceFp, language, userName, isAr]);
+  }, [messages, loading, deviceFp, language, userName, isAr, requestAiConsent, selectedLocale, aiSharing.setAllowed]);
 
 
   // ── Hotel brand autocomplete: watch input and fetch suggestions ──────────
@@ -5376,6 +5387,11 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
       return;
     }
 
+    const consent = await requestAiConsent();
+    if (consent !== "accepted") {
+      if (consent === "declined") setInput(text);
+      return;
+    }
     userMsgCount.current += 1;
 
     const userMsg: Message = { id: `u_${Date.now()}`, role: "user", content: text };
@@ -5420,7 +5436,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
     try {
       const res = await fetch(`${API_BASE}/chat/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp, ...(adminToken ? { "x-admin-token": adminToken } : {}) },
+        headers: { "Content-Type": "application/json", "x-device-id": deviceFp, "X-Device-FP": deviceFp, ...aiConsentHeaders(selectedLocale), ...(adminToken ? { "x-admin-token": adminToken } : {}) },
         signal: controller.signal,
         body: JSON.stringify({
           messages: historyForApi,
@@ -5436,6 +5452,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
         ok: boolean;
         content?: string;
         error?: string;
+        requiredVersion?: string;
         blocked?: boolean;
         blockUntil?: number;
         cyclesUsedToday?: number;
@@ -5445,6 +5462,13 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
         itineraryBlocked?: { secondsLeft: number; max: number };
       };
 
+      const consentError = aiChatConsentError(data, selectedLocale);
+      if (consentError) {
+        aiSharing.setAllowed(false);
+        setInput(text);
+        setMessages((prev) => [...prev, { id: `consent_${Date.now()}`, role: "assistant", content: consentError }]);
+        return;
+      }
       if (data.blocked) {
         setMessages((prev) => prev.slice(0, -1));
         if (data.blockUntil) { setChatBlocked(true); setBlockUntil(data.blockUntil); }
@@ -6445,6 +6469,7 @@ export function ChatbotScreen({ visible, onClose, onNavigateToLocks, subscriptio
               )}
 
               {/* ── Input bar ── */}
+              <AiSharingConsent locale={selectedLocale} kind="chat" allowed={aiSharing.allowed} onChange={aiSharing.setAllowed} dark />
               <View style={styles.inputRow}>
                 <TextInput
                   style={[styles.inputBox, isAr && { textAlign: "right" }]}

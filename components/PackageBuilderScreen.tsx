@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAppLanguage } from "@/localization/provider";
-import { useAiConsent, aiConsentHeaders, aiConsentFailure, aiConsentErrorCopy, aiSharingNotice } from "@/lib/aiConsent";
+import { useAiConsent, useAiSharingChoice, aiConsentHeaders, aiConsentFailure, aiConsentErrorCopy } from "@/lib/aiConsent";
+import { AiSharingConsent } from "@/components/AiSharingConsent";
 import {
   ActivityIndicator,
   Linking,
@@ -436,7 +437,8 @@ export function PackageBuilderScreen({
   const insets = useSafeAreaInsets();
   const s = STR[lang];
   const { locale } = useAppLanguage();
-  const requestAiConsent = useAiConsent(visible, locale);
+  const aiSharing = useAiSharingChoice(visible);
+  const requestAiConsent = useAiConsent(visible, locale, "", aiSharing.allowed);
   const rtl = lang === "ar";
 
   const [step, setStep] = useState(0);
@@ -896,7 +898,7 @@ export function PackageBuilderScreen({
           {error && (
             <View style={styles.loadingWrap}>
               <Text style={styles.errorText} testID="pb-build-error">{error === "consent" || error === "update" ? aiConsentErrorCopy[locale][error] : s.error}</Text>
-              {error !== "update" && <Text style={[styles.quotaCopy, rtl && styles.rtlText]}>{aiSharingNotice[locale].builder}</Text>}
+              {error !== "update" && <AiSharingConsent locale={locale} kind="builder" allowed={aiSharing.allowed} onChange={aiSharing.setAllowed} />}
               {error !== "update" && <Pressable style={styles.retryBtn} onPress={build} testID="pb-retry">
                 <Text style={styles.retryText}>{s.retry}</Text>
               </Pressable>}
@@ -1052,9 +1054,7 @@ export function PackageBuilderScreen({
               )}
 
               {step === 2 && (
-                <Text testID="pb-ai-sharing-notice" style={[styles.quotaCopy, rtl && styles.rtlText]}>
-                  {aiSharingNotice[locale].builder}
-                </Text>
+                <AiSharingConsent locale={locale} kind="builder" allowed={aiSharing.allowed} onChange={aiSharing.setAllowed} />
               )}
               <View style={[styles.navRow, rtl && { flexDirection: "row-reverse" }]}>
                 {step > 0 ? (
