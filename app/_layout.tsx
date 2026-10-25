@@ -35,7 +35,6 @@ import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NetworkToast } from "@/components/NetworkToast";
 import { NotificationPermissionBanner } from "@/components/NotificationPermissionBanner";
-import { NotificationRescueModal } from "@/components/NotificationRescueModal";
 import {
   requestNotificationPermissions,
   scheduleRetentionNotifications,
@@ -335,7 +334,6 @@ function RootLayoutContent() {
                 <AnimatedSplash onAnimationEnd={() => setShowSplash(false)} />
               )}
               <NotificationPermissionBanner />
-              <NotificationRescueModal />
               <NetworkToast />
             </GestureHandlerRootView>
             </CartProvider>

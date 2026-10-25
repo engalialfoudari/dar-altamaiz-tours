@@ -10,10 +10,11 @@
 import NetInfo from "@react-native-community/netinfo";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Platform, StyleSheet, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export function NetworkToast() {
   const [visible, setVisible] = useState(false);
-  const translateY = useRef(new Animated.Value(-60)).current;
+  const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasOffline = useRef(false);
@@ -21,32 +22,18 @@ export function NetworkToast() {
   function show() {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     setVisible(true);
-    Animated.parallel([
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        bounciness: 6,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
 
     hideTimer.current = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: -60,
-          duration: 280,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 280,
-          useNativeDriver: true,
-        }),
-      ]).start(() => setVisible(false));
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 280,
+        useNativeDriver: true,
+      }).start(({ finished }) => { if (finished) setVisible(false); });
     }, 3000);
   }
 
@@ -66,6 +53,7 @@ export function NetworkToast() {
     return () => {
       unsubscribe();
       if (hideTimer.current) clearTimeout(hideTimer.current);
+      opacity.stopAnimation();
     };
   }, []);
 
@@ -73,7 +61,13 @@ export function NetworkToast() {
 
   return (
     <Animated.View
-      style={[styles.toast, { transform: [{ translateY }], opacity }]}
+      testID="network-toast"
+      style={[styles.toast, {
+        paddingTop: insets.top + 10,
+        paddingLeft: insets.left + 16,
+        paddingRight: insets.right + 16,
+        opacity,
+      }]}
       pointerEvents="none"
     >
       <Text style={styles.icon}>✓</Text>
