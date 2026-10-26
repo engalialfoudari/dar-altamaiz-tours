@@ -9,6 +9,8 @@ export function AiSharingConsent({ locale, kind, allowed, onChange, dark = false
   onChange: (value: boolean) => void;
   dark?: boolean;
 }) {
+  if (allowed) return null;
+
   const label = locale === "ar" ? "أوافق على مشاركة البيانات مع الذكاء الاصطناعي"
     : locale === "tr" ? "Yapay zekâ ile veri paylaşımına izin veriyorum"
       : "I allow sharing this data with AI";
