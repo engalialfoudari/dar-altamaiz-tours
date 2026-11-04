@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { fetch as streamingFetch } from "expo/fetch";
 import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppHeader } from "@/components/AppHeader";
 import { HotelPortalIcon } from "@/components/HotelPortalIcon";
 import { InfoModal } from "@/components/InfoModal";
 import type { HomeLang } from "@/components/LuxuryHome";
-import { dateIsValid, type FlightSearchValues } from "@/lib/flightSearch";
+import { type FlightSearchValues } from "@/lib/flightSearch";
 import { useAppLanguage } from "@/localization/provider";
+import { readFlightResponse, markFlightPaint } from "../lib/flight-progress.mjs";
 
 // These are the existing flight-search screen colours; no shared theme or button colour changes.
 const P = {
@@ -14,9 +16,12 @@ const P = {
   muted: "#697586", border: "#D8DEE8", paleBlue: "#EAF1FC",
   green: "#16794C", paleGreen: "#EAF6EF", red: "#B42318", paleRed: "#FDEDEC",
 };
-export const FLIGHT_SEARCH_TIMEOUT_MS = 60_000;
+// 35s discovery + 75s provider search + bounded history writes and transport overhead.
+export const FLIGHT_SEARCH_TIMEOUT_MS = 120_000;
 
 type Flight = {
+  baggageRef?: string;
+  quoteToken?: string; provisional?: boolean;
   id: string; airline: string; airlineCode: string; departure: string; arrival: string;
   depDate: string; retDate?: string; duration: string; stops: number;
   price: string; currency: string; airlineLogo?: string;
@@ -28,23 +33,17 @@ type Flight = {
 };
 type FareBagAllowance = { pieces?: number; weight?: string };
 type FlightSegment = {
+  cabinBagIncluded?: boolean; checkedBagIncluded?: boolean;
+  cabinBaggage?: FareBagAllowance; checkedBaggage?: FareBagAllowance;
   origin: string; destination: string; departure: string; arrival: string;
   duration: string; flightNumber: string; layoverMinutes?: number;
 };
 type Passenger = {
-  firstName: string; lastName: string; passportType: string; passportNumber: string;
-  birthDate: string; passportExpiry: string;
+  firstName: string; lastName: string;
 };
 const blankPassenger = (): Passenger => ({
-  firstName: "", lastName: "", passportType: "", passportNumber: "", birthDate: "", passportExpiry: "",
+  firstName: "", lastName: "",
 });
-const PASSPORT_TYPES = [
-  { value: "Ordinary", ar: "عادي" },
-  { value: "Official/Service", ar: "رسمي / خدمة" },
-  { value: "Diplomatic", ar: "دبلوماسي" },
-  { value: "Emergency", ar: "طوارئ" },
-  { value: "Temporary", ar: "مؤقت" },
-] as const;
 
 export function flightWhatsAppMessage(flight: Flight, values: FlightSearchValues, passengers: Passenger[]): string {
   const legs = values.tripType === "roundtrip" ? `Round-trip; return ${values.returnDate}` : "One-way";
@@ -74,26 +73,15 @@ export function flightWhatsAppMessage(flight: Flight, values: FlightSearchValues
       `Passenger ${index + 1} (${index < values.adults ? "Adult" : index < values.adults + values.children ? "Child" : "Infant"}):`,
       `First name: ${p.firstName.trim()}`,
       `Last name: ${p.lastName.trim()}`,
-      `Passport type: ${p.passportType.trim()}`,
-      `Passport number: ${p.passportNumber.trim()}`,
-      `Date of birth: ${p.birthDate}`,
-      `Passport expiry: ${p.passportExpiry}`,
       "",
     ]),
   ].join("\n").trim();
 }
 
-export function validateFlightPassengers(passengers: Passenger[], departure: string): number {
+export function validateFlightPassengers(passengers: Passenger[]): number {
   return passengers.findIndex((p) =>
-    !p.firstName.trim() || !p.lastName.trim() || !p.passportType.trim() || !p.passportNumber.trim()
-    || !dateIsValid(p.birthDate) || p.birthDate >= departure
-    || !dateIsValid(p.passportExpiry) || p.passportExpiry < departure
+    !p.firstName.trim() || !p.lastName.trim()
   );
-}
-
-function dateInput(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8)].filter(Boolean).join("-");
 }
 
 function segmentTime(iso: string): string {
@@ -106,8 +94,7 @@ function layoverDuration(minutes: number): string {
 
 function bagInclusion(included: boolean | undefined, bag: FareBagAllowance | undefined, ar: boolean): string {
   if (included === false) return ar ? "غير مشمولة" : "Not included";
-  if (included === true || baggageDetails(bag, ar)) return ar ? "مشمولة" : "Included";
-  return ar ? "غير محدد" : "Not specified";
+  return baggageDetails(bag, ar) ?? (ar ? "معلومات الأمتعة عند الطلب" : "Baggage info on request");
 }
 
 export function baggageDetails(bag: FareBagAllowance | undefined, ar: boolean): string | null {
@@ -162,7 +149,7 @@ export function FlightApiResultsScreen({
 }: {
   url: string;
   values: FlightSearchValues | null;
-  lang: HomeLang;
+  lang: HomeLang | "tr";
   onBack: () => void;
   onClose: () => void;
 }) {
@@ -171,7 +158,9 @@ export function FlightApiResultsScreen({
   const tr = useAppLanguage().locale === "tr";
   const [flights, setFlights] = useState<Flight[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [secondsLeft, setSecondsLeft] = useState(FLIGHT_SEARCH_TIMEOUT_MS / 1000);
+  const [correlationId, setCorrelationId] = useState("");
+  const [provisionalCount, setProvisionalCount] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<Flight | null>(null);
@@ -180,13 +169,19 @@ export function FlightApiResultsScreen({
   const [formError, setFormError] = useState("");
   const [showInfo, setShowInfo] = useState(false);
   const [detailsFlight, setDetailsFlight] = useState<Flight | null>(null);
-  const [openPassportTypeFor, setOpenPassportTypeFor] = useState<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [stopsFilter, setStopsFilter] = useState<StopsFilter>("any");
   const [bagFilter, setBagFilter] = useState<BagStatus | "any">("any");
   const [sortMode, setSortMode] = useState<SortMode>("recommended");
   const [airlineFilter, setAirlineFilter] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [shown, setShown] = useState(12);
+  const [verifying, setVerifying] = useState(false);
+  const generation = useRef(0);
+  useEffect(() => {
+    return flights.length ? markFlightPaint(correlationId, status === "loading" ? "provisional" : "final") : undefined;
+  }, [flights, status, correlationId]);
+  useEffect(() => { setShown(12); }, [stopsFilter, bagFilter, sortMode, airlineFilter, maxPrice]);
 
   const airlines = useMemo(() => [...new Set(flights.map((flight) => flight.airline))].sort(), [flights]);
   const visibleFlights = useMemo(() => filterFlightResults(flights, {
@@ -198,13 +193,21 @@ export function FlightApiResultsScreen({
   };
 
   useEffect(() => {
+    const activeGeneration = ++generation.current;
     const controller = new AbortController();
     let settled = false;
+    let retained: Flight[] = [];
     const deadline = Date.now() + FLIGHT_SEARCH_TIMEOUT_MS;
     setStatus("loading");
     setFlights([]);
+    setSelected(null);
+    setVerifying(false);
+    setDetailsFlight(null);
+    setShown(12);
     setTimedOut(false);
-    setSecondsLeft(60);
+    setSecondsLeft(FLIGHT_SEARCH_TIMEOUT_MS / 1000);
+    setCorrelationId("");
+    setProvisionalCount(0);
     clearFilters();
     const expire = () => {
       if (settled) return;
@@ -213,20 +216,36 @@ export function FlightApiResultsScreen({
       clearInterval(ticker);
       setSecondsLeft(0);
       setTimedOut(true);
-      setStatus("error");
+      setStatus(retained.length ? "ready" : "error");
+      setFlights(retained);
     };
     const ticker = setInterval(() => {
       setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
       if (Date.now() >= deadline) expire();
     }, 1000);
     const timeout = setTimeout(expire, FLIGHT_SEARCH_TIMEOUT_MS);
-    fetch(url, { signal: controller.signal })
+    Promise.resolve({}).then(headers =>
+      streamingFetch(url + (url.includes("?") ? "&" : "?") + "progress=1&listingOnly=1", { signal: controller.signal, headers }))
       .then(async (response) => {
         if (!response.ok) throw new Error(`Flight search returned ${response.status}`);
-        const data = await response.json() as { configured?: boolean; flights?: Flight[]; quota_exceeded?: boolean; error?: string };
-        if (!data.configured || data.quota_exceeded || data.error || !Array.isArray(data.flights)) throw new Error("Flight search unavailable");
+        const data = await readFlightResponse<{ configured?: boolean; flights?: Flight[]; quota_exceeded?: boolean; error?: string; correlationId?: string; provisional?: boolean; status?: string }>(response, progress => {
+          if (!settled && !controller.signal.aborted) {
+            setProvisionalCount(progress.provisionalCount);
+            setCorrelationId(progress.correlationId);
+            if (Array.isArray(progress.flights) && progress.flights.length) {
+              retained = (progress.flights as Flight[]).filter(flight =>
+                typeof flight.id === "string" && typeof flight.airline === "string"
+                && Number(flight.price) > 0 && flight.currency === "KWD");
+              setFlights(retained);
+            }
+          }
+        });
         if (settled || controller.signal.aborted) return;
         if (Date.now() >= deadline) { expire(); return; }
+        if (data.correlationId) setCorrelationId(data.correlationId);
+        if (!data.configured || data.quota_exceeded || data.error || !Array.isArray(data.flights)) {
+          throw new Error("Flight search unavailable");
+        }
         const valid = data.flights.filter((flight) =>
           typeof flight.id === "string" && typeof flight.airline === "string"
           && Number.isFinite(Number(flight.price)) && Number(flight.price) > 0
@@ -234,13 +253,16 @@ export function FlightApiResultsScreen({
         setFlights(valid);
         setStatus(valid.length ? "ready" : "empty");
       })
-      .catch(() => { if (!settled && !controller.signal.aborted) setStatus("error"); })
+      .catch(() => { if (!settled && !controller.signal.aborted) {
+        setStatus(retained.length ? "ready" : "error"); setFlights(retained); setDetailsFlight(null);
+      } })
       .finally(() => {
         settled = true;
         clearInterval(ticker);
         clearTimeout(timeout);
       });
     return () => {
+      if (generation.current === activeGeneration) generation.current++;
       settled = true;
       controller.abort();
       clearInterval(ticker);
@@ -248,78 +270,66 @@ export function FlightApiResultsScreen({
     };
   }, [url, attempt]);
 
+  useEffect(() => {
+    const flight = detailsFlight;
+    if (!flight?.baggageRef) return;
+    const controller = new AbortController();
+    const endpoint = new URL(url);
+    endpoint.pathname = endpoint.pathname.replace(/\/flights$/, "/flight-baggage");
+    endpoint.search = new URLSearchParams({ reference: flight.baggageRef, flightId: flight.id }).toString();
+    fetch(endpoint.toString(), { signal: controller.signal }).then(r => r.ok ? r.json() : null).then(data => {
+      if (!data?.available || controller.signal.aborted) return;
+      const updated = { ...flight, cabinBagIncluded: data.cabinBagIncluded ?? flight.cabinBagIncluded,
+        checkedBagIncluded: data.checkedBagIncluded ?? flight.checkedBagIncluded,
+        cabinBaggage: data.cabinBaggage ?? flight.cabinBaggage, checkedBaggage: data.checkedBaggage ?? flight.checkedBaggage,
+        outboundSegments: data.outboundSegments ?? flight.outboundSegments, returnSegments: data.returnSegments ?? flight.returnSegments };
+      setDetailsFlight(current => current?.id === flight.id ? updated : current);
+      setFlights(current => current.map(f => f.id === flight.id ? updated : f));
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [detailsFlight?.id, detailsFlight?.baggageRef, url]);
+
   if (!values) return null;
   const update = (index: number, key: keyof Passenger, text: string) => {
     setPassengers((current) => current.map((p, i) =>
-      i === index ? { ...p, [key]: key === "birthDate" || key === "passportExpiry" ? dateInput(text) : text } : p));
+      i === index ? { ...p, [key]: text } : p));
     setFormError("");
   };
   const openWhatsApp = async () => {
-    if (!selected) return;
-    const invalid = validateFlightPassengers(passengers, values.departure);
+    if (!selected || verifying) return;
+    const invalid = validateFlightPassengers(passengers);
     if (invalid !== -1) {
       setFormError(ar
-        ? `راجع بيانات المسافر ${invalid + 1}. أدخل جميع الحقول وتواريخ صحيحة بصيغة YYYY-MM-DD، مع جواز صالح عند المغادرة.`
-        : `Check passenger ${invalid + 1}: complete every field, use valid YYYY-MM-DD dates, and ensure the passport is valid on departure.`);
+        ? `أدخل الاسم الأول واسم العائلة للمسافر ${invalid + 1}.`
+        : lang === "tr" ? `${invalid + 1}. yolcunun adını ve soyadını girin.`
+        : `Enter the first and last name for passenger ${invalid + 1}.`);
       return;
     }
-    const message = flightWhatsAppMessage(selected, values, passengers);
+    setVerifying(true);
+    const activeGeneration = generation.current;
     try {
+      if (generation.current !== activeGeneration) return;
+      const message = flightWhatsAppMessage(selected, values, passengers);
       await Linking.openURL(`https://wa.me/96590087797?text=${encodeURIComponent(message)}`);
     } catch {
-      setFormError(ar ? "تعذر فتح واتساب. حاول مرة أخرى." : "Could not open WhatsApp. Please try again.");
-    }
+      if (generation.current !== activeGeneration) return;
+      setFormError(tr ? "WhatsApp açılamadı. Tekrar deneyin." : ar ? "تعذّر فتح واتساب. حاول مجدداً." : "Could not open WhatsApp. Please retry.");
+    } finally { if (generation.current === activeGeneration) setVerifying(false); }
   };
-  const field = (index: number, key: keyof Passenger, titleEn: string, titleAr: string, date = false) => (
+  const field = (index: number, key: keyof Passenger, titleEn: string, titleAr: string, titleTr: string) => (
     <View style={styles.field} key={key}>
-      <Text style={[styles.label, ar && styles.rtl]}>{ar ? titleAr : titleEn}</Text>
+      <Text style={[styles.label, ar && styles.rtl]}>{ar ? titleAr : lang === "tr" ? titleTr : titleEn}</Text>
       <TextInput
         value={passengers[index][key]}
         onChangeText={(text) => update(index, key, text)}
-        placeholder={date ? "YYYY-MM-DD" : ar ? titleAr : titleEn}
+        placeholder={ar ? titleAr : lang === "tr" ? titleTr : titleEn}
         placeholderTextColor={P.muted}
-        autoCapitalize={date || key === "passportNumber" ? "characters" : "words"}
-        keyboardType={date ? "number-pad" : "default"}
-        maxLength={date ? 10 : 100}
+        autoCapitalize="words"
+        maxLength={100}
         style={[styles.input, ar && styles.rtl]}
-        accessibilityLabel={ar ? titleAr : titleEn}
+        accessibilityLabel={ar ? titleAr : lang === "tr" ? titleTr : titleEn}
         testID={`passenger-${index}-${key}`}
       />
-    </View>
-  );
-  const passportTypeField = (index: number) => (
-    <View style={styles.field}>
-      <Text style={[styles.label, ar && styles.rtl]}>{ar ? "نوع الجواز" : "Passport type"}</Text>
-      <Pressable
-        onPress={() => setOpenPassportTypeFor((current) => current === index ? null : index)}
-        style={[styles.input, styles.passportSelect, ar && styles.reverse]}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: openPassportTypeFor === index }}
-        accessibilityLabel={ar ? "نوع الجواز" : "Passport type"}
-        testID={`passenger-${index}-passportType`}
-      >
-        <Text style={[styles.passportValue, !passengers[index].passportType && styles.passportPlaceholder, ar && styles.rtl]}>
-          {passengers[index].passportType
-            ? (ar ? PASSPORT_TYPES.find((type) => type.value === passengers[index].passportType)?.ar : passengers[index].passportType)
-            : ar ? "اختر نوع الجواز" : "Select passport type"}
-        </Text>
-        <HotelPortalIcon name={openPassportTypeFor === index ? "chevron-up" : "chevron-down"} size={18} color={P.muted} />
-      </Pressable>
-      {openPassportTypeFor === index && (
-        <View style={styles.passportOptions}>
-          {PASSPORT_TYPES.map((type) => (
-            <Pressable
-              key={type.value}
-              onPress={() => { update(index, "passportType", type.value); setOpenPassportTypeFor(null); }}
-              style={[styles.passportOption, ar && styles.reverse]}
-              accessibilityRole="button"
-              testID={`passenger-${index}-passport-option-${type.value}`}
-            >
-              <Text style={[styles.passportValue, ar && styles.rtl]}>{ar ? type.ar : type.value}</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
     </View>
   );
   const detailsLeg = (title: string, segments: FlightSegment[] | undefined, stops: number | undefined) => (
@@ -333,6 +343,10 @@ export function FlightApiResultsScreen({
             {segment.duration ? ` · ${segment.duration}` : ""}
           </Text>
           <Text style={[styles.meta, ar && styles.rtl]}>{segmentTime(segment.departure)} → {segmentTime(segment.arrival)}</Text>
+          <Text style={[styles.meta, ar && styles.rtl]}>
+            {ar ? "حقيبة المقصورة" : "Cabin bag"}: {bagInclusion(segment.cabinBagIncluded, segment.cabinBaggage, ar)}
+            {" · "}{ar ? "الأمتعة المسجلة" : "Checked bag"}: {bagInclusion(segment.checkedBagIncluded, segment.checkedBaggage, ar)}
+          </Text>
           {index < segments.length - 1 && (
             <Text style={[styles.layover, ar && styles.rtl]}>
               {ar ? "الترانزيت في" : "Transit at"} {segment.destination || "—"} · {segment.layoverMinutes != null
@@ -362,16 +376,11 @@ export function FlightApiResultsScreen({
       <View style={[styles.bagBadge, bagStatus === "included" ? styles.bagIncluded : bagStatus === "excluded" ? styles.bagExcluded : styles.bagUnknown]}
         testID={`flight-baggage-${flight.id}`}>
         <Text style={[styles.bagText, bagStatus === "included" ? styles.bagTextIncluded : bagStatus === "excluded" ? styles.bagTextExcluded : styles.bagTextUnknown]}>
-          {bagStatus === "included" ? (ar ? "الأمتعة المسجلة مشمولة" : "Checked bags included")
-            : bagStatus === "excluded" ? (ar ? "بدون أمتعة مسجلة" : "No checked bags included")
-              : (ar ? "الأمتعة المسجلة غير مؤكدة" : "Checked baggage not confirmed")}
+          {ar ? "الأمتعة المسجلة" : "Checked bag"}: {bagInclusion(flight.checkedBagIncluded, flight.checkedBaggage, ar)}
         </Text>
-        {bagStatus === "included" && (
-          <Text style={[styles.bagText, styles.bagTextIncluded]}>
-            {ar ? "العدد" : "Bags"}: {baggageDetails({ pieces: flight.checkedBaggage?.pieces }, ar) ?? (ar ? "غير محدد" : "Not specified")}
-            {"  ·  "}{ar ? "الوزن" : "Weight"}: {baggageDetails({ weight: flight.checkedBaggage?.weight }, ar) ?? (ar ? "غير محدد" : "Not specified")}
-          </Text>
-        )}
+        <Text style={styles.bagText}>
+          {ar ? "حقيبة المقصورة" : "Cabin bag"}: {bagInclusion(flight.cabinBagIncluded, flight.cabinBaggage, ar)}
+        </Text>
       </View>
     );
   };
@@ -404,21 +413,22 @@ export function FlightApiResultsScreen({
           {values.origin?.iata} → {values.destination?.iata} · {values.departure}
           {values.tripType === "roundtrip" ? ` → ${values.returnDate}` : ""} · {values.cabinClass}
         </Text>
-        {status === "loading" && <View style={styles.center} accessibilityLiveRegion="polite"><ActivityIndicator color={P.navy} /><Text style={styles.note}>{tr ? "Uçuşlar aranıyor…" : ar ? "جارٍ البحث عن الرحلات…" : "Searching for flights…"}</Text><Text style={styles.note} testID="flight-search-countdown">{tr ? `En fazla ${secondsLeft} saniye kaldı` : ar ? `متبقي ${secondsLeft} ثانية كحد أقصى` : `Up to ${secondsLeft}s remaining`}</Text></View>}
+        {status === "loading" && <View style={styles.center} accessibilityLiveRegion="polite"><ActivityIndicator color={P.navy} /><Text style={styles.note}>{flights.length ? (tr ? "Diğer havayolları aranıyor…" : ar ? "جارٍ البحث لدى المزيد من شركات الطيران…" : "Searching more airlines…") : (tr ? "Havayolları aranıyor…" : ar ? "جارٍ البحث لدى شركات الطيران…" : "Searching airlines…")}</Text>{provisionalCount > 0 && <Text style={styles.note}>{tr ? `${provisionalCount} fiyat alındı` : ar ? `وصل ${provisionalCount} سعر` : `${provisionalCount} prices received`}</Text>}<Text style={styles.note} testID="flight-search-countdown">{tr ? `En fazla ${secondsLeft} saniye kaldı` : ar ? `متبقي ${secondsLeft} ثانية كحد أقصى` : `Up to ${secondsLeft}s remaining`}</Text></View>}
         {(status === "error" || status === "empty") && (
           <View style={styles.center}>
             <Text style={styles.note}>{timedOut
               ? tr ? "Uçuş araması zaman aşımına uğradı. Tekrar deneyin." : ar ? "انتهت مهلة البحث عن الرحلات. حاول مرة أخرى." : "Flight search timed out. Please try again."
               : status === "empty"
               ? ar ? "لم نجد رحلات متاحة لهذا البحث. عدّل بحثك وحاول مجدداً." : "No flights found for this search. Edit your search and try again."
-              : ar ? "تعذر تحميل الرحلات الآن. عدّل بحثك وحاول مجدداً." : "Flights could not be loaded. Edit your search and try again."}</Text>
+              : tr ? "Otomatik yeniden denemelere rağmen arama tamamlanamadı. Lütfen tekrar deneyin." : ar ? "تعذّر إكمال البحث بعد إعادة المحاولة تلقائياً. يرجى المحاولة مجدداً." : "We couldn’t complete the search after retrying automatically. Please try again."}</Text>
+            {status === "error" && !!correlationId && <Text style={styles.note}>{tr ? "Referans" : ar ? "المرجع" : "Reference"}: {correlationId}</Text>}
             {status === "error" && <Pressable onPress={() => setAttempt((n) => n + 1)} style={styles.button}><Text style={styles.buttonText}>{tr ? "Tekrar dene" : ar ? "إعادة المحاولة" : "Try again"}</Text></Pressable>}
             <Pressable onPress={onBack} style={styles.button}><Text style={styles.buttonText}>{ar ? "تعديل البحث" : "Edit search"}</Text></Pressable>
           </View>
         )}
-        {status === "ready" && !selected && (
+        {(status === "ready" || (status === "loading" && flights.length > 0)) && !selected && (
           <>
-            <Text style={[styles.note, ar && styles.rtl]}>{ar ? "الأسعار والتوفر قابلة للتغيير حتى يؤكدها فريقنا." : "Fares and availability are subject to confirmation by our team."}</Text>
+            <Text style={[styles.note, ar && styles.rtl]}>{tr ? "Fiyatlar değişebilir." : ar ? "الأسعار قابلة للتغيير." : "Prices may change."}</Text>
             <View style={styles.filters}>
               <Pressable onPress={() => setFiltersOpen((open) => !open)} style={[styles.filterBar, ar && styles.reverse]}
                 accessibilityRole="button" accessibilityState={{ expanded: filtersOpen }} testID="flight-filters-toggle">
@@ -464,7 +474,7 @@ export function FlightApiResultsScreen({
                 <Text style={styles.clearFiltersText}>{ar ? "عرض جميع الرحلات" : "Show all flights"}</Text>
               </Pressable>
             </View>}
-            {visibleFlights.map((flight, index) => (
+            {visibleFlights.slice(0, shown).map((flight, index) => (
               <View style={styles.card} key={`${flight.id}-${index}`} testID={`flight-result-${index}`}>
                 <View style={[styles.row, ar && styles.reverse]}>
                   <Pressable onPress={() => setDetailsFlight(flight)} style={styles.airlineGroup} accessibilityRole="button" accessibilityLabel={`${flight.airline} · ${ar ? "تفاصيل الرحلة" : "Flight details"}`}>
@@ -485,15 +495,20 @@ export function FlightApiResultsScreen({
                   <Text style={styles.detailsLinkText}>{ar ? "تفاصيل الرحلة والأمتعة ›" : "Flight & baggage details ›"}</Text>
                 </Pressable>
                 <Pressable
+                  disabled={verifying}
                   onPress={() => { setSelected(flight); setFormError(""); }}
                   style={styles.button}
                   testID={`flight-select-${index}`}
-                ><Text style={styles.buttonText}>{ar ? "اختيار الرحلة" : "Select flight"}</Text></Pressable>
+                ><Text style={styles.buttonText}>{tr ? "Uçuşu seç" : ar ? "اختيار الرحلة" : "Select flight"}</Text></Pressable>
               </View>
             ))}
+            {visibleFlights.length > shown && <Pressable accessibilityRole="button" onPress={() => setShown(n => n + 12)} style={styles.button}>
+              <Text style={styles.buttonText}>{tr ? "Daha fazla uçuş göster" : ar ? "عرض المزيد من الرحلات" : "Show more flights"} ({Math.min(shown, visibleFlights.length)} / {visibleFlights.length})</Text>
+            </Pressable>}
+            {!!formError && <Text style={styles.note} accessibilityRole="alert">{formError}</Text>}
           </>
         )}
-        {status === "ready" && selected && (
+        {(status === "ready" || status === "loading") && selected && (
           <>
             <View style={styles.card}>
               <Text style={styles.airline}>{selected.airline} · {selected.currency} {selected.price}</Text>
@@ -511,17 +526,14 @@ export function FlightApiResultsScreen({
                 <Text style={[styles.passengerTitle, ar && styles.rtl]}>
                   {ar ? `المسافر ${index + 1}` : `Passenger ${index + 1}`} · {index < values.adults ? (ar ? "بالغ" : "Adult") : index < values.adults + values.children ? (ar ? "طفل" : "Child") : (ar ? "رضيع" : "Infant")}
                 </Text>
-                {field(index, "firstName", "First name (as on passport)", "الاسم الأول كما في الجواز")}
-                {field(index, "lastName", "Last name (as on passport)", "اسم العائلة كما في الجواز")}
-                {passportTypeField(index)}
-                {field(index, "passportNumber", "Passport number", "رقم الجواز")}
-                {field(index, "birthDate", "Date of birth", "تاريخ الميلاد", true)}
-                {field(index, "passportExpiry", "Passport expiry date", "تاريخ انتهاء الجواز", true)}
+                {field(index, "firstName", "First name (as on passport)", "الاسم الأول كما في الجواز", "Ad (pasaporttaki gibi)")}
+                {field(index, "lastName", "Last name (as on passport)", "اسم العائلة كما في الجواز", "Soyad (pasaporttaki gibi)")}
               </View>
             ))}
             <Text style={[styles.note, ar && styles.rtl]}>{ar
-              ? "سيُفتح واتساب برسالة تتضمن تفاصيل الرحلة وبيانات جوازات المسافرين. لن يتم الدفع أو تأكيد الحجز تلقائياً."
-              : "WhatsApp will open with the flight and passenger passport details. Payment and booking are not automatic."}</Text>
+              ? "سيُفتح واتساب بتفاصيل الرحلة وأسماء المسافرين فقط. ستطلب الوكالة مستندات السفر لاحقاً عند الحاجة لإصدار التذاكر. لن يتم الدفع أو تأكيد الحجز تلقائياً."
+              : lang === "tr" ? "WhatsApp yalnızca uçuş bilgileri ve yolcu adlarıyla açılır. Bilet düzenlemek için gerekirse acente seyahat belgelerini daha sonra ister. Ödeme ve rezervasyon otomatik değildir."
+              : "WhatsApp will open with the flight details and passenger names only. The agency will request travel documents later if needed for ticketing. Payment and booking are not automatic."}</Text>
             {!!formError && <Text style={styles.error} testID="flight-passenger-error">{formError}</Text>}
             <Pressable onPress={openWhatsApp} style={styles.button} testID="flight-whatsapp-payment">
               <Text style={styles.buttonText}>{ar ? "الدفع عبر واتساب" : "WhatsApp payment"}</Text>
@@ -552,13 +564,9 @@ export function FlightApiResultsScreen({
                   <Text style={[styles.detailsHeading, ar && styles.rtl]}>{ar ? "الأمتعة" : "Baggage"}</Text>
                   <Text style={[styles.detailsText, ar && styles.rtl]}>
                     {ar ? "حقيبة المقصورة" : "Cabin bag"}: {bagInclusion(detailsFlight.cabinBagIncluded, detailsFlight.cabinBaggage, ar)}
-                    {detailsFlight.cabinBagIncluded !== false && baggageDetails(detailsFlight.cabinBaggage, ar)
-                      ? ` · ${baggageDetails(detailsFlight.cabinBaggage, ar)}` : ""}
                   </Text>
                   <Text style={[styles.detailsText, ar && styles.rtl]}>
                     {ar ? "الأمتعة المسجلة" : "Checked bag"}: {bagInclusion(detailsFlight.checkedBagIncluded, detailsFlight.checkedBaggage, ar)}
-                    {detailsFlight.checkedBagIncluded !== false && baggageDetails(detailsFlight.checkedBaggage, ar)
-                      ? ` · ${baggageDetails(detailsFlight.checkedBaggage, ar)}` : ""}
                   </Text>
                   {((detailsFlight.cabinBagIncluded !== false && (!detailsFlight.cabinBaggage?.pieces || !detailsFlight.cabinBaggage?.weight))
                     || (detailsFlight.checkedBagIncluded !== false && (!detailsFlight.checkedBaggage?.pieces || !detailsFlight.checkedBaggage?.weight))) && (
