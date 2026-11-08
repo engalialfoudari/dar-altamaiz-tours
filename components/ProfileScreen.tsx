@@ -21,6 +21,8 @@ import { useSignInWithGoogle } from "@clerk/expo/google";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { linkPushTokenAfterAuth } from "@/utils/pushTokenLink";
 import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
+import { waitForNativeGoogleReturn } from "@/lib/nativeGoogleBrowser";
+import { clearNativeGoogleSessionCompletions, completeNativeGoogleSession } from "@/lib/nativeGoogleSession";
 import { isEsimReleased } from "@/lib/esimRelease";
 import { useAccountRequestGuard } from "@/hooks/useAccountRequestGuard";
 import { AccountEsimPurchases } from "./AccountEsimPurchases";
@@ -87,37 +89,7 @@ export async function startWebGoogleRedirect(
   navigate(externalUrl.toString());
 }
 
-export async function waitForNativeGoogleReturn(
-  authorizationUrl: string,
-  redirectUrl: string,
-  timeoutMs = 120_000,
-): Promise<string> {
-  let resolveDeepLink!: (url: string) => void;
-  const deepLinkPromise = new Promise<string>((resolve) => {
-    resolveDeepLink = resolve;
-  });
-  const subscription = Linking.addEventListener("url", ({ url }) => {
-    if (url.startsWith(redirectUrl)) resolveDeepLink(url);
-  });
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const browserPromise = WebBrowser.openAuthSessionAsync(authorizationUrl, redirectUrl)
-      .then((result) => result.type === "success" ? result.url : null);
-    const returnedUrl = await Promise.race([
-      browserPromise,
-      deepLinkPromise,
-      new Promise<null>((resolve) => {
-        timeout = setTimeout(() => resolve(null), timeoutMs);
-      }),
-    ]);
-    if (!returnedUrl) throw new Error("Google sign-in timed out. Please try again.");
-    void WebBrowser.dismissBrowser?.().catch(() => {});
-    return returnedUrl;
-  } finally {
-    if (timeout) clearTimeout(timeout);
-    subscription.remove();
-  }
-}
+export { waitForNativeGoogleReturn } from "@/lib/nativeGoogleBrowser";
 
 function isAndroidAccountReauthFailure(error: unknown): boolean {
   if (Platform.OS !== "android") return false;
@@ -762,12 +734,15 @@ export function ProfileScreen({
     }
   };
 
+  const googleAuthBusyRef = useRef(false);
   const handleGoogleAuth = async () => {
+    if (submitting || googleAuthBusyRef.current) return;
     setError("");
     if (!signIn || !signUp) {
       setError(isArabic ? "خدمة Google قيد التحميل، حاول مرة أخرى" : "Google sign-in is still loading. Please try again.");
       return;
     }
+    googleAuthBusyRef.current = true;
     setSubmitting(true);
     try {
       if (Platform.OS === "web") {
@@ -787,6 +762,7 @@ export function ProfileScreen({
         return;
       }
 
+      clearNativeGoogleSessionCompletions();
       pendingWelcomeRef.current = true;
       let createdSessionId: string | null = null;
       let activateSession: ((params: { session: string }) => Promise<unknown>) | undefined;
@@ -817,24 +793,17 @@ export function ProfileScreen({
           authorizationUrl.toString(),
           redirectUrl,
         );
+        if (!returnedUrl) {
+          pendingWelcomeRef.current = false;
+          return;
+        }
         const rotatingTokenNonce = new URL(returnedUrl).searchParams.get("rotating_token_nonce") ?? "";
-        if (!rotatingTokenNonce) throw new Error("Google did not return a valid sign-in response");
-
-        const currentSignIn = (await client.signIn.reload({ rotatingTokenNonce })).__internal_future;
-        const needsSignUp = currentSignIn.firstFactorVerification.status === "transferable";
-        if (needsSignUp) {
-          const { error: transferError } = await signUp.create({ transfer: true });
-          if (transferError) throw transferError;
-        }
-        const completedResource = needsSignUp ? signUp : currentSignIn;
-        createdSessionId = completedResource.createdSessionId;
-        if (!createdSessionId) {
-          throw new Error("Google sign-in could not be completed");
-        }
-        const { error: finalizeError } = await completedResource.finalize({
-          navigate: async () => {},
+        createdSessionId = await completeNativeGoogleSession({
+          rotatingTokenNonce,
+          reloadSignIn: (params) => client.signIn.reload(params),
+          signUp,
+          setActive: async (params) => { await setClerkActive(params); },
         });
-        if (finalizeError) throw finalizeError;
         activateSession = async ({ session }) => setClerkActive({ session });
       }
 
@@ -867,11 +836,13 @@ export function ProfileScreen({
       }
       setError(authError?.message || (isArabic ? "فشل تسجيل الدخول عبر Google" : "Google sign-in failed"));
     } finally {
+      googleAuthBusyRef.current = false;
       setSubmitting(false);
     }
   };
 
   const handleLogout = async () => {
+    clearNativeGoogleSessionCompletions();
     if (isSignedIn) {
       if (Platform.OS === "web") {
         await signOut({ redirectUrl: AuthSession.makeRedirectUri({ path: "app" }) });
