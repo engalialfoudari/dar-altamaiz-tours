@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth, useClerk, useSignIn, useSignUp } from "@clerk/expo";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
+import { completeNativeGoogleSession } from "@/lib/nativeGoogleSession";
 
 export default function SsoCallbackRoute() {
   return Platform.OS === "web" ? <WebGoogleCallback /> : <NativeGoogleCallback />;
@@ -80,21 +81,9 @@ export async function completeNativeGoogleCallback({
   getToken: () => Promise<string | null>;
   exchange: (token: string) => Promise<{ name: string }>;
 }): Promise<{ name: string }> {
-  if (!rotatingTokenNonce) throw new Error("Google did not return a valid sign-in response.");
-  const signIn = (await reloadSignIn({ rotatingTokenNonce })).__internal_future;
-  const needsSignUp = signIn.firstFactorVerification.status === "transferable";
-  if (needsSignUp) {
-    const { error } = await signUp.create({ transfer: true });
-    if (error) throw error;
-  }
-  const completedResource = needsSignUp ? signUp : signIn;
-  const createdSessionId = completedResource.createdSessionId;
-  if (!createdSessionId) throw new Error("Google sign-in could not be completed.");
-  const { error: finalizeError } = await completedResource.finalize({
-    navigate: async () => {},
+  const createdSessionId = await completeNativeGoogleSession({
+    rotatingTokenNonce, reloadSignIn, signUp, setActive,
   });
-  if (finalizeError) throw finalizeError;
-  await setActive({ session: createdSessionId });
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const token = await requestClerkToken({ sessionId: createdSessionId, getToken });
@@ -117,6 +106,13 @@ function NativeGoogleCallback() {
 
   useEffect(() => {
     if (!signUp || startedRef.current) return;
+    if (!rotatingTokenNonce) {
+      const timer = setTimeout(() => {
+        startedRef.current = true;
+        setError("Google did not return a valid sign-in response.");
+      }, 3_000);
+      return () => clearTimeout(timer);
+    }
     startedRef.current = true;
     void completeNativeGoogleCallback({
       rotatingTokenNonce,
