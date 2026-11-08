@@ -438,20 +438,6 @@ function BookingChoiceModal({
           </Text>
           <Pressable
             style={({ pressed }) => [styles.bookingChoiceButton, pressed && { opacity: 0.84 }]}
-            onPress={() => onChoose("flights")}
-            testID="booking-choice-flights"
-          >
-            <View style={styles.bookingChoiceButtonIcon}>
-              <HotelPortalIcon name="airplane" size={25} color={gold} />
-            </View>
-            <View style={styles.bookingChoiceButtonCopy}>
-              <Text style={styles.bookingChoiceButtonTitle}>{rtl ? "حجوزات الطيران" : "Flight bookings"}</Text>
-              <Text style={styles.bookingChoiceButtonSub}>{rtl ? "الرحلات وتذاكر الطيران" : "Flights and airline reservations"}</Text>
-            </View>
-            <HotelPortalIcon name={rtl ? "chevron-back" : "chevron-forward"} size={19} color={gold} />
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.bookingChoiceButton, pressed && { opacity: 0.84 }]}
             onPress={() => onChoose("hotels")}
             testID="booking-choice-hotels"
           >
