@@ -738,7 +738,7 @@ export function ProfileScreen({
   const handleGoogleAuth = async () => {
     if (submitting || googleAuthBusyRef.current) return;
     setError("");
-    if (!signIn || !signUp) {
+    if (!signIn || !signUp || (Platform.OS !== "web" && !isClerkLoaded)) {
       setError(isArabic ? "خدمة Google قيد التحميل، حاول مرة أخرى" : "Google sign-in is still loading. Please try again.");
       return;
     }
@@ -766,17 +766,20 @@ export function ProfileScreen({
       pendingWelcomeRef.current = true;
       let createdSessionId: string | null = null;
       let activateSession: ((params: { session: string }) => Promise<unknown>) | undefined;
+      let useBrowserGoogle = false;
       try {
         const nativeResult = await startGoogleAuthenticationFlow();
         createdSessionId = nativeResult.createdSessionId;
         activateSession = nativeResult.setActive;
-        if (!createdSessionId || !activateSession) {
-          pendingWelcomeRef.current = false;
-          return;
-        }
+        // A null native result must not silently end sign-in.
+        // Retry once through OAuth and require its verified callback.
+        useBrowserGoogle = !createdSessionId;
       } catch (nativeError) {
         if (!isAndroidAccountReauthFailure(nativeError)) throw nativeError;
+        useBrowserGoogle = true;
+      }
 
+      if (useBrowserGoogle) {
         const redirectUrl = AuthSession.makeRedirectUri({
           scheme: "dttours",
           path: "sso-callback",
@@ -794,8 +797,9 @@ export function ProfileScreen({
           redirectUrl,
         );
         if (!returnedUrl) {
-          pendingWelcomeRef.current = false;
-          return;
+          throw new Error(isArabic
+            ? "لم يكتمل تسجيل الدخول باستخدام Google. يُرجى المحاولة مرة أخرى."
+            : "Google sign-in was not completed. Please try again.");
         }
         const rotatingTokenNonce = new URL(returnedUrl).searchParams.get("rotating_token_nonce") ?? "";
         createdSessionId = await completeNativeGoogleSession({
@@ -807,6 +811,11 @@ export function ProfileScreen({
         activateSession = async ({ session }) => setClerkActive({ session });
       }
 
+      if (!createdSessionId || !activateSession) {
+        throw new Error(isArabic
+          ? "تعذر تفعيل حسابك باستخدام Google. يُرجى المحاولة مرة أخرى."
+          : "Google sign-in could not activate your account. Please try again.");
+      }
       await activateSession({ session: createdSessionId });
       let clerkToken: string | null = null;
       for (let attempt = 0; attempt < 6 && !clerkToken; attempt += 1) {
