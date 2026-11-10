@@ -17,19 +17,24 @@ export function reportGoogleReturnFailure(
     Number.isFinite(value) ? Math.max(0, Math.min(max, Math.floor(value))) : 0;
   const updateId = typeof Updates.updateId === "string"
     && /^[a-f0-9-]{36}$/i.test(Updates.updateId) ? Updates.updateId : null;
+  // Use the existing /logs sanitizer's allowed keys. Do not require a backend
+  // publication or allow arbitrary context properties through that boundary.
   const context = {
     source: "android_google_browser_return",
-    diagnosticVersion: 1,
-    updateId,
-    isEmbeddedLaunch: Updates.isEmbeddedLaunch === true,
-    outcome: outcomes.includes(diagnostic.outcome) ? diagnostic.outcome : "unknown",
-    callbackCount: boundedNumber(diagnostic.callbackCount, 100),
-    lastCallbackStatus: statuses.includes(diagnostic.lastCallbackStatus)
+    feature: "native_google_return_v1",
+    platform: "android",
+    buildVersion: updateId ?? "unavailable",
+    code: outcomes.includes(diagnostic.outcome) ? diagnostic.outcome : "unknown",
+    stage: statuses.includes(diagnostic.lastCallbackStatus)
       ? diagnostic.lastCallbackStatus : "unknown",
-    browserOpened: diagnostic.browserOpened === true,
-    leftApp: diagnostic.leftApp === true,
-    returnedToApp: diagnostic.returnedToApp === true,
-    elapsedMs: boundedNumber(diagnostic.elapsedMs, 300_000),
+    status: [
+      `callbacks=${boundedNumber(diagnostic.callbackCount, 100)}`,
+      `opened=${diagnostic.browserOpened === true ? 1 : 0}`,
+      `left=${diagnostic.leftApp === true ? 1 : 0}`,
+      `returned=${diagnostic.returnedToApp === true ? 1 : 0}`,
+      `elapsed_ms=${boundedNumber(diagnostic.elapsedMs, 300_000)}`,
+      `embedded=${Updates.isEmbeddedLaunch === true ? 1 : 0}`,
+    ].join(";"),
   };
   try {
     void fetch(`${apiBase.replace(/\/$/, "")}/logs`, {

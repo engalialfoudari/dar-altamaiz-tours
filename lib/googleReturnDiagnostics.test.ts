@@ -31,8 +31,10 @@ it("records only coarse failure facts and the loaded update, never raw callback 
   const options = jest.mocked(fetch).mock.calls[0][1]!;
   const body = JSON.parse(options.body as string);
   expect(body.context).toEqual({
-    ...diagnostic, source: "android_google_browser_return", diagnosticVersion: 1,
-    updateId: "01a1c6e6-c54a-710d-978b-8c29006460c9", isEmbeddedLaunch: false,
+    source: "android_google_browser_return", feature: "native_google_return_v1",
+    platform: "android", buildVersion: "01a1c6e6-c54a-710d-978b-8c29006460c9",
+    code: "returned_without_callback", stage: "missing_proof",
+    status: "callbacks=1;opened=1;left=1;returned=1;elapsed_ms=10000;embedded=0",
   });
   expect(JSON.stringify(body)).not.toMatch(/private|rotating_token_nonce|email|token/);
   expect(options.headers).toEqual({ "Content-Type": "application/json" });
@@ -46,7 +48,8 @@ it("sanitizes unexpected runtime values rather than trusting a TypeScript type",
   } as unknown as GoogleReturnDiagnostic);
   const body = JSON.parse(jest.mocked(fetch).mock.calls[0][1]!.body as string);
   expect(body.context).toMatchObject({
-    outcome: "unknown", lastCallbackStatus: "unknown", callbackCount: 0, elapsedMs: 0,
+    code: "unknown", stage: "unknown",
+    status: "callbacks=0;opened=1;left=1;returned=1;elapsed_ms=0;embedded=0",
   });
   expect(JSON.stringify(body)).not.toContain("private");
 });
