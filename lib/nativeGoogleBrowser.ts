@@ -1,17 +1,29 @@
 import { AppState, Linking, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 
-function isGoogleCallback(value: string, redirectUrl: string): boolean {
+type CallbackStatus = "accepted" | "wrong_scheme" | "wrong_route" | "missing_proof" | "invalid_url";
+
+export type GoogleReturnDiagnostic = {
+  outcome: "returned_without_callback" | "browser_not_opened" | "browser_error" | "timeout";
+  callbackCount: number;
+  lastCallbackStatus: CallbackStatus | "none";
+  browserOpened: boolean;
+  leftApp: boolean;
+  returnedToApp: boolean;
+  elapsedMs: number;
+};
+
+function callbackStatus(value: string, redirectUrl: string): CallbackStatus {
   try {
     const actual = new URL(value);
     const expected = new URL(redirectUrl);
     // Android can deliver scheme:///path instead of scheme://path.
     const route = (url: URL) => `${url.host}${url.pathname}`.replace(/^\/+|\/+$/g, "");
-    return actual.protocol === expected.protocol
-      && route(actual) === route(expected)
-      && !!actual.searchParams.get("rotating_token_nonce");
+    if (actual.protocol !== expected.protocol) return "wrong_scheme";
+    if (route(actual) !== route(expected)) return "wrong_route";
+    return actual.searchParams.get("rotating_token_nonce") ? "accepted" : "missing_proof";
   } catch {
-    return false;
+    return "invalid_url";
   }
 }
 
@@ -26,6 +38,7 @@ export function waitForNativeGoogleReturn(
   authorizationUrl: string,
   redirectUrl: string,
   timeoutMs = 120_000,
+  onDiagnostic?: (diagnostic: GoogleReturnDiagnostic) => void,
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -33,24 +46,45 @@ export function waitForNativeGoogleReturn(
     let deadline: ReturnType<typeof setTimeout> | undefined;
     let browserOpened = false;
     let leftApp = false;
+    let returnedToApp = false;
+    let callbackCount = 0;
+    let lastCallbackStatus: CallbackStatus | "none" = "none";
+    const startedAt = Date.now();
     let appStateSubscription: ReturnType<typeof AppState.addEventListener> | undefined;
-    const finish = (url: string | null, error?: unknown) => {
+    const finish = (
+      url: string | null,
+      error?: unknown,
+      outcome: GoogleReturnDiagnostic["outcome"] = error ? "browser_error" : "returned_without_callback",
+    ) => {
       if (settled) return;
       settled = true;
       if (cancellation) clearTimeout(cancellation);
       if (deadline) clearTimeout(deadline);
       subscription.remove();
       appStateSubscription?.remove();
+      // Never report URL strings, query values, errors or account information.
+      // Observability must not affect whether an account can be activated.
+      if (!url && Platform.OS === "android" && onDiagnostic) {
+        try {
+          onDiagnostic({
+            outcome, callbackCount, lastCallbackStatus, browserOpened,
+            leftApp, returnedToApp, elapsedMs: Math.max(0, Date.now() - startedAt),
+          });
+        } catch { /* Diagnostic reporting cannot break authentication. */ }
+      }
       if (error) reject(error);
       else resolve(url);
       if (url) void WebBrowser.dismissBrowser().catch(() => {});
     };
     const receive = (url: string) => {
-      if (isGoogleCallback(url, redirectUrl)) finish(url);
+      if (settled) return;
+      callbackCount = Math.min(callbackCount + 1, 100);
+      lastCallbackStatus = callbackStatus(url, redirectUrl);
+      if (lastCallbackStatus === "accepted") finish(url);
     };
     const subscription = Linking.addEventListener("url", ({ url }) => receive(url));
     deadline = setTimeout(() => {
-      finish(null, new Error("Google sign-in timed out. Please try again."));
+      finish(null, new Error("Google sign-in timed out. Please try again."), "timeout");
     }, timeoutMs);
     try {
       if (Platform.OS === "android") {
@@ -63,6 +97,7 @@ export function waitForNativeGoogleReturn(
             if (cancellation) clearTimeout(cancellation);
             cancellation = undefined;
           } else if (browserOpened && leftApp && !cancellation) {
+            returnedToApp = true;
             // The URL event and Expo Router params are delivered separately.
             // Do not discard a successful callback on a slow Android bridge.
             cancellation = setTimeout(() => finish(null), 10_000);
@@ -73,7 +108,7 @@ export function waitForNativeGoogleReturn(
           if (result.type === "opened") {
             browserOpened = true;
           } else {
-            finish(null);
+            finish(null, undefined, "browser_not_opened");
           }
         }, error => finish(null, error));
         return;
@@ -81,7 +116,7 @@ export function waitForNativeGoogleReturn(
       void WebBrowser.openAuthSessionAsync(authorizationUrl, redirectUrl).then(result => {
         if (settled) return;
         if (result.type === "success") {
-          if (!isGoogleCallback(result.url, redirectUrl)) {
+          if (callbackStatus(result.url, redirectUrl) !== "accepted") {
             finish(null, new Error("Google did not return a valid sign-in response."));
           } else {
             receive(result.url);

@@ -167,4 +167,60 @@ describe("Android Custom Tab lifecycle", () => {
     expect(removeState).toHaveBeenCalledTimes(1);
     expect(jest.getTimerCount()).toBe(0);
   });
+
+  it.each([
+    [redirectUrl, "missing_proof"],
+    ["dttours://other?rotating_token_nonce=private-proof", "wrong_route"],
+    ["other://sso-callback?rotating_token_nonce=private-proof", "wrong_scheme"],
+    ["not-a-url", "invalid_url"],
+  ])("reports only the reason a returned URL was rejected", async (url, status) => {
+    const diagnostic = jest.fn();
+    const result = waitForNativeGoogleReturn(authorizationUrl, redirectUrl, 120_000, diagnostic);
+    await Promise.resolve();
+    stateChanged("background");
+    stateChanged("active");
+    receive({ url });
+    jest.advanceTimersByTime(10_000);
+    await expect(result).resolves.toBeNull();
+    expect(diagnostic).toHaveBeenCalledTimes(1);
+    expect(diagnostic).toHaveBeenCalledWith({
+      outcome: "returned_without_callback",
+      callbackCount: 1,
+      lastCallbackStatus: status,
+      browserOpened: true,
+      leftApp: true,
+      returnedToApp: true,
+      elapsedMs: 10_000,
+    });
+    expect(JSON.stringify(diagnostic.mock.calls)).not.toContain("private-proof");
+  });
+
+  it("distinguishes an automatic foreground return with no URL event", async () => {
+    const diagnostic = jest.fn();
+    const result = waitForNativeGoogleReturn(authorizationUrl, redirectUrl, 120_000, diagnostic);
+    await Promise.resolve();
+    stateChanged("background");
+    stateChanged("active");
+    jest.advanceTimersByTime(10_000);
+    await expect(result).resolves.toBeNull();
+    expect(diagnostic).toHaveBeenCalledWith(expect.objectContaining({
+      callbackCount: 0, lastCallbackStatus: "none", returnedToApp: true,
+    }));
+  });
+
+  it("does not report a successful callback or let diagnostic failures break cancellation", async () => {
+    const diagnostic = jest.fn(() => { throw new Error("Offline"); });
+    const success = waitForNativeGoogleReturn(authorizationUrl, redirectUrl, 120_000, diagnostic);
+    receive({ url: callback });
+    await expect(success).resolves.toBe(callback);
+    expect(diagnostic).not.toHaveBeenCalled();
+    const cancelled = waitForNativeGoogleReturn(authorizationUrl, redirectUrl, 120_000, diagnostic);
+    await Promise.resolve();
+    stateChanged("background");
+    stateChanged("active");
+    jest.advanceTimersByTime(10_000);
+    await expect(cancelled).resolves.toBeNull();
+    expect(diagnostic).toHaveBeenCalledTimes(1);
+    expect(jest.getTimerCount()).toBe(0);
+  });
 });

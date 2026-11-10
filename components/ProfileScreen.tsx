@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { linkPushTokenAfterAuth } from "@/utils/pushTokenLink";
 import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
 import { waitForNativeGoogleReturn } from "@/lib/nativeGoogleBrowser";
+import { reportGoogleReturnFailure } from "@/lib/googleReturnDiagnostics";
 import { clearNativeGoogleSessionCompletions, completeNativeGoogleSession } from "@/lib/nativeGoogleSession";
 import { isEsimReleased } from "@/lib/esimRelease";
 import { useAccountRequestGuard } from "@/hooks/useAccountRequestGuard";
@@ -795,6 +796,8 @@ export function ProfileScreen({
         const returnedUrl = await waitForNativeGoogleReturn(
           authorizationUrl.toString(),
           redirectUrl,
+          undefined,
+          (diagnostic) => reportGoogleReturnFailure(API_BASE, diagnostic),
         );
         if (!returnedUrl) {
           throw new Error(isArabic
