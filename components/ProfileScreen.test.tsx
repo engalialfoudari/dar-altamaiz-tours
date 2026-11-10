@@ -29,6 +29,7 @@ let mockExternalVerificationRedirectURL: URL | null = null;
 
 jest.mock("expo-web-browser", () => ({
   openAuthSessionAsync: jest.fn(),
+  openBrowserAsync: jest.fn(),
   dismissBrowser: jest.fn(() => Promise.resolve()),
   maybeCompleteAuthSession: jest.fn(),
 }));
@@ -803,12 +804,14 @@ describe("ProfileScreen Account actions", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to browser OAuth when Android reports account reauth status 16", async () => {
+  it.each(["status-16", "missing-session"])("falls back to browser OAuth for Android %s", async (outcome) => {
     const platformReplacement = jest.replaceProperty(Platform, "OS", "android");
     installSignedOutThenProfileFetch();
-    mockStartGoogleAuthenticationFlow.mockRejectedValue(
-      new Error("[16] Account reauth failed."),
-    );
+    if (outcome === "status-16") {
+      mockStartGoogleAuthenticationFlow.mockRejectedValue(new Error("[16] Account reauth failed."));
+    } else {
+      mockStartGoogleAuthenticationFlow.mockResolvedValue({ createdSessionId: null, setActive: mockSetActive });
+    }
     mockExternalVerificationRedirectURL = new URL(
       "https://accounts.google.com/o/oauth2/auth?client_id=test",
     );
@@ -821,9 +824,14 @@ describe("ProfileScreen Account actions", () => {
         finalize: mockBrowserGoogleFinalize,
       },
     });
-    (WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValue({
-      type: "success",
-      url: "dttours://?rotating_token_nonce=nonce-16",
+    let receiveGoogleReturn: ((event: { url: string }) => void) | undefined;
+    const googleListener = jest.spyOn(Linking, "addEventListener").mockImplementation((_event, listener) => {
+      receiveGoogleReturn = listener;
+      return { remove: jest.fn() };
+    });
+    (WebBrowser.openBrowserAsync as jest.Mock).mockImplementation(async () => {
+      receiveGoogleReturn?.({ url: "dttours://sso-callback?rotating_token_nonce=nonce-16" });
+      return { type: "opened" };
     });
     mockSetActive.mockResolvedValue(undefined);
     mockGetToken.mockResolvedValue("fallback-clerk-token");
@@ -832,9 +840,8 @@ describe("ProfileScreen Account actions", () => {
     await waitFor(() => expect(view.getByTestId("google-auth-button")).toBeTruthy());
     fireEvent.press(view.getByTestId("google-auth-button"));
 
-    await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
+    await waitFor(() => expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(
       mockExternalVerificationRedirectURL.toString(),
-      "dttours://sso-callback",
     ));
     expect(mockClientSignInReload).toHaveBeenCalledWith({
       rotatingTokenNonce: "nonce-16",
@@ -843,6 +850,7 @@ describe("ProfileScreen Account actions", () => {
       session: "sess_browser_fallback",
     });
     await waitFor(() => expect(view.getByText("Welcome, Test Customer")).toBeTruthy());
+    googleListener.mockRestore();
     platformReplacement.restore();
   });
 
