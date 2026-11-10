@@ -1,5 +1,7 @@
 {
-  "cli": { "version": ">= 10.0.0" },
+  "cli": {
+    "version": ">= 10.0.0"
+  },
   "build": {
     "preview": {
       "channel": "preview",
@@ -26,6 +28,16 @@
         "ORG_GRADLE_PROJECT_newArchEnabled": "true",
         "EXPO_PUBLIC_API_BASE": "https://dt-tour.com/api",
         "EXPO_PUBLIC_DOMAIN": "dt-tour.com"
+      }
+    },
+    "google-signin-device-preview": {
+      "extends": "production",
+      "environment": "production",
+      "channel": "google-signin-preview-20261110",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "image": "sdk-54"
       }
     }
   }

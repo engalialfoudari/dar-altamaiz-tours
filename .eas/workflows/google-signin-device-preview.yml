@@ -1,0 +1,18 @@
+name: Android Google sign-in device preview
+on:
+  workflow_dispatch: {}
+defaults:
+  image: sdk-54
+  tools:
+    node: "22.14.0"
+jobs:
+  android_device_preview:
+    type: build
+    environment: production
+    params:
+      platform: android
+      profile: google-signin-device-preview
+    hooks:
+      before_install_node_modules:
+        - name: Provide protected Google services configuration
+          run: test -f "$GOOGLE_SERVICES_JSON" && cp "$GOOGLE_SERVICES_JSON" ./google-services.json
