@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {fixedPackagePrice,pricedPackagesFirst} from "../lib/package-ordering.mjs";
 import {
   ActivityIndicator,
   FlatList,
@@ -24,6 +25,7 @@ export interface PackagesScreenProps {
 }
 
 interface TourPackage {
+  pricing?: unknown;
   id: string;
   title: string;
   url: string;
@@ -100,6 +102,7 @@ function normaliseTours(payload: unknown): TourPackage[] {
     const tour = item as Record<string, unknown>;
     if (typeof tour.id !== "string" || typeof tour.title !== "string" || typeof tour.url !== "string") return result;
     result.push({
+      pricing: tour.pricing,
       id: tour.id,
       title: tour.title,
       url: tour.url,
@@ -202,12 +205,12 @@ export function PackagesScreen({ lang, onOpenPackage, onBack }: PackagesScreenPr
   }, [loadTours]);
 
   const sortedTours = useMemo(() => {
-    if (sort === "recommended") return tours;
-    return [...tours].sort((a, b) => {
-      const aValue = sort === "price" ? a.priceKwd : a.nights;
-      const bValue = sort === "price" ? b.priceKwd : b.nights;
+    if (sort === "recommended") return pricedPackagesFirst(tours);
+    return pricedPackagesFirst([...tours].sort((a, b) => {
+      const aValue = sort === "price" ? fixedPackagePrice(a) : a.nights;
+      const bValue = sort === "price" ? fixedPackagePrice(b) : b.nights;
       return (aValue ?? Number.POSITIVE_INFINITY) - (bValue ?? Number.POSITIVE_INFINITY);
-    });
+    }));
   }, [sort, tours]);
 
   const webTopInset = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;

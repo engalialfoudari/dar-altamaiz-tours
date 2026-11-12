@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import {pricedPackagesFirst} from "../lib/package-ordering.mjs";
 import {
   Animated,
   FlatList,
@@ -42,6 +43,7 @@ const C = {
 export type HomeLang = "en" | "ar";
 
 export interface TourPackage {
+  pricing?: unknown;
   id: string;
   title: string;
   url: string;
@@ -333,7 +335,7 @@ export function LuxuryHome({
     fetch(`${API_BASE}/tours`)
       .then((r) => r.json())
       .then((d) => {
-        if (alive && Array.isArray(d?.tours)) setTours(d.tours);
+        if (alive && Array.isArray(d?.tours)) setTours(pricedPackagesFirst(d.tours));
       })
       .catch(() => {});
 
