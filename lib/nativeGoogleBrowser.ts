@@ -74,7 +74,12 @@ export function waitForNativeGoogleReturn(
       }
       if (error) reject(error);
       else resolve(url);
-      if (url) void WebBrowser.dismissBrowser().catch(() => {});
+      // SDK 54 exposes dismissBrowser on iOS only. On Android its JS wrapper
+      // returns undefined; chaining .catch throws in the Linking event handler.
+      // Android returns through the app's deep link, not this iOS API.
+      if (url && Platform.OS === "ios") {
+        try { void Promise.resolve(WebBrowser.dismissBrowser()).catch(() => {}); } catch {}
+      }
     };
     const receive = (url: string) => {
       if (settled) return;

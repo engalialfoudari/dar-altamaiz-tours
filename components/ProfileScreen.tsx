@@ -15,6 +15,7 @@ import {
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
 import Constants from "expo-constants";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, useClerk, useSignIn, useSignUp } from "@clerk/expo";
 import { useSignInWithGoogle } from "@clerk/expo/google";
@@ -23,7 +24,7 @@ import { linkPushTokenAfterAuth } from "@/utils/pushTokenLink";
 import { requestClerkToken } from "@/lib/clerkTokenCoordinator";
 import { waitForNativeGoogleReturn } from "@/lib/nativeGoogleBrowser";
 import { reportGoogleReturnFailure } from "@/lib/googleReturnDiagnostics";
-import { clearNativeGoogleSessionCompletions, completeNativeGoogleSession } from "@/lib/nativeGoogleSession";
+import { clearNativeGoogleSessionCompletions } from "@/lib/nativeGoogleSession";
 import { isEsimReleased } from "@/lib/esimRelease";
 import { useAccountRequestGuard } from "@/hooks/useAccountRequestGuard";
 import { AccountEsimPurchases } from "./AccountEsimPurchases";
@@ -226,7 +227,7 @@ export function ProfileScreen({
 }) {
   const insets = useSafeAreaInsets();
   const { startGoogleAuthenticationFlow } = useSignInWithGoogle();
-  const { client, setActive: setClerkActive, user: clerkUser, session: clerkSession } = useClerk();
+  const { setActive: setClerkActive, user: clerkUser, session: clerkSession } = useClerk();
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
   const {
@@ -631,7 +632,7 @@ export function ProfileScreen({
       setError(mode === "register" && compromisedPassword
         ? (isArabic
           ? "لم يتم إنشاء الحساب أو إرسال رمز التحقق لأن كلمة المرور ظهرت في تسريب بيانات. اختر كلمة مرور مختلفة وفريدة، ثم اضغط إنشاء حساب مرة أخرى."
-          : language === "tr"
+          : (language as string) === "tr"
           ? "Bu parola bir veri ihlalinde bulunduğu için hesabınız oluşturulmadı ve doğrulama kodu gönderilmedi. Farklı ve benzersiz bir parola seçin, ardından Hesap Oluştur düğmesine tekrar dokunun."
           : "Your account was not created and no verification code was sent because this password was found in a data breach. Choose a different, unique password, then tap Create Account again.")
         : message);
@@ -805,13 +806,15 @@ export function ProfileScreen({
             : "Google sign-in was not completed. Please try again.");
         }
         const rotatingTokenNonce = new URL(returnedUrl).searchParams.get("rotating_token_nonce") ?? "";
-        createdSessionId = await completeNativeGoogleSession({
-          rotatingTokenNonce,
-          reloadSignIn: (params) => client.signIn.reload(params),
-          signUp,
-          setActive: async (params) => { await setClerkActive(params); },
+        // Expo Router also receives this deep link. The callback route alone
+        // owns activation, backend verification, welcome and Home navigation.
+        // Explicit replacement covers an auth-session return before Router's
+        // event, without letting the outgoing Account finish behind that route.
+        router.replace({
+          pathname: "/sso-callback",
+          params: { rotating_token_nonce: rotatingTokenNonce },
         });
-        activateSession = async ({ session }) => setClerkActive({ session });
+        return;
       }
 
       if (!createdSessionId || !activateSession) {
