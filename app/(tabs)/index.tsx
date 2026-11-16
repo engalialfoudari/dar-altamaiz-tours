@@ -994,7 +994,9 @@ export function WebShell({
             const isTrustedShellOrigin =
               destination.protocol === "https:" &&
               (destination.hostname.toLowerCase() === "dt-tours.com" ||
-                destination.hostname.toLowerCase() === "www.dt-tours.com");
+                destination.hostname.toLowerCase() === "www.dt-tours.com" ||
+                destination.hostname.toLowerCase() === "dt-tour.com" ||
+                destination.hostname.toLowerCase() === "www.dt-tour.com");
             if (isTrustedShellOrigin) return true;
             if (destination.protocol !== "https:") {
               Linking.openURL(url).catch(() => {});
