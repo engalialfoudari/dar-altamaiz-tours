@@ -21,6 +21,7 @@ import { isEsimReleased } from "@/lib/esimRelease";
 import { useAppLanguage } from "@/localization/provider";
 import type { AppLocale } from "@/localization/engine";
 import { Text } from "@/localization/components";
+import { cacheHomeTourPayload } from "@/lib/tourPackagesCache";
 
 // Match the active dt-tour.com/hotels portal palette without changing the
 // appearance of unrelated mobile screens.
@@ -335,7 +336,10 @@ export function LuxuryHome({
     fetch(`${API_BASE}/tours`)
       .then((r) => r.json())
       .then((d) => {
-        if (alive && Array.isArray(d?.tours)) setTours(pricedPackagesFirst(d.tours));
+        if (alive && Array.isArray(d?.tours)) {
+          cacheHomeTourPayload(d);
+          setTours(pricedPackagesFirst(d.tours));
+        }
       })
       .catch(() => {});
 

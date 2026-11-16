@@ -1,0 +1,18 @@
+name: Android Packages tab cache
+on:
+  workflow_dispatch: {}
+defaults:
+  image: sdk-54
+  tools:
+    node: "22.14.0"
+jobs:
+  production:
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: production
+      message: "Open Packages immediately with Home-loaded journeys; Android runtime 1.0.6"

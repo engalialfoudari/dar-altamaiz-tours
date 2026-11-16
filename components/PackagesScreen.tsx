@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
 import { HotelPortalIcon, type HotelPortalIconName } from "@/components/HotelPortalIcon";
+import { cacheLocalizedTourPayload, getCachedTourPayload } from "@/lib/tourPackagesCache";
 
 export type PackagesScreenLang = "en" | "ar";
 
@@ -178,27 +179,39 @@ export function PackagesScreen({ lang, onOpenPackage, onBack }: PackagesScreenPr
   const insets = useSafeAreaInsets();
   const rtl = lang === "ar";
   const s = COPY[lang];
-  const [tours, setTours] = useState<TourPackage[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const initialPayload = getCachedTourPayload(lang);
+  const initialTours = normaliseTours(initialPayload);
+  const [tours, setTours] = useState<TourPackage[]>(initialTours);
+  const [isLoading, setIsLoading] = useState<boolean>(initialTours.length === 0);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
   const [sort, setSort] = useState<SortOption>("recommended");
 
   const loadTours = useCallback(async (refreshing = false) => {
+    const cachedPayload = getCachedTourPayload(lang);
+    const cachedTours = normaliseTours(cachedPayload);
+    if (cachedTours.length > 0) {
+      setTours(cachedTours);
+      setIsLoading(false);
+      setError(false);
+    } else if (!refreshing) {
+      setIsLoading(true);
+    }
     if (refreshing) setIsRefreshing(true);
-    else setIsLoading(true);
-    setError(false);
     try {
-      const response = await fetch(`${API_BASE}/tours`);
+      const response = await fetch(`${API_BASE}/tours?lang=${encodeURIComponent(lang)}`);
       if (!response.ok) throw new Error(`Tours request failed (${response.status})`);
-      setTours(normaliseTours(await response.json()));
+      const payload: unknown = await response.json();
+      cacheLocalizedTourPayload(lang, payload);
+      setTours(normaliseTours(payload));
+      setError(false);
     } catch {
-      setError(true);
+      if (cachedTours.length === 0) setError(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     void loadTours();
