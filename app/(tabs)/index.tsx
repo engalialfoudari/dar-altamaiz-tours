@@ -423,9 +423,10 @@ function BookingChoiceModal({
   onChoose: (type: "flights" | "hotels") => void;
 }) {
   const rtl = lang === "ar";
+  const android = Platform.OS === "android";
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.bookingChoiceOverlay}>
+    <Modal visible={visible} transparent={!android} animationType="fade" onRequestClose={onClose}>
+      <View style={[styles.bookingChoiceOverlay, android && styles.bookingChoiceOpaqueOverlay]}>
         <View style={styles.bookingChoiceCard}>
           <Pressable onPress={onClose} hitSlop={10} style={styles.bookingChoiceClose} testID="booking-choice-close">
             <HotelPortalIcon name="close" size={21} color="#64748B" />
@@ -2866,6 +2867,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 22,
+  },
+  bookingChoiceOpaqueOverlay: {
+    backgroundColor: "#020A19",
   },
   bookingChoiceCard: {
     width: "100%",
