@@ -14,6 +14,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   UIManager,
@@ -1046,8 +1047,8 @@ export function WebShell({
               setSupportMultipleWindows={false}
               javaScriptCanOpenWindowsAutomatically
               userAgent={ANDROID_CHROME_USER_AGENT}
-              injectedJavaScriptBeforeContentLoaded={hotelPortalInjectedJavaScript(hotelPortalToken ?? null)}
-              injectedJavaScript={HOTEL_PORTAL_HEADER_PRESENTATION_JS + INJECTED_JS}
+              injectedJavaScriptBeforeContentLoaded={"window.__dtHotelShareSupported=true;" + hotelPortalInjectedJavaScript(hotelPortalToken ?? null)}
+              injectedJavaScript={"window.__dtHotelShareSupported=true;" + HOTEL_PORTAL_HEADER_PRESENTATION_JS + INJECTED_JS}
               injectedJavaScriptForMainFrameOnly
               onError={() => hotelDocument.fail()}
               onHttpError={(event: any) => {
@@ -1080,6 +1081,29 @@ export function WebShell({
                 const rawMessage = event.nativeEvent?.data ?? "";
                 try {
                   const message = JSON.parse(rawMessage);
+                  if (message?.type === "dt-share-hotel") {
+                    // Only the owned portal may ask the OS to share a public
+                    // hotel URL. Do not pass through arbitrary WebView links.
+                    const source = String(event.nativeEvent?.url ?? "");
+                    const shared = new URL(String(message.url ?? ""));
+                    const publicPortal = new URL(hotelPortalUrlFor(undefined, false));
+                    if (!isTrustedHotelPortalNavigation(source, hotelPortalUrl) ||
+                        shared.origin !== publicPortal.origin || shared.pathname !== "/hotels" ||
+                        !shared.searchParams.get("hotelId")) return;
+                    const allowed = ["hotelId", "city", "fallbackCity", "checkin", "checkout",
+                      "adults", "rooms", "childrenAges", "destinationCountry", "destinationRegion",
+                      "lang", "autoSearch", "shareHotel"];
+                    if (Array.from(shared.searchParams.keys()).some(key => !allowed.includes(key))) return;
+                    const title = typeof message.title === "string" ? message.title.slice(0, 250) : "";
+                    void Share.share(Platform.OS === "ios"
+                      ? { title, url: shared.toString() }
+                      : { title, message: title + "\n" + shared.toString() }).catch(() => {
+                        hotelPortalRef.current?.injectJavaScript?.(
+                          "if(typeof showHotelShareFallback==='function')showHotelShareFallback();true;",
+                        );
+                      });
+                    return;
+                  }
                   if (message?.type === "dt-hotel-document-ready") {
                     if (new URL(String(event.nativeEvent?.url ?? "")).origin ===
                         new URL(hotelPortalUrl).origin) hotelDocument.acknowledge(message);
