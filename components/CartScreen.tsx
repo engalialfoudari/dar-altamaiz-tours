@@ -86,10 +86,11 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
       setQuote(null);
       return;
     }
-    if (__DEV__ && checkoutStep === "payment" && (!addressValid || hasStockConflict)) {
+    if (checkoutStep === "payment" && (!addressValid || hasStockConflict)) {
       setQuote(null);
       return;
     }
+    if (checkoutStep === "payment") setQuote(null);
     const controller = new AbortController();
     fetch(`${apiBase}/store/quote`, {
       method: "POST",
@@ -97,19 +98,24 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
       body: JSON.stringify({
         paymentMethod,
         items: items.map(({ productId, quantity }) => ({ productId, quantity })),
-        ...( __DEV__ && checkoutStep === "payment" ? { deliveryMethod, deliveryAddress, address, deliveryLocation } : {}),
+        ...(checkoutStep === "payment" ? { deliveryMethod, deliveryAddress, address, deliveryLocation } : {}),
       }),
       signal: controller.signal,
     }).then(async (response) => {
       const data = await response.json();
-      if (response.ok && data?.ok) {
-        setQuote({
-          subtotalKwd: Number(data.subtotalKwd),
-          feeKwd: Number(data.feeKwd),
-          deliveryKwd: Number(data.deliveryKwd ?? 0),
-          chargeKwd: Number(data.chargeKwd),
-        });
-      }
+      if (controller.signal.aborted || !response.ok || !data?.ok) return;
+      if (checkoutStep === "payment" && data.deliveryMethod !== deliveryMethod) return;
+      const subtotalKwd = Number(data.subtotalKwd);
+      const feeKwd = Number(data.feeKwd ?? 0);
+      const deliveryKwd = Number(data.deliveryKwd ?? 0);
+      const chargeKwd = Number(data.chargeKwd);
+      if (
+        !Number.isFinite(subtotalKwd) ||
+        !Number.isFinite(feeKwd) ||
+        !Number.isFinite(deliveryKwd) ||
+        !Number.isFinite(chargeKwd)
+      ) return;
+      setQuote({ subtotalKwd, feeKwd, deliveryKwd, chargeKwd });
     }).catch(() => {});
     return () => controller.abort();
   }, [apiBase, items, paymentMethod, deliveryMethod, address, addressValid, hasStockConflict, checkoutStep]);
@@ -121,14 +127,14 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
 
   const handleCheckout = async () => {
     if (items.length === 0 || ordering || !quote) return;
-    if (__DEV__ && !termsAccepted) {
+    if (!termsAccepted) {
       Alert.alert(
         rtl ? "الموافقة مطلوبة" : "Acceptance required",
         rtl ? "يرجى قراءة شروط وأحكام خدمة تجهيز المسافر والموافقة عليها قبل الدفع." : "Read and accept the Travel Prep Service Terms & Conditions before paying.",
       );
       return;
     }
-    if (__DEV__ && (!addressValid || hasStockConflict)) {
+    if (!addressValid || hasStockConflict) {
       Alert.alert(
         rtl ? "يرجى إكمال البيانات" : "Please complete your details",
         hasStockConflict ? (rtl ? `عذراً، الكمية المتاحة في المخزون هي ${stockByProductId[items.find(item => stockByProductId[item.productId] !== undefined && item.quantity > stockByProductId[item.productId])!.productId]} قطع فقط. يرجى تعديل الاختيار.` : "One or more quantities exceed available stock.") : (rtl ? "يرجى إدخال عنوان التوصيل ورقم الهاتف." : "Enter all Kuwait delivery fields and mobile number."),
@@ -143,7 +149,11 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
         body: JSON.stringify({
           paymentMethod,
           items: items.map(({ productId, quantity }) => ({ productId, quantity })),
-          ...( __DEV__ ? { deliveryMethod, deliveryAddress, address, deliveryLocation, termsAccepted } : {}),
+          deliveryMethod,
+          deliveryAddress,
+          address,
+          deliveryLocation,
+          termsAccepted,
         }),
       });
       const data = await response.json();
@@ -336,7 +346,7 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
                 <View style={styles.deliveryMethods}>
                   {([
                     ["standard", rtl ? "التوصيل العادي — 1.500 د.ك" : "Standard Delivery — 1.500 KWD", rtl ? "توصيل ثاني يوم" : "Next-day delivery"],
-                    ["express", rtl ? "التوصيل السريع — 3.000 د.ك" : "Express Delivery — 3.000 KWD", rtl ? "توصيل خلال ساعتين" : "Delivery within two hours"],
+                    ["express", rtl ? "التوصيل السريع — 3.000 د.ك" : "Express Delivery — 3.000 KWD", rtl ? "التوصيل خلال ساعتين" : "Delivery within two hours"],
                   ] as const).map(([method, label, description]) => (
                     <Pressable key={method} onPress={() => setDeliveryMethod(method)}
                       style={[styles.deliveryMethod, deliveryMethod === method && styles.deliveryMethodActive, rtl && { alignItems: "flex-end" }]}>
@@ -344,7 +354,7 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
                         <View style={[styles.radio, deliveryMethod === method && styles.radioActive]} />
                         <Text style={styles.deliveryMethodTitle}>{label}</Text>
                       </View>
-                      <Text style={[styles.deliveryDescription, rtl && styles.rtlText]}>{description}</Text>
+                      <Text numberOfLines={2} style={[styles.deliveryDescription, rtl && styles.rtlText]}>{description}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -379,8 +389,7 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
               <Text style={styles.totalLabel}>{rtl ? "الإجمالي النهائي:" : "Final total:"}</Text>
               <Text style={styles.totalValue}>KWD {quote ? quote.chargeKwd.toFixed(3) : "—"}</Text>
             </View>
-            {__DEV__ && (
-              <Pressable testID="store-terms-accept" style={[styles.termsRow, rtl && { flexDirection: "row-reverse" }]} onPress={() => setTermsAccepted(value => !value)}>
+                          <Pressable testID="store-terms-accept" style={[styles.termsRow, rtl && { flexDirection: "row-reverse" }]} onPress={() => setTermsAccepted(value => !value)}>
                 <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
                   {termsAccepted && <HotelPortalIcon name="check" size={15} color="#FFF" />}
                 </View>
@@ -389,10 +398,9 @@ export function CartScreen({ onClose, lang }: CartScreenProps) {
                   <Text style={styles.termsLink} onPress={() => setTermsVisible(true)}>{rtl ? "شروط وأحكام خدمة تجهيز المسافر" : "Travel Prep Service Terms & Conditions"}</Text>
                 </Text>
               </Pressable>
-            )}
             <Pressable 
-              disabled={ordering || !quote || (__DEV__ && !termsAccepted)}
-              style={({pressed}) => [styles.checkoutBtn, (ordering || !quote || (__DEV__ && !termsAccepted)) && styles.checkoutBtnDisabled, pressed && { opacity: 0.9 }]}
+              disabled={ordering || !quote || !termsAccepted}
+              style={({pressed}) => [styles.checkoutBtn, (ordering || !quote || !termsAccepted) && styles.checkoutBtnDisabled, pressed && { opacity: 0.9 }]}
               onPress={handleCheckout}
             >
               <HotelPortalIcon name="credit-card" size={20} color="#FFF" />
