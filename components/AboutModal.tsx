@@ -37,7 +37,7 @@ const palette = {
 
 const LINKS = {
   website: "https://dt-tours.com",
-  company: "https://dt-tours.com/general/cms/1",
+  company: "https://dt-tours.com/#about",
   electronicTransactions:
     "https://kdipa.gov.kw/wp-content/uploads/2022/08/%D9%82%D8%A7%D9%86%D9%88%D9%86-%D8%A7%D9%84%D9%85%D8%B9%D8%A7%D9%85%D9%84%D8%A7%D8%AA-%D8%A7%D9%84%D8%A7%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A%D8%A9-20-%D9%84%D8%B3%D9%86%D8%A9-2014-%D9%85%D8%AA%D8%B1%D8%AC%D9%85-%D8%A8%D8%A7%D9%84%D9%84%D8%BA%D8%A9-%D8%A7%D9%84%D8%A7%D9%86%D8%AC%D9%84%D9%8A%D8%B2%D9%8A%D8%A9.pdf",
   consumerProtection: "https://www.wipo.int/wipolex/en/legislation/details/19925",
