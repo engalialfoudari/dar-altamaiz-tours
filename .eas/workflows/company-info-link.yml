@@ -1,0 +1,18 @@
+name: Android company information link fix
+on:
+  workflow_dispatch: {}
+defaults:
+  image: sdk-54
+  tools:
+    node: "22.14.0"
+jobs:
+  production:
+    type: update
+    environment: production
+    env:
+      EXPO_PUBLIC_API_BASE: https://dt-tour.com/api
+      EXPO_PUBLIC_DOMAIN: dt-tour.com
+    params:
+      platform: android
+      channel: production
+      message: "Fix Arabic company information link; Android runtime 1.0.6"
